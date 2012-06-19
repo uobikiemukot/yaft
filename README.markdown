@@ -132,7 +132,7 @@ BDFを簡略化したフォント形式を使っています．
 codeはUCS2のコードを10進で表記したものです．  
 widthとheightはフォントの横幅と高さです(pixel)．
 
-bitmapにはBDFと同様にフォントのビットマップ情報が列挙されます(16進)．  
+bitmapにはBDFと同様にグリフのビットマップ情報が列挙されます(16進)．  
 BDFと異なり，一行には1バイト分のビットマップ情報しか書けません．  
 バイト境界に合わない場合はMSB側に0をパディングします．
 
@@ -154,6 +154,9 @@ $ ./bdf2yaft TABLE BDF1 BDF2 ...
 後ろで指定したフォントのものが使われます．
 
 変換テーブルの形式は変換元と変換先の文字コードを16進で列挙したものです．
+-	ペアの区切りはタブでなければいけません
+-	先頭が#の行はコメントと見なされます
+-	3つめ以降のフィールドは無視されます
 
 ~~~
 0x00	0x0000  # NULL
@@ -165,9 +168,7 @@ $ ./bdf2yaft TABLE BDF1 BDF2 ...
 ...
 ~~~
 
-ペアの区切りはタブでなければいけません．  
-先頭が#の行はコメントと見なされます．  
-3つめ以降のフィールドは無視されます．
+以下のようにして使います．
 
 ~~~
 $ bdf2yaft BDF
@@ -177,6 +178,12 @@ $ cat BDF1 BDF2 ... | ./bdf2yaft
 既にUnicodeのBDFはテーブルを指定する必要はありません．  
 また2番目のように複数のUnicodeのBDFをcatしてからbdf2yaftに渡すと，  
 複数のBDFをmergeして1つのフォントを生成することができます．
+
+~~~
+$ ./yaftmerge BDF1 BDF2 ...
+~~~
+
+yaftmergeは変換済みのフォントをmergeすることができます．
 
 ## wallpaper
 [pnm]に含まれるportable pixmap format(P6)の画像ファイルを背景画像として指定できます．
@@ -198,7 +205,6 @@ conf.hのwall_pathを設定することで画像が表示されます．
 $ convert wall.png wall.ppm
 $ grep wall_path conf.h
 static char *wall_path = /path/to/wall.ppm;
-
 ~~~
 
 [pnm]: http://ja.wikipedia.org/wiki/PNM_(%E7%94%BB%E5%83%8F%E3%83%95%E3%82%A9%E3%83%BC%E3%83%9E%E3%83%83%E3%83%88)
