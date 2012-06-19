@@ -11,7 +11,8 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 
 ## feature
 +	UTF-8対応  
-	というか他のエンコードが一切使えません．Unicode BMPの範囲のグリフを表示可能です(フォントに依存)
+	というか他のエンコードが一切使えません．  
+	Unicode BMPの範囲のグリフを表示可能です(フォントに依存)
 
 +	East Asian Width  
 	対応するためのoptionがあるわけではありませんが，  
@@ -22,7 +23,8 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 	また，OSC 4とOSC 104も使用できます
 
 +	壁紙表示  
-	pnm形式のファイルを用いて端末の背景に画像を表示することができます(後述)
+	pnm形式のファイルを用いて端末の背景に画像を表示することができます(後述)  
+	(壁紙を表示するとやや描画が遅くなるような気がします．)
 
 ## configuration
 コンパイル前にconf.hを編集して適切な設定に書き換えてください．
@@ -104,13 +106,13 @@ make installを使わなくても構いません．
 フォント(と使うのであれば壁紙のファイル)を，  
 conf.hで設定した場所に忘れずに移動させてください．
 
-sampleとして[efont]のb16.bdfを変換したフォントと，  
+sampleとして[shinonome font]の16dotのものを変換したフォントと，  
 xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
 
 efontのライセンスについてはlisence/efont以下のファイルを参照してください．  
 wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 License]です．
 
-[efont]: http://openlab.ring.gr.jp/efont/unicode/
+[shinonome font]: http://openlab.ring.gr.jp/efont/shinonome/
 [wallpaper]: https://wiki.ubuntu.com/Xubuntu/Artwork/Karmic?action=AttachFile&do=view&target=karmic-wallpaper-final.tar.gz
 [Creative Commons Attribution-ShareAlike 3.0 License]: http://creativecommons.org/licenses/by-sa/3.0/
 
