@@ -172,3 +172,6 @@ static char *wall_path = /path/to/wall.ppm;
 [pnm]: http://ja.wikipedia.org/wiki/PNM_(%E7%94%BB%E5%83%8F%E3%83%95%E3%82%A9%E3%83%BC%E3%83%9E%E3%83%83%E3%83%88)
 
 ## TODO
+
+-	32bpp以外の環境で動作するようにする
+-	スクロールバックの実装
