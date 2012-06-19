@@ -71,19 +71,11 @@ ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書
 画面よりも端末のサイズを大きくすることはできません．
 
 ## install
-conf.hを環境に合わせて修正した後，
-makeをして実行ファイルをパスの通っている場所に置いてください．
 
-terminfoのインストールも必要です．
-
-フォントや画像ファイルもconf.hで指定した場所に移動させてください．
-
-sampleとして[efont]のb16.bdfを変換したフォントと，
-xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
-
-efontのライセンスについてはlisence/efont以下のファイルを参照してください．
-
-wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 License]です．
+1.	conf.hを環境に合わせて修正
+2.	makeして実行ファイルを生成
+3.	ticコマンドでterminfoをコンパイル
+4.	font/wallpaperをconf.hで指定した場所に移動
 
 ~~~
 $ make
@@ -93,6 +85,13 @@ $ cp fonts/efont.yaft ~/.yaft/
 $ cp wall/karmic-gray.ppm ~/.yaft/
 $ cp yaft /usr/bin/
 ~~~
+
+sampleとして[efont]のb16.bdfを変換したフォントと，
+xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
+
+efontのライセンスについてはlisence/efont以下のファイルを参照してください．
+
+wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 License]です．
 
 [efont]: http://openlab.ring.gr.jp/efont/unicode/
 [wallpaper]: https://wiki.ubuntu.com/Xubuntu/Artwork/Karmic?action=AttachFile&do=view&target=karmic-wallpaper-final.tar.gz
