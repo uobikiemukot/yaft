@@ -1,3 +1,12 @@
 2012-06-19 haru
 	* version 0.1.0
 	* 試験的に公開
+
+2012-06-19 haru
+	* version 0.1.1
+	* 細かなバグ修正
+	* UCS_CHARSの値が要素数+1になってなかったのを修正 (common.h)
+	* esc_func, csi_func, osc_funcも同様に配列の要素数が1足りなかったのを修正 (common.h)
+	* parse_esc()の実体参照(*argc)がargcになってたのを修正 (parse.h)
+	* dumpするときにstdoutのバッファリングを無効にするようにした (yaft.c)
+	* delete_line(), erase_line()でスクロールが発生するときにDECSTBMの設定が反映されてなかったのを修正 (function.h)
