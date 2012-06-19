@@ -2,7 +2,7 @@
 
 framebufferを用いたターミナルエミュレータです．
 
-vt102やLinux consoleを参考に作っていますが，完全な互換性はありません．
+vt102やLinux consoleを参考に作っていますが，完全な互換性はありません．  
 詳細はinfo/yaft.infoや，後述するcontrol sequence listを参照してください．
 
 ![yaft]
@@ -10,63 +10,82 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 [yaft]: https://github.com/uobikiemukot/yaft/raw/27ba1df66490b921636de13ef354149a640e9dd7/yaft.png
 
 ## feature
--	UTF-8対応:
+-	UTF-8対応
 	というか他のエンコードが一切使えません．Unicode BMPの範囲のグリフを表示可能です(フォントに依存)
--	East Asian Width:
+
+-	East Asian Width
 	ビットマップの幅を参照するので端末が文字幅を誤認することはありません
+
 -	256色:
-	xtermと同様の256色指定のエスケープシーケンスに対応しています．また，OSC 4とOSC 104も使用できます
+	xtermと同様の256色指定のエスケープシーケンスに対応しています．  
+	また，OSC 4とOSC 104も使用できます
+
 -	壁紙表示:
 	pnm形式のファイルを用いて端末の背景に画像を表示することができます(後述)
 
 ## configuration
 コンパイル前にconf.hを編集して適切な設定に書き換えてください．
 
-### path
+### path and terminal name
 
--	static char *wall_path = NULL:
+-	static char *wall_path = "~/.yaft/karmic-gray.ppm";
 	壁紙のpathを指定します．無効にする場合はNULLにしてください
--	static char *font_path = "~/.fonts/efont.yaft":
+
+-	static char *font_path = "~/.yaft/milk.yaft";
 	fontのpathを設定します．フォントの形式は後述します
--	static char *fb_path = "/dev/fb0":
+
+-	static char *fb_path = "/dev/fb0";
 	framebuffer deviceのpathを設定します．通常はこのままで問題ありません
--	static char *shell_cmd = "/bin/bash":
+
+-	static char *shell_cmd = "/bin/bash";
 	端末から起動するshellを設定します
 
-pathは全て絶対pathで記述します．
+-	static char *term_name = "yaft";
+	環境変数TERMの値を設定します．yaft以外にしても良いことはないと思います
 
+pathは全て絶対pathで記述します．  
 wall_pathとfont_pathの指定では，$HOMEのパスを省略して~と書くことができます．
 
 ### color
 色は0xFFFFFF形式(RGBの順で各8bitずつ)かcolor.hでdefineされている色の名前を使用できます．
 
--	DEFAULT_FG = GRAY:
+-	DEFAULT_FG = GRAY,
 	デフォルトの前景色
--	DEFAULT_BG = BLACK:
+
+-	DEFAULT_BG = BLACK,
 	デフォルトの背景色
--	CURSOR_COLOR = GREEN:
+
+-	CURSOR_COLOR = GREEN,
 	カーソルの色の設定
 
 ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書き換えてください．
 
 ### misc
--	DUMP = false:
+-	DUMP false,
 	端末に送られてきたデータを標準出力にdumpします(デバッグ用)
--	DEBUG = false:
+
+-	DEBUG = false,
 	parseの結果を標準エラー出力に表示します(デバッグ用)
--	LAZYDRAW = true:
+
+-	LAZYDRAW = true,
 	描画をサボるかどうか．見掛け上の描画速度が向上します
--	OFFSET_X = 0:
+
+-	OFFSET_X = 0,
 	画面内のどこに端末を表示するかのオフセット値
--	OFFSET_Y = 0:
+
+-	OFFSET_Y = 0,
 	同上
--	TERM_WIDTH = 1280:
+
+-	TERM_WIDTH = 1280,
 	端末のサイズ．通常は画面のサイズと同じにします
--	TERM_HEIGHT = 1024:
+
+-	TERM_HEIGHT = 1024,
 	同上
--	TABSTOP = 8:
+
+-	TABSTOP = 8,
 	ハードウェアタブの幅
--	INTERVAL = 1000000:
+
+-	INTERVAL = 1000000,
 	pollingの間隔をマイクロ秒単位で設定できます
 
 画面よりも端末のサイズを大きくすることはできません．
@@ -79,19 +98,14 @@ ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書
 4.	font/wallpaperをconf.hで指定した場所に移動
 
 ~~~
-$ make
 $ tic info/yaft.info
-$ mkdir ~/.yaft
-$ cp fonts/efont.yaft ~/.yaft/
-$ cp wall/karmic-gray.ppm ~/.yaft/
-$ cp yaft /usr/bin/
+$ make
+$ sudo make install
 ~~~
-
-sampleとして[efont]のb16.bdfを変換したフォントと，
+sampleとして[efont]のb16.bdfを変換したフォントと，  
 xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
 
-efontのライセンスについてはlisence/efont以下のファイルを参照してください．
-
+efontのライセンスについてはlisence/efont以下のファイルを参照してください．  
 wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 License]です．
 
 [efont]: http://openlab.ring.gr.jp/efont/unicode/
@@ -104,26 +118,27 @@ wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 Licen
 $ yaft
 ~~~
 
-### font
-BDFを簡略化したフォント形式を使っています．
+コマンドラインオプションは存在しません．
 
+### font
+BDFを簡略化したフォント形式を使っています．  
 各グリフは以下の情報を持っています．
 
 	code
 	width height
 	bitmap...
 
-codeはUCS2のコードを10進で表記したものです．
+codeはUCS2のコードを10進で表記したものです．  
 widthとheightはフォントの横幅と高さです(pixel)．
 
-bitmapにはBDFと同様にフォントのビットマップ情報が列挙されます(16進)．
-BDFと異なり，一行には1バイト分のビットマップ情報しか書けません．
+bitmapにはBDFと同様にフォントのビットマップ情報が列挙されます(16進)．  
+BDFと異なり，一行には1バイト分のビットマップ情報しか書けません．  
 バイト境界に合わない場合はMSB側に0をパディングします．
 
-また，バウンディングボックスの指定がないので，
+また，バウンディングボックスの指定がないので，  
 ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
 
-misc/bdf2yaft.cppというプログラムを用いると，
+misc/bdf2yaft.cppというプログラムを用いると，  
 等幅BDFをyaftで用いているフォント形式に変換できます．
 
 その際，変換テーブルを指定するとUnicode以外のBDFも変換できます．
@@ -134,7 +149,7 @@ $ make
 $ ./bdf2yaft TABLE BDF1 BDF2 ...
 ~~~
 
-複数のフォントに同じグリフが存在する場合，
+複数のフォントに同じグリフが存在する場合，  
 後ろで指定したフォントのものが使われます．
 
 変換テーブルの形式は変換元と変換先の文字コードを16進で列挙したものです．
@@ -149,8 +164,8 @@ $ ./bdf2yaft TABLE BDF1 BDF2 ...
 ...
 ~~~
 
-ペアの区切りはタブでなければいけません．
-先頭が#の行はコメントと見なされます．
+ペアの区切りはタブでなければいけません．  
+先頭が#の行はコメントと見なされます．  
 3つめ以降のフィールドは無視されます．
 
 ~~~
@@ -158,8 +173,8 @@ $ bdf2yaft BDF
 $ cat BDF1 BDF2 ... | ./bdf2yaft
 ~~~
 
-既にUnicodeのBDFはテーブルを指定する必要はありません．
-また2番目のように複数のUnicodeのBDFをcatしてからbdf2yaftに渡すと，
+既にUnicodeのBDFはテーブルを指定する必要はありません．  
+また2番目のように複数のUnicodeのBDFをcatしてからbdf2yaftに渡すと，  
 複数のBDFをmergeして1つのフォントを生成することができます．
 
 ## wallpaper
@@ -172,10 +187,10 @@ P6
 255
 ~~~
 
-このようにファイルの先頭3行を表示したとき，
+このようにファイルの先頭3行を表示したとき，  
 1行目がP6，3行目が255であることを確認してください．
 
-imagemagick等を使って画像を変換し，
+imagemagick等を使って画像を変換し，  
 conf.hのwall_pathを設定することで画像が表示されます．
 
 ~~~
@@ -188,7 +203,8 @@ static char *wall_path = /path/to/wall.ppm;
 [pnm]: http://ja.wikipedia.org/wiki/PNM_(%E7%94%BB%E5%83%8F%E3%83%95%E3%82%A9%E3%83%BC%E3%83%9E%E3%83%83%E3%83%88)
 
 ## control sequence list
-listにないコントロールシーケンスは無視されます．
+listにないコントロールシーケンスは無視されます．  
+記載されているものでも，完全には対応していない場合もあります．
 
 ### control character
 0x00 - 0x1Fの範囲の制御コード
@@ -268,3 +284,6 @@ ESC ] *
 
 -	32bpp以外の環境で動作するようにする
 -	スクロールバックの実装
+-	BDFを直接読めるようにする
+-	pnmの他の形式も読めるようにする ( or fbtermのように壁紙を指定できるようにする)
+-	control sequence listをもうちょっと真面目に書く
