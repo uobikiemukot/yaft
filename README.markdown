@@ -39,24 +39,24 @@ conf.hに設定可能な変数が列挙されています．
 	カーソルの色の設定
 
 ### misc
-DUMP = false,
-:	端末に送られてきたデータを標準出力にdumpします(デバッグ用)
-DEBUG = false,
-:	parseの結果を標準エラー出力に表示します(デバッグ用)
-LAZYDRAW = true,
-:	描画をサボるかどうか．見掛け上の描画速度が向上します
-OFFSET_X = 0,
-:	画面内のどこに端末を表示するかのオフセット値
-OFFSET_Y = 0,
-:	同上
-TERM_WIDTH = 1280,
-:	端末のサイズ．通常は画面のサイズと同じにします
-TERM_HEIGHT = 1024,
-:	同上
-TABSTOP = 8,
-:	ハードウェアタブの幅
-INTERVAL = 1000000, /* polling interval(usec) */
-:	pollingの間隔をマイクロ秒単位で設定できます
+DUMP = false:
+	端末に送られてきたデータを標準出力にdumpします(デバッグ用)
+DEBUG = false:
+	parseの結果を標準エラー出力に表示します(デバッグ用)
+LAZYDRAW = true:
+	描画をサボるかどうか．見掛け上の描画速度が向上します
+OFFSET_X = 0:
+	画面内のどこに端末を表示するかのオフセット値
+OFFSET_Y = 0:
+	同上
+TERM_WIDTH = 1280:
+	端末のサイズ．通常は画面のサイズと同じにします
+TERM_HEIGHT = 1024:
+	同上
+TABSTOP = 8:
+	ハードウェアタブの幅
+INTERVAL = 1000000:
+	pollingの間隔をマイクロ秒単位で設定できます
 
 ### font
 
