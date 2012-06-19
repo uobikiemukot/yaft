@@ -3,6 +3,7 @@
 framebufferを用いたターミナルエミュレータです．
 
 vt102やLinux consoleを参考に作っていますが，完全な互換性はありません．
+詳細はinfo/yaft.infoや，後述するcontrol sequence listを参照してください．
 
 ![yaft]
 
@@ -185,6 +186,79 @@ static char *wall_path = /path/to/wall.ppm;
 ~~~
 
 [pnm]: http://ja.wikipedia.org/wiki/PNM_(%E7%94%BB%E5%83%8F%E3%83%95%E3%82%A9%E3%83%BC%E3%83%9E%E3%83%83%E3%83%88)
+
+## control sequence list
+listにないコントロールシーケンスは無視されます．
+
+### control character
+0x00 - 0x1Fの範囲の制御コード
+
+-	0x08 bs
+-	0x09 tab
+-	0x0A nl
+-	0x0B nl
+-	0x0C nl
+-	0x0D cr
+-	0x1B enter_esc
+
+### escape sequence
+ESC(0x1B)ではじまるシーケンスのうち，CSIでもOSCでもないもの
+
+~~~
+ESC *
+~~~
+
+-	7 save_state
+-	8 restore_state
+-	D nl
+-	E crnl
+-	H set_tabstop
+-	M reverse_nl
+-	Z identify
+-	[ enter_csi
+-	] enter_osc
+-	c ris
+
+### csi sequence
+
+~~~
+ESC [ *
+~~~
+
+-	@ insert_blank
+-	A curs_up
+-	B curs_down
+-	C curs_forward
+-	D curs_back
+-	E curs_nl
+-	F curs_pl
+-	G curs_col
+-	H curs_pos
+-	J erase_display
+-	K erase_line
+-	L insert_line
+-	M delete_line
+-	P delete_char
+-	X erase_char
+-	a curs_forward
+-	c identify
+-	d curs_line
+-	e curs_down
+-	f curs_pos
+-	g clear_tabstop
+-	h set_mode
+-	l reset_mode
+-	m set_attr
+-	n status_report
+-	r set_margin
+-	s save_state
+-	u restore_state
+-	` curs_col
+
+### osc sequence
+
+-	4   set_palette
+-	104 reset_palette
 
 ## TODO
 
