@@ -27,18 +27,10 @@ enum {
 	DUMP = false,
 	DEBUG = false,
 	LAZYDRAW = true,
-	/*
-	OFFSET_X = 0,
-	OFFSET_Y = 0,
-	TERM_WIDTH = 1280,
-	TERM_HEIGHT = 1024,
-	*/
 	OFFSET_X = 32,
 	OFFSET_Y = 32,
-	TERM_WIDTH = 640, // 8 * 80
-	TERM_HEIGHT = 384, // 16 * 24
-	/*
-	*/
+	TERM_WIDTH = 640, /* 8 * 80 */
+	TERM_HEIGHT = 384, /* 16 * 24 */
 	TABSTOP = 8,
 	INTERVAL = 1000000, /* polling interval(usec) */
 	//SCROLLBACK = 1024, /* not implemented */
