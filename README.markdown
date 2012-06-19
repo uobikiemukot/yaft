@@ -6,7 +6,7 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 
 ![yaft]
 
-[yaft]: yaft.png
+[yaft]: https://github.com/uobikiemukot/yaft/raw/27ba1df66490b921636de13ef354149a640e9dd7/yaft.png
 
 ## feature
 -	UTF-8対応:
