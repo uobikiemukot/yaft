@@ -74,6 +74,8 @@ ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書
 conf.hを環境に合わせて修正した後，
 makeをして実行ファイルをパスの通っている場所に置いてください．
 
+terminfoのインストールも必要です．
+
 フォントや画像ファイルもconf.hで指定した場所に移動させてください．
 
 sampleとして[efont]のb16.bdfを変換したフォントと，
@@ -85,6 +87,7 @@ wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 Licen
 
 ~~~
 $ make
+$ tic info/yaft.info
 $ mkdir ~/.yaft
 $ cp fonts/efont.yaft ~/.yaft/
 $ cp wall/karmic-gray.ppm ~/.yaft/
