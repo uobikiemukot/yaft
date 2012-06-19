@@ -3,7 +3,7 @@ static char *wall_path = "~/.yaft/karmic-gray.ppm";
 //static char *wall_path = NULL;
 
 /* font path */
-static char *font_path = "~/.yaft/milk.yaft";
+static char *font_path = "~/.yaft/efont.yaft";
 
 /* framubuffer device */
 static char *fb_path = "/dev/fb0";
