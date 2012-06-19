@@ -32,7 +32,7 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 +	static char *wall_path = "~/.yaft/karmic-gray.ppm";  
 	壁紙のpathを指定します．無効にする場合はNULLにしてください
 
-+	static char *font_path = "~/.yaft/milk.yaft";  
++	static char *font_path = "~/.yaft/efont.yaft";  
 	fontのpathを設定します．フォントの形式は後述します
 
 +	static char *fb_path = "/dev/fb0";  
