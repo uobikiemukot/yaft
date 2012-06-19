@@ -5,13 +5,13 @@ framebufferを用いたターミナルエミュレータです．
 vt102やLinux consoleを参考に作っていますが，完全な互換性はありません．  
 詳細はinfo/yaft.infoや，後述するcontrol sequence listを参照してください．
 
-![yaft]
+![yaft screenshot]
 
-[yaft]: https://github.com/uobikiemukot/yaft/raw/27ba1df66490b921636de13ef354149a640e9dd7/yaft.png
+[yaft]: https://github.com/uobikiemukot/yaft/raw/master/img/yaft-gray.png
 
 ## feature
 +	UTF-8対応  
-	というか他のエンコードが一切使えません．  
+	というか他のエンコードが一切使えません  
 	Unicode BMPの範囲のグリフを表示可能です(フォントに依存)
 
 +	East Asian Width  
@@ -19,12 +19,12 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 	ビットマップの幅を参照するので端末が文字幅を誤認することはありません
 
 +	256色  
-	xtermと同様の256色指定のエスケープシーケンスに対応しています．  
+	xtermと同様の256色指定のエスケープシーケンスに対応しています  
 	また，OSC 4とOSC 104も使用できます
 
 +	壁紙表示  
 	pnm形式のファイルを用いて端末の背景に画像を表示することができます(後述)  
-	(壁紙を表示するとやや描画が遅くなるような気がします．)
+	(壁紙を表示するとやや描画が遅くなるかも)
 
 ## configuration
 コンパイル前にconf.hを編集して適切な設定に書き換えてください．
@@ -34,7 +34,7 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 +	static char *wall_path = "~/.yaft/karmic-gray.ppm";  
 	壁紙のpathを指定します．無効にする場合はNULLにしてください
 
-+	static char *font_path = "~/.yaft/efont.yaft";  
++	static char *font_path = "~/.yaft/shnm.yaft";  
 	fontのpathを設定します．フォントの形式は後述します
 
 +	static char *fb_path = "/dev/fb0";  
@@ -144,6 +144,7 @@ BDFと異なり，一行には1バイト分のビットマップ情報しか書�
 
 misc/bdf2yaft.cppというプログラムを用いると，  
 等幅BDFをyaftで用いているフォント形式に変換できます．
+*プログラムの都合上，U+7F(DEL)かU+20(SPACE)のどちらかのグリフがないとエラーが出ます*
 
 その際，変換テーブルを指定するとUnicode以外のBDFも変換できます．
 
