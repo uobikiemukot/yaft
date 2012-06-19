@@ -85,6 +85,9 @@ int parse_osc(terminal *term, int *argc, char **argv)
 	u8 c, *cp;
 	escape *ep;
 
+	if (DEBUG)
+		fprintf(stderr, "parsing osc: %s\n", term->esc.buf);
+
 	ep = &term->esc;
 
 	length = strlen(ep->buf);
@@ -117,7 +120,10 @@ start:
 	if (cp != &ep->buf[length - 1])
 		goto start;
 
-	return atoi(argv[0]);
+	if (*argc > 0)
+		return atoi(argv[0]);
+	else
+		return 0;
 }
 
 /* need to rewrite this function */
@@ -126,6 +132,9 @@ u8 parse_csi(terminal *term, int *argc, char **argv)
 	int i, length;
 	u8 c, *cp;
 	escape *ep;
+
+	if (DEBUG)
+		fprintf(stderr, "parsing osc: %s\n", term->esc.buf);
 
 	ep = &term->esc;
 
