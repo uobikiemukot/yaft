@@ -79,7 +79,7 @@ makeをして実行ファイルをパスの通っている場所に置いてく�
 sampleとして[efont]のb16.bdfを変換したフォントと，
 xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
 
-efontのライセンスについてはlisence/efontのファイルを参照してください．
+efontのライセンスについてはlisence/efont以下のファイルを参照してください．
 
 wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 License]です．
 
