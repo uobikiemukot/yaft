@@ -1,18 +1,18 @@
 # yaft - yet another framebuffer terminal
 
 framebufferを用いたターミナルエミュレータです．
-vt102やLinux consoleをベースにしていますが，完全な互換性はありません．
-機能がないのが特徴．
+
+機能がないのが特徴かもしれません．
 
 ## feature
 -	UTF-8対応:
 	というか他のエンコードが一切使えません．Unicode BMPの範囲のグリフを表示可能です(フォントに依存)
 -	East Asian Width:
-	常にビットマップの幅を参照するので文字幅のズレは発生しません
+	ビットマップの幅を参照するので文字幅のズレは発生しません
 -	256色:
 	xtermと同様の256色指定のエスケープシーケンスに対応しています．また，OSC 4とOSC 104も使えます
 -	壁紙表示:
-	ppm形式のファイルを用いて端末の背景に画像を表示することができます
+	pnm形式のファイルを用いて端末の背景に画像を表示することができます
 
 ## configuration
 conf.hに設定可能な変数が列挙されています．
@@ -58,35 +58,6 @@ conf.hに設定可能な変数が列挙されています．
 -	INTERVAL = 1000000:
 	pollingの間隔をマイクロ秒単位で設定できます
 
-### font
-BDFを簡略化したフォント形式を使っています．
-各グリフは以下の情報を持っています．
-
-	code
-	width height
-	bitmap...
-
-codeはUCS2のコードを10進で表記したものです．
-widthとheightはフォントの横幅と高さです(pixel)．
-
-bitmapにはBDFと同様にフォントのビットマップ情報が列挙されます(16進)．
-BDFと異なり，一行には1バイト分のビットマップ情報しか書けません．
-バイト境界に合わない場合はMSB側に0をパディングします．
-また，バウンディングボックスの指定がないので，
-ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
-
-misc/bdf2yaft.cppというプログラムを用いると，
-等幅BDFをyaftで用いているフォント形式に変換できます．
-その際，変換テーブルを指定するとUnicode以外のBDFも変換できます．
-
-~~~
-$ bdf2yaft TABLE BDF1 BDF2 ...
-~~~
-
-複数のフォントに同じグリフが存在する場合，
-後ろで指定したフォントのものが使われます．
-
-
 ## install
 外部ライブラリは未使用です．
 ある程度新しいgcc/g++があればコンパイルできると思います．
@@ -115,6 +86,82 @@ $ cp yaft /usr/local/bin/
 $ yaft
 ~~~
 
-## TODO
+### font
+BDFを簡略化したフォント形式を使っています．
+各グリフは以下の情報を持っています．
 
--	
+	code
+	width height
+	bitmap...
+
+codeはUCS2のコードを10進で表記したものです．
+widthとheightはフォントの横幅と高さです(pixel)．
+
+bitmapにはBDFと同様にフォントのビットマップ情報が列挙されます(16進)．
+BDFと異なり，一行には1バイト分のビットマップ情報しか書けません．
+バイト境界に合わない場合はMSB側に0をパディングします．
+また，バウンディングボックスの指定がないので，
+ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
+
+misc/bdf2yaft.cppというプログラムを用いると，
+等幅BDFをyaftで用いているフォント形式に変換できます．
+その際，変換テーブルを指定するとUnicode以外のBDFも変換できます．
+
+~~~
+$ bdf2yaft TABLE BDF1 BDF2 ...
+~~~
+
+複数のフォントに同じグリフが存在する場合，
+後ろで指定したフォントのものが使われます．
+
+変換テーブルの形式は変換元と変換先の文字コードを16進で列挙したものです．
+
+~~~
+0x00	0x0000  # NULL
+0x01	0x0001  # START OF HEADING
+0x02	0x0002  # START OF TEXT
+0x03	0x0003  # END OF TEXT
+0x04	0x0004  # END OF TRANSMISSION
+0x05	0x0005  # ENQUIRY
+...
+~~~
+
+ペアの区切りはタブでなければいけません．
+先頭が#の行はコメントと見なされます．
+3つめ以降のフィールドは無視されます．
+
+~~~
+$ bdf2yaft BDF
+$ cat BDF1 BDF2 ... | ./bdf2yaft
+~~~
+
+既にUnicodeのBDFはテーブルを指定する必要はありません．
+また2番目のように複数のUnicodeのBDFをcatしてからbdf2yaftに渡すと
+複数のBDFをmergeして1つのフォントを生成することができます．
+
+## wallpaper
+[pnm]に含まれるportable pixmap format(P6)の画像ファイルを背景画像として指定できます．
+
+~~~
+$ head -3 wall.ppm
+P6
+1920 1440
+255
+~~~
+
+このようにファイルの先頭3行を表示したとき，
+1行目がP6，3行目が255であることを確認してください．
+
+imagemagick等を使って画像を変換し，
+conf.hのwall_pathを設定することで画像が表示されます．
+
+~~~
+$ convert wall.png wall.ppm
+$ grep wall_path conf.h
+static char *wall_path = /path/to/wall.ppm;
+
+~~~
+
+[pnm]: http://ja.wikipedia.org/wiki/PNM_(%E7%94%BB%E5%83%8F%E3%83%95%E3%82%A9%E3%83%BC%E3%83%9E%E3%83%83%E3%83%88)
+
+## TODO
