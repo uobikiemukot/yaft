@@ -4,6 +4,10 @@ framebufferを用いたターミナルエミュレータです．
 
 vt102やLinux consoleを参考に作っていますが，完全な互換性はありません．
 
+![yaft]
+
+[yaft]: yaft.png
+
 ## feature
 -	UTF-8対応:
 	というか他のエンコードが一切使えません．Unicode BMPの範囲のグリフを表示可能です(フォントに依存)
