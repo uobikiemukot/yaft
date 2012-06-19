@@ -56,7 +56,7 @@ int main()
 
 	/* init */
 	fb_init(&fb);
-	term_init(&term);
+	term_init(&term, fb.res);
 	load_func();
 
 	/* fork */
