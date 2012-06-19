@@ -298,7 +298,7 @@ void insert_line(terminal *term, void *arg)
 	}
 
 	num = (num <= 0) ? 1: num;
-	scroll(term, term->cursor.y, term->lines - 1, -num);
+	scroll(term, term->cursor.y, term->scroll.bottom, -num);
 }
 
 void delete_line(terminal *term, void *arg)
@@ -312,7 +312,7 @@ void delete_line(terminal *term, void *arg)
 	}
 
 	num = (num <= 0) ? 1: num;
-	scroll(term, term->cursor.y, term->lines - 1, num);
+	scroll(term, term->cursor.y, term->scroll.bottom, num);
 }
 
 void delete_char(terminal *term, void *arg)

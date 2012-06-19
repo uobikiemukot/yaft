@@ -35,10 +35,10 @@ void set_rawmode(int fd, termios *save_tm, termios *tm)
 
 void load_func()
 {
-	load_ctrl_func(ctrl_func, 0x1F);
-	load_esc_func(esc_func, 0x7F);
-	load_csi_func(csi_func, 0x7F);
-	load_osc_func(osc_func, 0x7F);
+	load_ctrl_func(ctrl_func, CTRL_CHARS);
+	load_esc_func(esc_func, ESC_CHARS);
+	load_csi_func(csi_func, ESC_CHARS);
+	load_osc_func(osc_func, ESC_CHARS);
 }
 
 int main()
@@ -69,6 +69,9 @@ int main()
 	/* parent */
 	signal(SIGCHLD, sigchld);
 	set_rawmode(STDIN_FILENO, &save_tm, &tm);
+
+	if (DUMP)
+		setvbuf(stdout, NULL, _IONBF, 0);
 
 	/* main loop */
 	while (loop_flag) {

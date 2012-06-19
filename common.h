@@ -24,8 +24,9 @@ enum {
 	BUFSIZE = 1024, /* read, esc, various buffer size */
 	ESC_PARAMS = 64, /* max parameters of csi/osc sequence */
 	COLORS = 256, /* num of color */
-	UCS_CHARS = 0xFFFF, /* glyph num: UCS2 */
-	//UCS_CHARS = 0x10000, /* glyph num: UCS2 */
+	UCS_CHARS = 0x10000, /* glyph num: UCS2 */
+	CTRL_CHARS = 0x20,
+	ESC_CHARS = 0x80,
 	DEFAULT_CHAR = 0x20, /* erase char, and used for cell_size: SPACE */
 	RESET = 0x00, /* reset for char_attr, term_mode, esc_state */
 };
@@ -161,7 +162,7 @@ struct terminal {
 	uchar ucs;  /* store UTF-8 sequence */
 };
 
-static void (*ctrl_func[0x1F])(terminal *term, void *arg);
-static void (*esc_func[0x7F])(terminal *term, void *arg);
-static void (*csi_func[0x7F])(terminal *term, void *arg);
-static void (*osc_func[0x7F])(terminal *term, void *arg);
+static void (*ctrl_func[CTRL_CHARS])(terminal *term, void *arg);
+static void (*esc_func[ESC_CHARS])(terminal *term, void *arg);
+static void (*csi_func[ESC_CHARS])(terminal *term, void *arg);
+static void (*osc_func[ESC_CHARS])(terminal *term, void *arg);
