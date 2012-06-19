@@ -10,17 +10,17 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 [yaft]: https://github.com/uobikiemukot/yaft/raw/27ba1df66490b921636de13ef354149a640e9dd7/yaft.png
 
 ## feature
-+	UTF-8対応
++	UTF-8対応  
 	というか他のエンコードが一切使えません．Unicode BMPの範囲のグリフを表示可能です(フォントに依存)
 
-+	East Asian Width
++	East Asian Width  
 	ビットマップの幅を参照するので端末が文字幅を誤認することはありません
 
-+	256色:
++	256色  
 	xtermと同様の256色指定のエスケープシーケンスに対応しています．  
 	また，OSC 4とOSC 104も使用できます
 
-+	壁紙表示:
++	壁紙表示  
 	pnm形式のファイルを用いて端末の背景に画像を表示することができます(後述)
 
 ## configuration
