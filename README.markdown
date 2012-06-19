@@ -22,11 +22,11 @@ conf.hに設定可能な変数が列挙されています．
 -	static char *wall_path = NULL:
 	壁紙のパスを指定します(絶対パス)．形式はpnmのみ．無効にする場合はNULLにしてください
 -	static char *font_path = "~/fonts/efont.yaft":
-	fontのパスを設定します(絶対パス)．フォントの形式は後述します
+	fontのパスを設定します(絶対パス)．$HOMEの変わりに~が使えます．フォントの形式は後述します
 -	static char *fb_path = "/dev/fb0":
 	framebuffer deviceのパスを設定します．通常はこのままで問題ありません
 -	static char *shell_cmd = "/bin/bash":
-	端末から起動するshellの設定
+	端末から起動するshellを設定します
 
 ### color
 色は0xFFFFFF形式(RGBの順で各8bitずつ)かcolor.hでdefineされている色の名前を使用できます．
@@ -61,6 +61,7 @@ conf.hに設定可能な変数が列挙されています．
 ## install
 conf.hを環境に合わせて修正した後，
 makeをして実行ファイルをパスの通っている場所に置いてください．
+
 フォントや画像ファイルをconf.hで指定した場所に移動させるのも忘れずに．
 
 ~~~
