@@ -1,12 +1,41 @@
+void cat_home(char *dst, char *src, int size)
+{
+	char *home;
+
+	if (src == NULL) {
+		fprintf(stderr, "font_path == NULL\n");
+		exit(EXIT_FAILURE);
+	}
+
+	memset(dst, '\0', size);
+
+	if (DEBUG)
+		fprintf(stderr, "src:%s dst:%s size:%d\n", src, dst, size);
+
+	if (src[0] == '~') {
+		if ((home = getenv("HOME")) != NULL) {
+			strncpy(dst, home, size - 1);
+			strncat(dst, src + 1, size - strlen(dst) - 1);
+			if (DEBUG)
+				fprintf(stderr, "src:%s dst:%s size:%d\n", src, dst, size);
+		}
+		else
+			strncpy(dst, src + 1, size - 1);
+	}
+	else
+		strncpy(dst, src, size - 1);
+}
+
 void load_fonts(glyph_t **fonts, char *path)
 {
 	int i, count = 0, size, state = 0, width, height;
-	char buf[BUFSIZE], *endp;
+	char buf[BUFSIZE], home[BUFSIZE], *endp;
 	FILE *fp;
 	u16 code;
 	glyph_t *gp;
 
-	fp = efopen(path, "r");
+	cat_home(home, path, BUFSIZE);
+	fp = efopen(home, "r");
 
 	for (i = 0; i < UCS_CHARS; i++)
 		fonts[i] = NULL;
@@ -39,16 +68,18 @@ void load_fonts(glyph_t **fonts, char *path)
 	fclose(fp);
 }
 
-u32 *load_wallpaper(int width, int height)
+u32 *load_wallpaper(int width, int height, char *path)
 {
 	int i, j, bits, count;
-	unsigned char buf[BUFSIZE], type[3], rgb[3], *cp;
+	unsigned char buf[BUFSIZE], home[BUFSIZE], type[3], rgb[3], *cp;
 	pair size;
 	u32 *ptr, color;
 	FILE *fp;
 
 	ptr = (u32 *) emalloc(width * height * sizeof(u32));
-	fp = efopen(wall_path, "r");
+
+	cat_home(home, path, BUFSIZE);
+	fp = efopen(home, "r");
 
 	if (fgets(buf, BUFSIZE, fp) != NULL) {
 		cp = strchr(buf, '\n');

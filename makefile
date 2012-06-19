@@ -1,17 +1,17 @@
-CC = g++
-CFLAGS = -march=native -mtune=native -O3 -pipe
+CC = gcc
+CFLAGS = -march=native -mtune=native #-O3 -pipe
 	#-pg
-#LDFLAGS = -lutil
+LDFLAGS = -lutil
 
-HDR =
-DST = bdf2yaft yaftmerge
-SRC = bdf2yaft.cpp yaftmerge.cpp
+HDR = *.h
+DST = yaft
+SRC = yaft.c
 
 all: $(DST)
 
 $(DST): $(SRC) $(HDR)
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
-	strip $@
+	#strip $@
 
 clean:
 	rm -f $(DST)

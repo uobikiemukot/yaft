@@ -24,9 +24,9 @@ enum {
 	BUFSIZE = 1024, /* read, esc, various buffer size */
 	ESC_PARAMS = 64, /* max parameters of csi/osc sequence */
 	COLORS = 256, /* num of color */
-	//UCS_CHARS = 0xFFFF, /* glyph num: UCS2 */
-	UCS_CHARS = 0x10000, /* glyph num: UCS2 */
-	DEFAULT_CHAR = 0x7F, /* erase char, and used for cell_size: DEL */
+	UCS_CHARS = 0xFFFF, /* glyph num: UCS2 */
+	//UCS_CHARS = 0x10000, /* glyph num: UCS2 */
+	DEFAULT_CHAR = 0x20, /* erase char, and used for cell_size: SPACE */
 	RESET = 0x00, /* reset for char_attr, term_mode, esc_state */
 };
 
