@@ -10,3 +10,10 @@
 	* parse_esc()の実体参照(*argc)がargcになってたのを修正 (parse.h)
 	* dumpするときにstdoutのバッファリングを無効にするようにした (yaft.c)
 	* delete_line(), erase_line()でスクロールが発生するときにDECSTBMの設定が反映されてなかったのを修正 (function.h)
+
+2012-06-20 haru
+	* version 0.1.2
+	* 設定やフォントに不備があった場合に回避できないか頑張ってみることにした
+	* 端末のサイズ(TERM_WIDTH/TERM_HEIGHT)が不正な場合にはフルスクリーンで起動する (yaft.c, terminal.h)
+	* DEFAULT_CHARが見つからない場合にはSPACEの流用してみる (load.h)
+	* その他コメントを追加したり (common.h)
