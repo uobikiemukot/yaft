@@ -80,6 +80,7 @@ sampleとして[efont]のb16.bdfを変換したフォントと，
 xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
 
 efontのライセンスについてはlisence/efontのファイルを参照してください．
+
 wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 License]です．
 
 ~~~
