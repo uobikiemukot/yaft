@@ -8,7 +8,7 @@
 #setab=\E[4%p1%dm,setaf=\E[3%p1%dm,
 #sgr=\E[0;10%?%p1%t;7%;%?%p2%t;4%;%?%p3%t;7%;%?%p4%t;5%;%?%p5%t;2%;%?%p6%t;1%;%?%p7%t;8%;%?%p9%t;11%;m,
 #sgr?
-yaft|yet another framebuffer terminal,
+yaft|yaft-256color|yet another framebuffer terminal,
 	am, bw, ccc, bce, msgr,
 
 	cols#80, lines#24, it#8, colors#256, pairs#32767,
