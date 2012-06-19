@@ -1,7 +1,5 @@
 CC = g++
-CFLAGS = -march=native -mtune=native \
-	-Ofast -flto -msse2 -pipe \
-	-ffast-math -fno-strict-aliasing
+CFLAGS = -march=native -mtune=native -O3 -pipe
 	#-pg
 #LDFLAGS = -lutil
 
@@ -13,6 +11,7 @@ all: $(DST)
 
 $(DST): $(SRC) $(HDR)
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
+	strip $@
 
 clean:
 	rm -f $(DST)

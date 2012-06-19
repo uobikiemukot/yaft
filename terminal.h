@@ -154,7 +154,7 @@ void addch(terminal *term, u32 code)
 	glyph_t *gp;
 
 	/* only handle UCS2 (<= 0xFFFF) */
-	if (code > 0xFFFF)
+	if (code >= UCS_CHARS)
 		code = DEFAULT_CHAR;
 
 	/* glyph not found */
