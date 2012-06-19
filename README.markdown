@@ -19,8 +19,6 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 	pnm形式のファイルを用いて端末の背景に画像を表示することができます(後述)
 
 ## configuration
-conf.hに設定可能な変数が列挙されています．
-
 コンパイル前にconf.hを編集して適切な設定に書き換えてください．
 
 ### path
@@ -48,6 +46,8 @@ wall_pathとfont_pathの指定では，$HOMEのパスを省略して~と書く�
 -	CURSOR_COLOR = GREEN:
 	カーソルの色の設定
 
+ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書き換えてください．
+
 ### misc
 -	DUMP = false:
 	端末に送られてきたデータを標準出力にdumpします(デバッグ用)
@@ -68,6 +68,8 @@ wall_pathとfont_pathの指定では，$HOMEのパスを省略して~と書く�
 -	INTERVAL = 1000000:
 	pollingの間隔をマイクロ秒単位で設定できます
 
+画面よりも端末のサイズを大きくすることはできません．
+
 ## install
 conf.hを環境に合わせて修正した後，
 makeをして実行ファイルをパスの通っている場所に置いてください．
@@ -76,6 +78,9 @@ makeをして実行ファイルをパスの通っている場所に置いてく�
 
 sampleとして[efont]のb16.bdfを変換したフォントと，
 xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
+
+efontのライセンスについてはlisence/efontのファイルを参照してください．
+wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 License]です．
 
 ~~~
 $ make
@@ -87,6 +92,7 @@ $ cp yaft /usr/bin/
 
 [efont]: http://openlab.ring.gr.jp/efont/unicode/
 [wallpaper]: https://wiki.ubuntu.com/Xubuntu/Artwork/Karmic?action=AttachFile&do=view&target=karmic-wallpaper-final.tar.gz
+[Creative Commons Attribution-ShareAlike 3.0 License]: http://creativecommons.org/licenses/by-sa/3.0/
 
 ## usage
 
