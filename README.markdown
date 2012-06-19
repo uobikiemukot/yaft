@@ -257,6 +257,10 @@ ESC [ *
 
 ### osc sequence
 
+~~~
+ESC ] *
+~~~
+
 -	4   set_palette
 -	104 reset_palette
 
