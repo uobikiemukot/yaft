@@ -9,6 +9,9 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 
 [yaft]: https://github.com/uobikiemukot/yaft/raw/master/img/yaft-blue.png
 
+## download
+- [latest](https://github.com/uobikiemukot/yaft/tarball/master)
+
 ## feature
 +	UTF-8対応  
 	というか他のエンコードが一切使えません  
