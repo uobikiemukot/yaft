@@ -65,6 +65,21 @@ void load_fonts(glyph_t **fonts, char *path)
 		}
 	}
 
+	if (fonts[DEFAULT_CHAR] == NULL) {
+		fprintf(stderr, "DEFAULT_CHAR(U+%.2X) not found: copy glyph of SPACE(U+20)\n", DEFAULT_CHAR);
+		if (fonts[SPACE] == NULL) {
+			fprintf(stderr, "fonts must have either SPACE(U+20) or DEFAULT_CHAR(U+%.2X)\n", DEFAULT_CHAR);
+			exit(EXIT_FAILURE);
+		}
+		gp = (glyph_t *) emalloc(sizeof(glyph_t));
+		gp->size.x = fonts[SPACE]->size.x;
+		gp->size.y = fonts[SPACE]->size.y;
+		size = gp->size.x * gp->size.y / BITS_PER_BYTE;
+		gp->bitmap = (u8 *) emalloc(size);
+		memcpy(gp->bitmap, fonts[SPACE]->bitmap, size);
+		fonts[DEFAULT_CHAR] = gp;
+	}
+
 	fclose(fp);
 }
 
@@ -94,7 +109,8 @@ u32 *load_wallpaper(int width, int height, char *path)
 		bits = atoi(buf);
 
 	if (DEBUG)
-		fprintf(stderr, "load_wallpaper type:%s width:%d height:%d bits:%d\n", type, size.x, size.y, bits);
+		fprintf(stderr, "load_wallpaper type:%s width:%d height:%d bits:%d\n",
+			type, size.x, size.y, bits);
 
 	count = 0;
 	for (i = 0; i < size.y; i++) {
