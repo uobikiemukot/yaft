@@ -10,17 +10,17 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 [yaft]: https://github.com/uobikiemukot/yaft/raw/27ba1df66490b921636de13ef354149a640e9dd7/yaft.png
 
 ## feature
--	UTF-8対応
++	UTF-8対応
 	というか他のエンコードが一切使えません．Unicode BMPの範囲のグリフを表示可能です(フォントに依存)
 
--	East Asian Width
++	East Asian Width
 	ビットマップの幅を参照するので端末が文字幅を誤認することはありません
 
--	256色:
++	256色:
 	xtermと同様の256色指定のエスケープシーケンスに対応しています．  
 	また，OSC 4とOSC 104も使用できます
 
--	壁紙表示:
++	壁紙表示:
 	pnm形式のファイルを用いて端末の背景に画像を表示することができます(後述)
 
 ## configuration
@@ -28,19 +28,19 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 
 ### path and terminal name
 
--	static char *wall_path = "~/.yaft/karmic-gray.ppm";
++	static char *wall_path = "~/.yaft/karmic-gray.ppm";
 	壁紙のpathを指定します．無効にする場合はNULLにしてください
 
--	static char *font_path = "~/.yaft/milk.yaft";
++	static char *font_path = "~/.yaft/milk.yaft";
 	fontのpathを設定します．フォントの形式は後述します
 
--	static char *fb_path = "/dev/fb0";
++	static char *fb_path = "/dev/fb0";
 	framebuffer deviceのpathを設定します．通常はこのままで問題ありません
 
--	static char *shell_cmd = "/bin/bash";
++	static char *shell_cmd = "/bin/bash";
 	端末から起動するshellを設定します
 
--	static char *term_name = "yaft";
++	static char *term_name = "yaft";
 	環境変数TERMの値を設定します．yaft以外にしても良いことはないと思います
 
 pathは全て絶対pathで記述します．  
@@ -49,43 +49,43 @@ wall_pathとfont_pathの指定では，$HOMEのパスを省略して~と書く�
 ### color
 色は0xFFFFFF形式(RGBの順で各8bitずつ)かcolor.hでdefineされている色の名前を使用できます．
 
--	DEFAULT_FG = GRAY,
++	DEFAULT_FG = GRAY,
 	デフォルトの前景色
 
--	DEFAULT_BG = BLACK,
++	DEFAULT_BG = BLACK,
 	デフォルトの背景色
 
--	CURSOR_COLOR = GREEN,
++	CURSOR_COLOR = GREEN,
 	カーソルの色の設定
 
 ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書き換えてください．
 
 ### misc
--	DUMP false,
++	DUMP false,
 	端末に送られてきたデータを標準出力にdumpします(デバッグ用)
 
--	DEBUG = false,
++	DEBUG = false,
 	parseの結果を標準エラー出力に表示します(デバッグ用)
 
--	LAZYDRAW = true,
++	LAZYDRAW = true,
 	描画をサボるかどうか．見掛け上の描画速度が向上します
 
--	OFFSET_X = 0,
++	OFFSET_X = 0,
 	画面内のどこに端末を表示するかのオフセット値
 
--	OFFSET_Y = 0,
++	OFFSET_Y = 0,
 	同上
 
--	TERM_WIDTH = 1280,
++	TERM_WIDTH = 1280,
 	端末のサイズ．通常は画面のサイズと同じにします
 
--	TERM_HEIGHT = 1024,
++	TERM_HEIGHT = 1024,
 	同上
 
--	TABSTOP = 8,
++	TABSTOP = 8,
 	ハードウェアタブの幅
 
--	INTERVAL = 1000000,
++	INTERVAL = 1000000,
 	pollingの間隔をマイクロ秒単位で設定できます
 
 画面よりも端末のサイズを大きくすることはできません．
