@@ -21,6 +21,8 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 ## configuration
 conf.hに設定可能な変数が列挙されています．
 
+コンパイル前にconf.hを編集して適切な設定に書き換えてください．
+
 ### path
 
 -	static char *wall_path = NULL:
