@@ -11,15 +11,19 @@ SRC = yaft.c
 
 all: $(DST)
 
-install:
-	tic info/yaft.info
+install-font:
 	mkdir -p $(RCDIR)
 	cp -f fonts/efont.yaft $(RCDIR)
 	cp -f wall/karmic-gray.ppm $(RCDIR)
-	cp yaft $(PREFIX)
+
+install:
+	tic info/yaft.info
+	cp -f yaft $(PREFIX)
+
+uninstall-font:
+	rm -rf $(RCDIR)
 
 uninstall:
-	rm -rf $(RCDIR)
 	rm -f $(PREFIX)/yaft
 
 $(DST): $(SRC) $(HDR)
