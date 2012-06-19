@@ -8,13 +8,13 @@ vt102やLinux consoleをベースにしていますが，完全な互換性は�
 一方でxtermと互換の256色の指定やパレットの変更などは可能です．
 
 ## feature
--	UTF-8: 
+-	UTF-8:
 	というか他のエンコードが一切使えません．Unicode BMPの範囲のグリフを表示可能です(フォントに依存)．
 -	East Asian Width
 	常にビットマップの幅を参照するので文字幅のズレは発生しません．
--	256色: 
+-	256色:
 	xtermと同様の256色指定のエスケープシーケンスに対応しています．また，OSC 4とOSC 104も使えます．
--	壁紙表示: 
+-	壁紙表示:
 	ppm形式のファイルを用いて端末の背景に画像を表示することができます．
 
 ## configuration
@@ -22,24 +22,24 @@ conf.hに設定可能な変数が列挙されています．
 
 ### path
 
--	static char *wall_path = NULL;
+-	static char *wall_path = NULL:
 	壁紙のパスを指定します(絶対パス)．形式はppmのみ．無効にする場合はNULLにしてください
--	static char *font_path = "./fonts/test.yaft";
+-	static char *font_path = "./fonts/test.yaft":
 	fontのパスを設定します(絶対パス)．フォントの形式は後述します
--	static char *fb_path = "/dev/fb0";
+-	static char *fb_path = "/dev/fb0":
 	framebuffer deviceのパスを設定します．通常はこのままで問題ありません
--	static char *shell_cmd = "/bin/bash";
+-	static char *shell_cmd = "/bin/bash":
 	端末から起動するshellの設定
 
 ### color
 色は0xFFFFFF形式(RGBの順で各8bitずつ)かcolor.hでdefineされている色の名前を使用できます．
 
-DEFAULT_FG = GRAY,
-:	デフォルトの前景色
-DEFAULT_BG = BLACK,
-:	デフォルトの背景色
-CURSOR_COLOR = GREEN,
-:	カーソルの色の設定
+-	DEFAULT_FG = GRAY:
+	デフォルトの前景色
+-	DEFAULT_BG = BLACK:
+	デフォルトの背景色
+-	CURSOR_COLOR = GREEN:
+	カーソルの色の設定
 
 ### misc
 DUMP = false,
