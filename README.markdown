@@ -62,13 +62,21 @@ conf.hに設定可能な変数が列挙されています．
 conf.hを環境に合わせて修正した後，
 makeをして実行ファイルをパスの通っている場所に置いてください．
 
-フォントや画像ファイルをconf.hで指定した場所に移動させるのも忘れずに．
+フォントや画像ファイルもconf.hで指定した場所に移動させてください．
+
+sampleとして[efont]のb16.bdfを変換したフォントと，
+xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
 
 ~~~
 $ make
-$ cp fonts/efont.yaft ~/.fonts/
-$ cp yaft /usr/local/bin/
+$ mkdir -r ~/.yaft
+$ cp fonts/efont.yaft ~/.yaft/
+$ cp wall/karmic-gray.ppm ~/.yaft/
+$ cp yaft /usr/bin/
 ~~~
+
+[efont]: http://openlab.ring.gr.jp/efont/unicode/
+[wallpaper]: https://wiki.ubuntu.com/Xubuntu/Artwork/Karmic?action=AttachFile&do=view&target=karmic-wallpaper-final.tar.gz
 
 ## usage
 
@@ -101,7 +109,9 @@ misc/bdf2yaft.cppというプログラムを用いると，
 その際，変換テーブルを指定するとUnicode以外のBDFも変換できます．
 
 ~~~
-$ bdf2yaft TABLE BDF1 BDF2 ...
+$ cd misc
+$ make
+$ ./bdf2yaft TABLE BDF1 BDF2 ...
 ~~~
 
 複数のフォントに同じグリフが存在する場合，
