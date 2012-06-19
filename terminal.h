@@ -283,7 +283,7 @@ void resize(terminal *term, int lines, int cols)
 	eioctl(term->fd, TIOCSWINSZ, &size);
 }
 
-void term_init(terminal *term)
+void term_init(terminal *term, pair res)
 {
 	int i;
 	glyph_t *gp;
@@ -296,6 +296,12 @@ void term_init(terminal *term)
 
 	term->width = TERM_WIDTH;
 	term->height = TERM_HEIGHT;
+
+	if (term->width > res.x || term->height > res.y) {
+		fprintf(stderr, "invalid termnal size: use screen size\n");
+		term->width = res.x;
+		term->height = res.y;
+	}
 
 	term->cols = term->width / term->cell_size.x;
 	term->lines = term->height / term->cell_size.y;
