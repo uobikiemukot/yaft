@@ -61,7 +61,7 @@ wall_pathとfont_pathの指定では，$HOMEのパスを省略して~と書く�
 ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書き換えてください．
 
 ### misc
-+	DUMP false,  
++	DUMP = false,  
 	端末に送られてきたデータを標準出力にdumpします(デバッグ用)
 
 +	DEBUG = false,  
