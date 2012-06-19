@@ -308,7 +308,7 @@ void term_init(terminal *term)
 			term->width, term->height, term->cols, term->lines);
 
 	term->wall = (wall_path == NULL) ? NULL:
-		load_wallpaper(term->width, term->height);
+		load_wallpaper(term->width, term->height, wall_path);
 
 	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
 

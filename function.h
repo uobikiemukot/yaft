@@ -305,8 +305,6 @@ void delete_line(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
-	fprintf(stderr, "num:%d\n", num);
-
 	if (term->mode & ORIGIN) {
 		if (term->cursor.y < term->scroll.top
 			|| term->cursor.y > term->scroll.bottom)
