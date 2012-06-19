@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -march=native -mtune=native \
-	-Ofast -flto -msse2 -pipe \
-	-ffast-math -fno-strict-aliasing
+	#-Ofast -flto -msse2 -pipe \
+	#-ffast-math -fno-strict-aliasing
 	#-pg
 LDFLAGS = -lutil
 
