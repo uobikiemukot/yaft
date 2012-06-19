@@ -24,13 +24,15 @@ conf.hに設定可能な変数が列挙されています．
 ### path
 
 -	static char *wall_path = NULL:
-	壁紙のパスを指定します(絶対パス)．無効にする場合はNULLにしてください
+	壁紙のpathを指定します．無効にする場合はNULLにしてください
 -	static char *font_path = "~/.fonts/efont.yaft":
-	fontのパスを設定します(絶対パス)．フォントの形式は後述します
+	fontのpathを設定します．フォントの形式は後述します
 -	static char *fb_path = "/dev/fb0":
-	framebuffer deviceのパスを設定します．通常はこのままで問題ありません
+	framebuffer deviceのpathを設定します．通常はこのままで問題ありません
 -	static char *shell_cmd = "/bin/bash":
 	端末から起動するshellを設定します
+
+pathは全て絶対pathで記述します．
 
 wall_pathとfont_pathの指定では，$HOMEのパスを省略して~と書くことができます．
 
