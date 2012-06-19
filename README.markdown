@@ -177,14 +177,14 @@ $ ./bdf2yaft TABLE BDF1 BDF2 ...
 ...
 ~~~
 
-以下のようにして使います．
+以下のような使い方もできます．
 
 ~~~
 $ bdf2yaft BDF
 $ cat BDF1 BDF2 ... | ./bdf2yaft
 ~~~
 
-既にUnicodeのBDFはテーブルを指定する必要はありません．  
+1番目のようにテーブルを指定しないと既にUnicodeのBDFであると見なされます．  
 また2番目のように複数のUnicodeのBDFをcatしてからbdf2yaftに渡すと，  
 複数のBDFをmergeして1つのフォントを生成することができます．
 
