@@ -106,12 +106,13 @@ make installを使わなくても構いません．
 フォント(と使うのであれば壁紙のファイル)を，  
 conf.hで設定した場所に忘れずに移動させてください．
 
-sampleとして[shinonome font]の16dotのものを変換したフォントと，  
+sampleとして[shinonome font]と[efont]の16dotのものを変換したフォントと，  
 xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
 
-efontのライセンスについてはlisence/efont以下のファイルを参照してください．  
+shinonome font/efontのライセンスについてはlisence/以下のファイルを参照してください．  
 wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 License]です．
 
+[efont]: http://openlab.ring.gr.jp/efont/
 [shinonome font]: http://openlab.ring.gr.jp/efont/shinonome/
 [wallpaper]: https://wiki.ubuntu.com/Xubuntu/Artwork/Karmic?action=AttachFile&do=view&target=karmic-wallpaper-final.tar.gz
 [Creative Commons Attribution-ShareAlike 3.0 License]: http://creativecommons.org/licenses/by-sa/3.0/
