@@ -92,16 +92,17 @@ ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書
 
 ## install
 
-1.	conf.hを環境に合わせて修正
-2.	makeして実行ファイルを生成
-3.	ticコマンドでterminfoをコンパイル
-4.	font/wallpaperをconf.hで指定した場所に移動
-
 ~~~
-$ tic info/yaft.info
 $ make
+$ make install-font
 $ sudo make install
 ~~~
+
+make installを使わなくても構いません．  
+(その場合は手動でticコマンドでterminfoをinstallしてください．)  
+フォント(と使うのであれば壁紙のファイル)を，  
+conf.hで設定した場所に忘れずに移動させてください．
+
 sampleとして[efont]のb16.bdfを変換したフォントと，  
 xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
 
@@ -204,7 +205,7 @@ static char *wall_path = /path/to/wall.ppm;
 
 ## control sequence list
 listにないコントロールシーケンスは無視されます．  
-記載されているものでも，完全には対応していない場合もあります．
+記載されているものでも，完全には対応していない場合があります．
 
 ### control character
 0x00 - 0x1Fの範囲の制御コード
@@ -282,8 +283,19 @@ ESC ] *
 
 ## TODO
 
--	32bpp以外の環境で動作するようにする
+-	32bpp以外の環境でも動作するようにする
 -	スクロールバックの実装
 -	BDFを直接読めるようにする
 -	pnmの他の形式も読めるようにする ( or fbtermのように壁紙を指定できるようにする)
 -	control sequence listをもうちょっと真面目に書く
+
+## lisence
+The MIT License (MIT)
+
+Copyright (c) 2012 haru
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
