@@ -1,5 +1,5 @@
 /* font path */
-static char *font_path = "~/.fonts/milk.yaft";
+static char *font_path = "~/.fonts/shnm.yaft";
 
 /* framubuffer device */
 static char *fb_path = "/dev/fb0";
@@ -23,7 +23,7 @@ enum {
 	DUMP = false,
 	DEBUG = false,
 	LAZYDRAW = true,
-	WALLPAPER = true,
+	WALLPAPER = false,
 	OFFSET_X = 0,
 	OFFSET_Y = 0,
 	TERM_WIDTH = 0,
