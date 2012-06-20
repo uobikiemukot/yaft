@@ -66,63 +66,26 @@ void load_fonts(glyph_t **fonts, char *path)
 	}
 
 	if (fonts[DEFAULT_CHAR] == NULL) {
-		fprintf(stderr, "DEFAULT_CHAR(U+%.2X) not found: copy glyph of SPACE(U+20)\n", DEFAULT_CHAR);
-		if (fonts[SPACE] == NULL) {
-			fprintf(stderr, "fonts must have either SPACE(U+20) or DEFAULT_CHAR(U+%.2X)\n", DEFAULT_CHAR);
-			exit(EXIT_FAILURE);
-		}
-		gp = (glyph_t *) emalloc(sizeof(glyph_t));
-		gp->size.x = fonts[SPACE]->size.x;
-		gp->size.y = fonts[SPACE]->size.y;
-		size = gp->size.x * gp->size.y / BITS_PER_BYTE;
-		gp->bitmap = (u8 *) emalloc(size);
-		memcpy(gp->bitmap, fonts[SPACE]->bitmap, size);
-		fonts[DEFAULT_CHAR] = gp;
+		fprintf(stderr, "fonts must have DEFAULT_CHAR(U+%.2X)\n", DEFAULT_CHAR);
+		exit(EXIT_FAILURE);
 	}
 
 	fclose(fp);
 }
 
-u32 *load_wallpaper(int width, int height, char *path)
+u32 *load_wallpaper(framebuffer *fb, int width, int height)
 {
-	int i, j, bits, count;
-	unsigned char buf[BUFSIZE], home[BUFSIZE], type[3], rgb[3], *cp;
-	pair size;
-	u32 *ptr, color;
-	FILE *fp;
+	int i, j, count = 0;
+	u32 *ptr;
 
 	ptr = (u32 *) emalloc(width * height * sizeof(u32));
 
-	cat_home(home, path, BUFSIZE);
-	fp = efopen(home, "r");
-
-	if (fgets(buf, BUFSIZE, fp) != NULL) {
-		cp = strchr(buf, '\n');
-		*cp = '\0';
-		strncpy(type, buf, 3);
-	}
-
-	if (fgets(buf, BUFSIZE, fp) != NULL)
-		sscanf(buf, "%d %d", &size.x, &size.y);
-
-	if (fgets(buf, BUFSIZE, fp) != NULL)
-		bits = atoi(buf);
-
-	if (DEBUG)
-		fprintf(stderr, "load_wallpaper type:%s width:%d height:%d bits:%d\n",
-			type, size.x, size.y, bits);
-
-	count = 0;
-	for (i = 0; i < size.y; i++) {
-		for (j = 0; j < size.x; j++) {
-			fread(rgb, 1, 3, fp);
-			color = (rgb[0] << 16) + (rgb[1] << 8) + (rgb[2]);
+	for (i = 0; i < fb->res.y; i++) {
+		for (j = 0; j < fb->res.x; j++) {
 			if (i < height && j < width)
-				*(ptr + count++) = color;
+				*(ptr + count++) = *(fb->fp + j + i * fb->line_length);
 		}
 	}
-
-	fclose(fp);
 
 	return ptr;
 }
