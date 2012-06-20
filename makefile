@@ -3,7 +3,7 @@ CFLAGS = -march=native -mtune=native -O3 -pipe
 	#-pg
 LDFLAGS = -lutil
 PREFIX = /usr/bin
-RCDIR = ~/.yaft
+FONTDIR = ~/.fonts
 
 HDR = *.h
 DST = yaft
@@ -12,15 +12,15 @@ SRC = yaft.c
 all: $(DST)
 
 install-font:
-	mkdir -p $(RCDIR)
-	cp -f fonts/shinm.yaft $(RCDIR)
+	mkdir -p $(FONTDIR)
+	cp -f fonts/shinm.yaft $(FONTDIR)
 
 install:
 	tic info/yaft.info
 	cp -f yaft $(PREFIX)
 
 uninstall-font:
-	rm -rf $(RCDIR)
+	rm -f $(FONTDIR)/shinm.yaft
 
 uninstall:
 	rm -f $(PREFIX)/yaft
