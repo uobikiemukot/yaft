@@ -15,7 +15,7 @@
 	* version 0.1.2
 	* 設定やフォントに不備があった場合に回避できないか頑張ってみることにした
 	* 端末のサイズ(TERM_WIDTH/TERM_HEIGHT)が不正な場合にはフルスクリーンで起動する (yaft.c, terminal.h)
-	* DEFAULT_CHARが見つからない場合にはSPACEの流用してみる (load.h)
+	* DEFAULT_CHARが見つからない場合にはSPACEを流用してみる (load.h)
 	* コメントを追加 (common.h)
 	* terminfoの別名を定義した (info/yaft.info)
 
@@ -26,4 +26,4 @@
 	* writeのエラー処理を真面目にやるようにした (util.h)
 	* 色を定義する箇所が重複していたのをまとめた (color.h)
 	* 端末のサイズとしてcell_sizeよりも小さなサイズは指定できないようにした (terminal.h)
-	* 上記の修正に伴って色々変更 (common.h)
+	* 上記の修正に伴って色々変更．DEFAULT_CHARはSPACEにした (common.h)
