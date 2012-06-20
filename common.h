@@ -6,14 +6,11 @@
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <sys/mman.h>
-#include <sys/ioctl.h>
-#include <stropts.h>
 #include <string.h>
-#include <termios.h>
 #include <signal.h>
-#include <ctype.h>
 #include <pty.h>
-#include <assert.h>
+#include <ctype.h>
+#include <termios.h>
 
 #include "color.h" /* 256color definition */
 #include "conf.h" /* user configuration */
@@ -29,7 +26,7 @@ enum {
 	ESC_CHARS = 0x80, /* number of final character of escape sequence */
 	SPACE = 0x20,
 	DEL = 0x7F,
-	DEFAULT_CHAR = DEL, /* erase char, and used for cell_size: DEL */
+	DEFAULT_CHAR = SPACE, /* erase char, and used for cell_size: SPACE */
 	RESET = 0x00, /* reset for char_attr, term_mode, esc_state */
 };
 
@@ -96,6 +93,7 @@ struct framebuffer {
 	int fd; /* file descriptor of framebuffer */
 	pair res; /* resolution (x, y) */
 	long sc_size; /* screen data size (bytes) */
+	int line_length; /* (pixel) */
 };
 
 struct cell {
