@@ -15,7 +15,8 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 ## feature
 +	UTF-8対応  
 	というか他のエンコードが一切使えません  
-	Unicode BMPの範囲のグリフを表示可能です(フォントに依存)
+	(逆に言うと文字集合の切り替えがないので端末がぐちゃぐちゃになりません)  
+	Unicode BMPの範囲(U+0000 ~ U+FFFF)のグリフを表示可能です(フォントに依存)
 
 +	East Asian Width  
 	対応するためのoptionがあるわけではありませんが，  
@@ -26,16 +27,13 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 	また，OSC 4とOSC 104も使用できます
 
 +	壁紙表示  
-	pnm形式のファイルを用いて端末の背景に画像を表示することができます(後述)  
+	起動直前のframebufferの内容を壁紙として取り込みます  
 	(壁紙を表示するとやや描画が遅くなるかも)
 
 ## configuration
 コンパイル前にconf.hを編集して適切な設定に書き換えてください．
 
 ### path and terminal name
-
-+	static char *wall_path = "~/.yaft/karmic-gray.ppm";  
-	壁紙のpathを指定します．無効にする場合はNULLにしてください
 
 +	static char *font_path = "~/.yaft/shnm.yaft";  
 	fontのpathを設定します．フォントの形式は後述します
@@ -50,7 +48,7 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 	環境変数TERMの値を設定します．yaft以外にしても良いことはないと思います
 
 pathは全て絶対pathで記述します．  
-wall_pathとfont_pathの指定では，$HOMEのパスを省略して~と書くことができます．
+font_pathの指定では，$HOMEのパスを省略して~と書くことができます．
 
 ### color
 色は0xFFFFFF形式(RGBの順で各8bitずつ)かcolor.hでdefineされている色の名前を使用できます．
@@ -76,16 +74,19 @@ ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書
 +	LAZYDRAW = true,  
 	描画をサボるかどうか．見掛け上の描画速度が向上します
 
++	WALLPAPER = false,  
+	直前のframebufferの内容を壁紙として取り込むかどうか
+
 +	OFFSET_X = 0,  
 	画面内のどこに端末を表示するかのオフセット値
 
 +	OFFSET_Y = 0,  
 	同上
 
-+	TERM_WIDTH = 1280,  
-	端末のサイズ．通常は画面のサイズと同じにします
++	TERM_WIDTH = 0,  
+	端末のサイズ．0を指定すると画面のサイズを使用します
 
-+	TERM_HEIGHT = 1024,  
++	TERM_HEIGHT = 0,  
 	同上
 
 +	TABSTOP = 8,  
@@ -106,32 +107,60 @@ $ sudo make install
 ~~~
 
 make installを使わなくても構いません．  
-(その場合は手動でticコマンドでterminfoをinstallしてください．)  
-フォント(と使うのであれば壁紙のファイル)を，  
-conf.hで設定した場所に忘れずに移動させてください．
+その場合は手動でticコマンドでterminfoをinstallしてください．  
+また，フォントをconf.hで設定した場所に忘れずに移動させてください．
 
-sampleとして[shinonome font]と[efont]の16dotのものを変換したフォントと，  
-xubuntu/karmicの[wallpaper]をpnmに変換したものを同封しています．
+sampleとして[shinonome font]を変換したyaft用のフォントを同封しています．  
+shinonome fontのライセンスについてはlisence/shinonome/以下のファイルを参照してください．
 
-shinonome font/efontのライセンスについてはlisence/以下のファイルを参照してください．  
-wallpaperのライセンスは[Creative Commons Attribution-ShareAlike 3.0 License]です．
-
-[efont]: http://openlab.ring.gr.jp/efont/
 [shinonome font]: http://openlab.ring.gr.jp/efont/shinonome/
-[wallpaper]: https://wiki.ubuntu.com/Xubuntu/Artwork/Karmic?action=AttachFile&do=view&target=karmic-wallpaper-final.tar.gz
-[Creative Commons Attribution-ShareAlike 3.0 License]: http://creativecommons.org/licenses/by-sa/3.0/
 
 ## usage
+コマンドラインオプションは存在しません．
 
 ~~~
 $ yaft
 ~~~
 
-コマンドラインオプションは存在しません．
+起動しない場合はフォントが適切な場所にあるかをまず確認してください．  
+フォントにU+20(SPACE)が存在しないと起動できません．  
+(SPACEのグリフのサイズが端末のセルのサイズとして使われているためです．)  
+ない場合には以下のようなエントリをフォントに追加してみてください(8x16のフォントの場合)．
+
+~~~
+20
+8 16
+00
+00
+00
+00
+00
+00
+00
+00
+00
+00
+00
+00
+00
+00
+00
+00
+~~~
+
+/dev/fb0がない場合にはgrubのkernelオプションにvga=773等と書くと良いかもしれません．  
+通常，framebufferの書き込みにはvideo groupのメンバである必要があります．  
+hogeというユーザをvideo groupに追加するには以下のようにします．  
+
+~~~
+$ sudo gpasswd -a hoge video
+~~~
+
+変更を反映させるには一度logoutをする必要があります．
 
 ## font
 BDFを簡略化したフォント形式を使っています．  
-各グリフは以下の情報を持っています．
+各グリフは以下の情報を持っており，それがグリフの数だけ並んでいます．
 
 	code
 	width height
@@ -149,7 +178,6 @@ BDFと異なり，一行には1バイト分のビットマップ情報しか書�
 
 misc/bdf2yaft.cppというプログラムを用いると，  
 等幅BDFをyaftで用いているフォント形式に変換できます．  
-*プログラムの都合上，U+7F(DEL)かU+20(SPACE)のどちらかのグリフがないと起動できません*
 
 その際，変換テーブルを指定するとUnicode以外のBDFも変換できます．
 
@@ -163,6 +191,7 @@ $ ./bdf2yaft TABLE BDF1 BDF2 ...
 後ろで指定したフォントのものが使われます．
 
 変換テーブルの形式は変換元と変換先の文字コードを16進で列挙したものです．
+
 -	ペアの区切りはタブでなければいけません
 -	先頭が#の行はコメントと見なされます
 -	3つめ以降のフィールドは無視されます
@@ -192,31 +221,21 @@ $ cat BDF1 BDF2 ... | ./bdf2yaft
 $ ./yaftmerge BDF1 BDF2 ...
 ~~~
 
-yaftmergeは変換済みのフォントをmergeすることができます．
+yaftmergeは変換済みのフォントをmergeすることができます．  
+bdf2yaftと同様に複数のフォントに同じグリフが存在する場合，  
+後ろで指定したフォントのものが使われます．
 
 ## wallpaper
-[pnm]に含まれるportable pixmap format(P6)の画像ファイルを背景画像として指定できます．
+背景画像を表示したい場合にはconf.hのWALLPAPERをtrueにしてコンパイルした上で，  
+yaft_wallを以下のように実行してください．
 
 ~~~
-$ head -3 wall.ppm
-P6
-1920 1440
-255
+$ ./yaft_wall /path/to/wallpaper.jpg
 ~~~
 
-このようにファイルの先頭3行を表示したとき，  
-1行目がP6，3行目が255であることを確認してください．
-
-imagemagick等を使って画像を変換し，  
-conf.hのwall_pathを設定することで画像が表示されます．
-
-~~~
-$ convert wall.png wall.ppm
-$ grep wall_path conf.h
-static char *wall_path = /path/to/wall.ppm;
-~~~
-
-[pnm]: http://ja.wikipedia.org/wiki/PNM_(%E7%94%BB%E5%83%8F%E3%83%95%E3%82%A9%E3%83%BC%E3%83%9E%E3%83%83%E3%83%88)
+yaftがpathの通っている場所にインストールされている必要があります．  
+yaft_wallからはfbvを呼び出していますが，  
+framebuffer上で画像が表示できるプログラムなら他のものでも構いません．
 
 ## control sequence list
 listにないコントロールシーケンスは無視されます．  
@@ -301,7 +320,6 @@ ESC ] *
 -	32bpp以外の環境でも動作するようにする
 -	スクロールバックの実装
 -	BDFを直接読めるようにする
--	pnmの他の形式も読めるようにする ( or fbtermのように壁紙を指定できるようにする)
 -	control sequence listをもうちょっと真面目に書く
 
 ## lisence
