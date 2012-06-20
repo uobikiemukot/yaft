@@ -103,6 +103,16 @@ void eselect(fd_set *fds, timeval *tv, int max_fd)
 	}
 }
 
+void ewrite(int fd, char *buf, int size)
+{
+	int ret;
+
+	if ((ret = write(fd, buf, size)) == -1) {
+		perror("write");
+		exit(EXIT_FAILURE);
+	}
+}
+
 int toaddr(terminal *term, int y, int x)
 {
 	return x + y * term->cols;
