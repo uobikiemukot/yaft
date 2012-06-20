@@ -3,6 +3,7 @@ int eopen(char *file, int flag)
 	int fd;
 
 	if ((fd = open(file, flag)) == -1) {
+		fprintf(stderr, "%s\n", file);
 		perror("open");
 		exit(EXIT_FAILURE);
 	}
@@ -15,6 +16,7 @@ FILE *efopen(char *file, char *mode)
 	FILE *fp;
 
 	if ((fp = fopen(file, mode)) == NULL) {
+		fprintf(stderr, "%s\n", file);
 		perror("fopen");
 		exit(EXIT_FAILURE);
 	}
