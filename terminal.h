@@ -174,7 +174,7 @@ void addch(terminal *term, u32 code)
 void writeback(terminal *term, char *buf, int size)
 {
 	if (size > 0)
-		write(term->fd, buf, size);
+		ewrite(term->fd, buf, size);
 }
 
 void reset_esc(terminal *term)
@@ -283,7 +283,7 @@ void resize(terminal *term, int lines, int cols)
 	eioctl(term->fd, TIOCSWINSZ, &size);
 }
 
-void term_init(terminal *term, pair res)
+void term_init(terminal *term, framebuffer *fb)
 {
 	int i;
 	glyph_t *gp;
@@ -297,10 +297,13 @@ void term_init(terminal *term, pair res)
 	term->width = TERM_WIDTH;
 	term->height = TERM_HEIGHT;
 
-	if (term->width > res.x || term->height > res.y) {
-		fprintf(stderr, "invalid termnal size: use screen size\n");
-		term->width = res.x;
-		term->height = res.y;
+	if (term->width > fb->res.x || term->height > fb->res.y
+		|| term->width < term->cell_size.x || term->height < term->cell_size.y) {
+		if (DEBUG)
+			fprintf(stderr, "invalid termnal size %dx%d: use screen size %dx%d\n",
+				term->width, term->height, fb->res.x, fb->res.y);
+		term->width = fb->res.x;
+		term->height = fb->res.y;
 	}
 
 	term->cols = term->width / term->cell_size.x;
@@ -313,8 +316,7 @@ void term_init(terminal *term, pair res)
 		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",
 			term->width, term->height, term->cols, term->lines);
 
-	term->wall = (wall_path == NULL) ? NULL:
-		load_wallpaper(term->width, term->height, wall_path);
+	term->wall = (WALLPAPER) ? load_wallpaper(fb, term->width, term->height): NULL;
 
 	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
 
@@ -325,7 +327,7 @@ void term_init(terminal *term, pair res)
 
 	reset(term);
 
-	write(STDIN_FILENO, "[?25l", 6); /* cusor hide */
+	ewrite(STDIN_FILENO, "[?25l", 6); /* cusor hide */
 }
 
 void term_die(terminal *term)
@@ -344,5 +346,5 @@ void term_die(terminal *term)
 
 	free(term->cells);
 
-	write(STDIN_FILENO, "[?25h", 6); /* cursor visible */
+	ewrite(STDIN_FILENO, "[?25h", 6); /* cursor visible */
 }
