@@ -56,7 +56,7 @@ int main()
 
 	/* init */
 	fb_init(&fb);
-	term_init(&term, fb.res);
+	term_init(&term, &fb);
 	load_func();
 
 	/* fork */
@@ -80,7 +80,7 @@ int main()
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
 			size = read(STDIN_FILENO, buf, BUFSIZE);
 			if (size > 0)
-				write(term.fd, buf, size);
+				ewrite(term.fd, buf, size);
 		}
 
 		if (FD_ISSET(term.fd, &fds)) {
@@ -88,7 +88,7 @@ int main()
 			if (size > 0) {
 				parse(&term, buf, size);
 				if (DUMP)
-					write(STDOUT_FILENO, buf, size);
+					ewrite(STDOUT_FILENO, buf, size);
 				if (LAZYDRAW && size == BUFSIZE)
 					continue;
 				refresh(&fb, &term);
