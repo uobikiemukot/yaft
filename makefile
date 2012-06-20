@@ -14,7 +14,6 @@ all: $(DST)
 install-font:
 	mkdir -p $(RCDIR)
 	cp -f fonts/shinm.yaft $(RCDIR)
-	cp -f wall/karmic-gray.ppm $(RCDIR)
 
 install:
 	tic info/yaft.info
