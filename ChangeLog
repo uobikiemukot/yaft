@@ -16,4 +16,14 @@
 	* 設定やフォントに不備があった場合に回避できないか頑張ってみることにした
 	* 端末のサイズ(TERM_WIDTH/TERM_HEIGHT)が不正な場合にはフルスクリーンで起動する (yaft.c, terminal.h)
 	* DEFAULT_CHARが見つからない場合にはSPACEの流用してみる (load.h)
-	* その他コメントを追加したり (common.h)
+	* コメントを追加 (common.h)
+	* terminfoの別名を定義した (info/yaft.info)
+
+2012-06-20 haru
+	* version 0.1.3
+	* 背景画像の表示方法をfbtermと同等のものに変更した (load.h, conf.h)
+	* framebufferの書き込みアドレスがおかしかったのを修正した (framebuffer.h)
+	* writeのエラー処理を真面目にやるようにした (util.h)
+	* 色を定義する箇所が重複していたのをまとめた (color.h)
+	* 端末のサイズとしてcell_sizeよりも小さなサイズは指定できないようにした (terminal.h)
+	* 上記の修正に伴って色々変更 (common.h)
