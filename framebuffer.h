@@ -15,9 +15,10 @@ void fb_init(framebuffer *fb)
 
 	fb->res.x = vinfo.xres;
 	fb->res.y = vinfo.yres;
-	fb->sc_size = fb->res.x * fb->res.y * sizeof(u32);
+	fb->sc_size = finfo.smem_len;
+	fb->line_length = finfo.line_length / sizeof(u32);
 
-	fb->fp = emmap(0, fb->sc_size, PROT_WRITE, MAP_SHARED, fb->fd, 0);
+	fb->fp = emmap(0, fb->sc_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
 }
 
 void fb_die(framebuffer *fb)
@@ -93,14 +94,14 @@ void draw_line(framebuffer *fb, terminal *term, int line)
 	cell *cp;
 	u32 *p, *src, *dst, save_bg;
 
-	p = fb->fp + term->offset.x + (term->offset.y + line * term->cell_size.y) * fb->res.x;
+	p = fb->fp + term->offset.x + (term->offset.y + line * term->cell_size.y) * fb->line_length;
 	size = term->width * sizeof(u32);
 	src = emalloc(size);
 
 	for (i = 0; i < term->cell_size.y; i++) {
 		for (j = 0; j < term->cols; j++)
 			set_bitmap(term, line, j, i, src + j * term->cell_size.x);
-		dst = p + i * fb->res.x;
+		dst = p + i * fb->line_length;
 		memcpy(dst, src, size);
 	}
 	term->line_dirty[line] = false;
@@ -116,7 +117,7 @@ void draw_curs(framebuffer *fb, terminal *term)
 	u32 *p, *src, *dst;
 
 	p = fb->fp + term->offset.x + term->cursor.x * term->cell_size.x
-		+ (term->offset.y + term->cursor.y * term->cell_size.y) * fb->res.x;
+		+ (term->offset.y + term->cursor.y * term->cell_size.y) * fb->line_length;
 	cp = &term->cells[term->cursor.x + term->cursor.y * term->cols];
 
 	store = cp->color;
@@ -134,7 +135,7 @@ void draw_curs(framebuffer *fb, terminal *term)
 
 	for (i = 0; i < term->cell_size.y; i++) {
 		set_bitmap(term, term->cursor.y, term->cursor.x, i, src);
-		dst = p + i * fb->res.x;
+		dst = p + i * fb->line_length;
 		memcpy(dst, src, size);
 	}
 	cp->color = store;
