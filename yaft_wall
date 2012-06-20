@@ -1,0 +1,8 @@
+#!/bin/sh
+
+echo -ne "\e[?25l" # hide cursor
+fbv -ciuker "$1" << EOF
+q
+EOF
+
+exec yaft
