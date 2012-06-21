@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <curses.h>
 #include <term.h>
 
 enum {
 	ANSI = 8,
 	ANSI_BOLD = 16,
 	COLORCUBE = 232,
-	COLORS = 256,
+	MAX_COLOR = 256,
 };
 
 void fatal(char *message)
@@ -69,7 +70,7 @@ int main()
 	printf("\n");
 
 	printf("Grayscale ramp:\n");
-	for (i = COLORCUBE; i < COLORS; i++)
+	for (i = COLORCUBE; i < MAX_COLOR; i++)
 		print_color_block(i);
 	reset_color();
 	printf("\n");
