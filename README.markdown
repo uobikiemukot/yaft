@@ -3,7 +3,7 @@
 framebufferを用いたターミナルエミュレータです．
 
 vt102やLinux consoleを参考に作っていますが，完全な互換性はありません．  
-詳細はinfo/yaft.infoや，後述するcontrol sequence listを参照してください．
+詳細はinfo/yaft.srcや，後述するcontrol sequence listを参照してください．
 
 ![yaft]
 

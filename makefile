@@ -16,7 +16,7 @@ install-font:
 	cp -f fonts/shinm.yaft $(FONTDIR)
 
 install:
-	tic info/yaft.info
+	tic info/yaft.src
 	cp -f yaft $(PREFIX)
 
 uninstall-font:
