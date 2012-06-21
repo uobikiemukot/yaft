@@ -1,5 +1,5 @@
 /* font path */
-static char *font_path = "~/.fonts/milk.yaft";
+static char *font_path = "~/.fonts/shnm.yaft";
 
 /* framubuffer device */
 static char *fb_path = "/dev/fb0";
