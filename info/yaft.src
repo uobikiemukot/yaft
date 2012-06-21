@@ -1,15 +1,5 @@
-#	Reconstructed via infocmp from file: /usr/share/terminfo/v/vt102
-# 
-#eo
-#mc5i, ccc, xenl, xon
-#bel, blink
-#kbs=^H
-#setb, setf,
-#setab=\E[4%p1%dm,setaf=\E[3%p1%dm,
-#sgr=\E[0;10%?%p1%t;7%;%?%p2%t;4%;%?%p3%t;7%;%?%p4%t;5%;%?%p5%t;2%;%?%p6%t;1%;%?%p7%t;8%;%?%p9%t;11%;m,
-#sgr?
 yaft|yaft-256color|yet another framebuffer terminal,
-	am, bw, ccc, bce, msgr,
+	am, bce, msgr, xenl,
 
 	cols#80, lines#24, it#8, colors#256, pairs#32767,
 
@@ -23,35 +13,38 @@ yaft|yaft-256color|yet another framebuffer terminal,
 	cud=\E[%p1%dB, cud1=^J,
 
 	home=\E[H,
-	cup=\E[%i%p1%d;%p2%dH, hpa=\E[%i%p1%dG,
+	cup=\E[%i%p1%d;%p2%dH,
+	hpa=\E[%i%p1%dG, vpa=\E[%i%p1%dd,
 
  	ind=^J, ri=\EM, 
 	csr=\E[%i%p1%d;%p2%dr,
 
+	ed=\E[J,
+	ech=\E[%p1%dX,
 	dch=\E[%p1%dP, dch1=\E[P,
 	dl=\E[%p1%dM, dl1=\E[M,
-
-	ed=\E[J, ech=\E[%p1%dX,
 	el=\E[K, el1=\E[1K,
-
-	civis=\E[?25l, cnorm=\E[?25h,
 
 	il=\E[%p1%dL, il1=\E[L,
 	ich=\E[%p1%d@, ich1=\E[@,
 
-	initc=\E]4;%p1%d;rgb\:%p2%2.2X/%p3%2.2X/%p4%2.2X\E\\,
-	oc=\E]104\E\\,
+	civis=\E[?25l, cnorm=\E[?25h,
 
 	ht=^I, hts=\EH, tbc=\E[3g,
 
 	sc=\E7, rc=\E8,
 
-	sgr0=\E[0m,
-	op=\E[39;49m,
-	sgr=\E[0%?%p6%t;1%;%?%p2%t;4%;%?%p1%p3%|%t;7%;m,
-	setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t1;3%p1%{8}%-%d%e38;5;%p1%d%;m,
-	setab=\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t1;4%p1%{8}%-%d%e48;5;%p1%d%;m,
+	is2=\Ec, rs2=\Ec,
 
-	bold=\E[1m, rev=\E[7m,
+	op=\E[39;49m,
+
+	setab=\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m,
+	setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m,
+
+	sgr0=\E[m,
+	sgr=\E[0%?%p6%t;1%;%?%p2%t;4%;%?%p1%p3%|%t;7%;%?%p4%t;5%;m,
+
+	bold=\E[1m, rev=\E[7m, blink=\E[5m,
 	smso=\E[7m, rmso=\E[27m,
 	smul=\E[4m, rmul=\E[24m,
+	smam=\E[?7h, rmam=\E?7l,
