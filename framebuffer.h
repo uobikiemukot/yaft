@@ -121,7 +121,7 @@ void draw_curs(framebuffer *fb, terminal *term)
 	cp = &term->cells[term->cursor.x + term->cursor.y * term->cols];
 
 	store = cp->color;
-	cp->color.fg = DEFAULT_BG;
+	cp->color.fg = DEFAULT_FG;
 	cp->color.bg = CURSOR_COLOR;
 
 	if (cp->wide == NEXT_TO_WIDE)
