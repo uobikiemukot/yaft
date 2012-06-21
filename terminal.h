@@ -297,7 +297,11 @@ void term_init(terminal *term, framebuffer *fb)
 	term->width = TERM_WIDTH;
 	term->height = TERM_HEIGHT;
 
-	if (term->width > fb->res.x || term->height > fb->res.y
+	term->offset.x = OFFSET_X;
+	term->offset.y = OFFSET_Y;
+
+	if (term->width + term->offset.x > fb->res.x
+		|| term->height + term->offset.y > fb->res.y
 		|| term->width < term->cell_size.x || term->height < term->cell_size.y) {
 		if (DEBUG)
 			fprintf(stderr, "invalid termnal size %dx%d: use screen size %dx%d\n",
@@ -308,9 +312,6 @@ void term_init(terminal *term, framebuffer *fb)
 
 	term->cols = term->width / term->cell_size.x;
 	term->lines = term->height / term->cell_size.y;
-
-	term->offset.x = OFFSET_X;
-	term->offset.y = OFFSET_Y;
 
 	if (DEBUG)
 		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",
