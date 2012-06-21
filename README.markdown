@@ -2,7 +2,9 @@
 
 framebufferを用いたターミナルエミュレータです．
 
-vt102やLinux consoleを参考に作っていますが，完全な互換性はありません．  
+vt102系のエミュレータを参考に作っていますが，  
+今のところは完全な互換性はありません．
+
 詳細はinfo/yaft.srcや，後述するcontrol sequence listを参照してください．
 
 ![yaft]
@@ -15,20 +17,15 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 ## feature
 +	UTF-8対応  
 	というか他のエンコードが一切使えません  
-	(逆に言うと文字集合の切り替えがないので端末がぐちゃぐちゃになりません)  
-	Unicode BMPの範囲(U+0000 ~ U+FFFF)のグリフを表示可能です(フォントに依存)
 
 +	East Asian Width  
-	対応するためのoptionがあるわけではありませんが，  
 	ビットマップの幅を参照するので端末が文字幅を誤認することはありません
 
 +	256色  
 	xtermと同様の256色指定のエスケープシーケンスに対応しています  
-	また，OSC 4とOSC 104も使用できます
 
 +	壁紙表示  
 	起動直前のframebufferの内容を壁紙として取り込みます  
-	(壁紙を表示するとやや描画が遅くなるかも)
 
 ## configuration
 コンパイル前にconf.hを編集して適切な設定に書き換えてください．
@@ -36,16 +33,16 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 ### path and terminal name
 
 +	static char *font_path = "~/.fonts/shnm.yaft";  
-	fontのpathを設定します．フォントの形式は後述します
+	fontのpathを設定します
 
 +	static char *fb_path = "/dev/fb0";  
-	framebuffer deviceのpathを設定します．通常はこのままで問題ありません
+	framebuffer deviceのpathを設定します
 
 +	static char *shell_cmd = "/bin/bash";  
 	端末から起動するshellを設定します
 
-+	static char *term_name = "yaft";  
-	環境変数TERMの値を設定します．yaft以外にしても良いことはないと思います
++	static char *term_name = "TERM=yaft-256color";  
+	環境変数TERMの値を設定します
 
 pathは全て絶対pathで記述します．  
 font_pathの指定では，$HOMEのパスを省略して~と書くことができます．
@@ -95,8 +92,7 @@ font_pathの指定では，$HOMEのパスを省略して~と書くことがで�
 +	INTERVAL = 1000000,  
 	pollingの間隔をマイクロ秒単位で設定できます
 
-画面よりも端末のサイズを大きくすることはできません．  
-(不正な端末サイズを指定した場合にはフルスクリーンで起動します．)
+端末サイズやオフセットの値が不正だった場合，フルスクリーンでの起動を試みます
 
 ## install
 
@@ -122,13 +118,28 @@ shinonome fontのライセンスについてはlisence/shinonome/以下のファ
 $ yaft
 ~~~
 
-
 ## troubleshooting
 
-起動しない場合はフォントが適切な場所にあるかをまず確認してください．  
-フォントにU+20(SPACE)が存在しないと起動できません．  
-(SPACEのグリフが端末のセルサイズとして使われているためです．)  
-ない場合には以下のようなエントリをフォントに追加してみてください(8x16のフォントの場合)．
+### フォントがない！
+
+~~~
+$ ./yaft
+/path/to/shnm.yaft
+fopen: No such file or directory
+~~~
+
+フォントが適切な場所にあるかを確認してください．
+
+### グリフがない！
+
+~~~
+fonts must have DEFAULT_CHAR(U+20)\n
+~~~
+
+フォントにU+20(SPACE)が存在しているか確認してください．  
+SPACEのグリフが端末のセルサイズとして使われているのでないと起動できません．  
+
+ALL 0のビットマップで良いので，以下のように手動でエントリを追加してみてください(8x16のフォントの場合)．
 
 ~~~
 20
@@ -151,7 +162,16 @@ $ yaft
 00
 ~~~
 
-/dev/fb0がない場合にはgrubのkernelオプションにvga=773等と書くと良いかもしれません．  
+### framebufferがない！
+
+~~~
+/dev/fb*
+open: No such file or directory
+~~~
+
+BSD系ではpathが違う場合があるようです．  
+/dev/fb0がない場合，Linuxではgrubのkernelオプションにvga=773等と書くと良いかもしれません．  
+
 通常，framebufferの書き込みにはvideo groupのメンバである必要があります．  
 hogeというユーザをvideo groupに追加するには以下のようにします．  
 
@@ -160,6 +180,20 @@ $ sudo gpasswd -a hoge video
 ~~~
 
 変更を反映させるには一度logoutをする必要があります．
+
+
+### screen上で色がおかしい！
+TERMの値がrxvt/xtermでない場合にANSI8-16の色が正常に表示されない場合があります．  
+例えばrxvt-256colorという名前のsymbolic linkでyaftのterminfoを指して，  
+TERM=rxvt-256color screenと起動すれば上手く表示されるかもしれません．
+
+~~~
+$ export TERMINFO="$HOME/.terminfo/"
+$ tic info/yaft.src
+$ mkdir -p ~/.terminfo/r
+$ ln -s ~/.terminfo/y/yaft ~/.terminfo/r/rxvt-256color
+$ TERM=rxvt-256color screen
+~~~
 
 ## font
 BDFを簡略化したフォント形式を使っています．  
@@ -262,6 +296,8 @@ listにないコントロールシーケンスは無視されます．
 -	0x0D cr
 -	0x1B enter_esc
 
+0x7FのDELも無視されます．
+
 ### escape sequence
 ESC(0x1B)ではじまるシーケンスのうち，CSIでもOSCでもないもの
 
@@ -315,15 +351,6 @@ ESC [ *
 -	s save_state
 -	u restore_state
 -	` curs_col
-
-### osc sequence
-
-~~~
-ESC ] *
-~~~
-
--	4   set_palette
--	104 reset_palette
 
 ## TODO
 
