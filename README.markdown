@@ -359,7 +359,7 @@ ESC [ *
 -	BDFを直接読めるようにする
 -	control sequence listをもうちょっと真面目に書く
 
-## lisence
+## license
 The MIT License (MIT)
 
 Copyright (c) 2012 haru
