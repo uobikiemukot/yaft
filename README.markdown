@@ -133,7 +133,7 @@ fopen: No such file or directory
 ### グリフがない！
 
 ~~~
-fonts must have DEFAULT_CHAR(U+20)\n
+fonts must have DEFAULT_CHAR(U+20)
 ~~~
 
 フォントにU+20(SPACE)が存在しているか確認してください．  
@@ -360,7 +360,7 @@ ESC [ *
 -	control sequence listをもうちょっと真面目に書く
 
 ## license
-The MIT License (MIT)
+MIT Licenseです．
 
 Copyright (c) 2012 haru
 
