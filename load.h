@@ -18,21 +18,19 @@ void cat_home(char *dst, char *src, int size)
 			strncat(dst, src + 1, size - strlen(dst) - 1);
 			if (DEBUG)
 				fprintf(stderr, "src:%s dst:%s size:%d\n", src, dst, size);
-		}
-		else
+		} else
 			strncpy(dst, src + 1, size - 1);
-	}
-	else
+	} else
 		strncpy(dst, src, size - 1);
 }
 
-void load_fonts(glyph_t **fonts, char *path)
+void load_fonts(glyph_t ** fonts, char *path)
 {
-	int i, count = 0, size, state = 0, width, height;
+	int i, count = 0, size = 0, state = 0;
 	char buf[BUFSIZE], home[BUFSIZE], *endp;
 	FILE *fp;
-	u16 code;
-	glyph_t *gp;
+	u16 code = DEFAULT_CHAR;
+	glyph_t *gp = NULL;
 
 	cat_home(home, path, BUFSIZE);
 	fp = efopen(home, "r");
@@ -66,14 +64,15 @@ void load_fonts(glyph_t **fonts, char *path)
 	}
 
 	if (fonts[DEFAULT_CHAR] == NULL) {
-		fprintf(stderr, "fonts must have DEFAULT_CHAR(U+%.2X)\n", DEFAULT_CHAR);
+		fprintf(stderr, "fonts must have DEFAULT_CHAR(U+%.2X)\n",
+				DEFAULT_CHAR);
 		exit(EXIT_FAILURE);
 	}
 
 	fclose(fp);
 }
 
-u32 *load_wallpaper(framebuffer *fb, int width, int height)
+u32 *load_wallpaper(framebuffer * fb, int width, int height)
 {
 	int i, j, count = 0;
 	u32 *ptr;
