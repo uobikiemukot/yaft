@@ -35,7 +35,7 @@ vt102やLinux consoleを参考に作っていますが，完全な互換性は�
 
 ### path and terminal name
 
-+	static char *font_path = "~/.yaft/shnm.yaft";  
++	static char *font_path = "~/.fonts/shnm.yaft";  
 	fontのpathを設定します．フォントの形式は後述します
 
 +	static char *fb_path = "/dev/fb0";  
@@ -62,7 +62,7 @@ font_pathの指定では，$HOMEのパスを省略して~と書くことがで�
 +	CURSOR_COLOR = GREEN,  
 	カーソルの色の設定
 
-ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書き換えてください．
+色の定義を変えたい場合はcolor.hを書き換えてください．
 
 ### misc
 +	DUMP = false,  
@@ -72,7 +72,7 @@ ANSIの色設定を変えたい場合はcolor.hの最初のほうの定義を書
 	parseの結果を標準エラー出力に表示します(デバッグ用)
 
 +	LAZYDRAW = true,  
-	描画をサボるかどうか．見掛け上の描画速度が向上します
+	描画をサボるかどうか．見かけ上の描画速度が向上します
 
 +	WALLPAPER = false,  
 	直前のframebufferの内容を壁紙として取り込むかどうか
@@ -122,9 +122,12 @@ shinonome fontのライセンスについてはlisence/shinonome/以下のファ
 $ yaft
 ~~~
 
+
+## troubleshooting
+
 起動しない場合はフォントが適切な場所にあるかをまず確認してください．  
 フォントにU+20(SPACE)が存在しないと起動できません．  
-(SPACEのグリフのサイズが端末のセルのサイズとして使われているためです．)  
+(SPACEのグリフが端末のセルサイズとして使われているためです．)  
 ない場合には以下のようなエントリをフォントに追加してみてください(8x16のフォントの場合)．
 
 ~~~
@@ -176,6 +179,7 @@ BDFと異なり，一行には1バイト分のビットマップ情報しか書�
 また，バウンディングボックスの指定がないので，  
 ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
 
+### bdf2yaft
 misc/bdf2yaft.cppというプログラムを用いると，  
 等幅BDFをyaftで用いているフォント形式に変換できます．  
 
@@ -190,7 +194,8 @@ $ ./bdf2yaft TABLE BDF1 BDF2 ...
 複数のフォントに同じグリフが存在する場合，  
 後ろで指定したフォントのものが使われます．
 
-変換テーブルの形式は変換元と変換先の文字コードを16進で列挙したものです．
+変換テーブルの形式は変換元と変換先の文字コードを16進で列挙したものです．  
+以下のような書式になっています．
 
 -	ペアの区切りはタブでなければいけません
 -	先頭が#の行はコメントと見なされます
@@ -214,8 +219,11 @@ $ cat BDF1 BDF2 ... | ./bdf2yaft
 ~~~
 
 1番目のようにテーブルを指定しないと既にUnicodeのBDFであると見なされます．  
+(この場合，複数のBDFを指定することはできません．)  
 また2番目のように複数のUnicodeのBDFをcatしてからbdf2yaftに渡すと，  
 複数のBDFをmergeして1つのフォントを生成することができます．
+
+### yaftmerge
 
 ~~~
 $ ./yaftmerge BDF1 BDF2 ...
@@ -234,8 +242,10 @@ $ ./yaft_wall /path/to/wallpaper.jpg
 ~~~
 
 yaftがpathの通っている場所にインストールされている必要があります．  
-yaft_wallからはfbvを呼び出していますが，  
+画像の表示には[fbv]を利用しています．  
 framebuffer上で画像が表示できるプログラムなら他のものでも構いません．
+
+[fbv]: http://www.eclis.ch/fbv/
 
 ## control sequence list
 listにないコントロールシーケンスは無視されます．  
