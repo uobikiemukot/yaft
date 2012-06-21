@@ -27,3 +27,12 @@
 	* 色を定義する箇所が重複していたのをまとめた (color.h)
 	* 端末のサイズとしてcell_sizeよりも小さなサイズは指定できないようにした (terminal.h)
 	* 上記の修正に伴って色々変更．DEFAULT_CHARはSPACEにした (common.h)
+
+2012-06-21 haru
+	* version 0.1.4
+	* indent -kr -ut -ts4 な感じのスタイルで書くことにした
+	* gcc -std=c99 -pedantic -Wall -Os で通るように色々書き換えた
+	* eat_newline_glitch(xel)を実装した (terminal.h)
+	* auto_right_margin(bw)を廃止した (terminal.h, function.h)
+	* OSCを廃止した (parse.h, function.h)
+	* 上記の変更に伴ってterminfoを更新 (info/yaft.src)
