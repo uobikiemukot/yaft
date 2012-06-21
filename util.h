@@ -24,14 +24,6 @@ FILE *efopen(char *file, char *mode)
 	return fp;
 }
 
-void eclose(int fd)
-{
-	if (close(fd) == -1) {
-		perror("close");
-		exit(EXIT_FAILURE);
-	}
-}
-
 void eioctl(int fd, int req, void *arg)
 {
 	if (ioctl(fd, req, arg) == -1) {
@@ -52,14 +44,6 @@ u32 *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
 	return fp;
 }
 
-void emunmap(u32 *fp, size_t len)
-{
-	if (munmap(fp, len) == -1) {
-		perror("munmap");
-		exit(EXIT_FAILURE);
-	}
-}
-
 void *emalloc(size_t size)
 {
 	void *p;
@@ -78,9 +62,10 @@ pid_t eforkpty(int *fd, int lines, int cols)
 
 	size.ws_col = cols;
 	size.ws_row = lines;
+	size.ws_xpixel = size.ws_ypixel = 0;
 
 	/* forkpty(int *amaster, char *name,
-		const struct termios *termp, const struct winsize *winp) */
+	   const struct termios *termp, const struct winsize *winp) */
 	if ((pid = forkpty(fd, NULL, NULL, &size)) == -1) {
 		perror("forkpty");
 		exit(EXIT_FAILURE);
@@ -97,7 +82,7 @@ void eexecl(char *cmd)
 	}
 }
 
-void eselect(fd_set *fds, timeval *tv, int max_fd)
+void eselect(fd_set * fds, timeval * tv, int max_fd)
 {
 	if (select(max_fd, fds, NULL, NULL, tv) == -1) {
 		perror("select");
@@ -105,7 +90,7 @@ void eselect(fd_set *fds, timeval *tv, int max_fd)
 	}
 }
 
-void ewrite(int fd, char *buf, int size)
+void ewrite(int fd, u8 * buf, int size)
 {
 	int ret;
 
@@ -113,9 +98,4 @@ void ewrite(int fd, char *buf, int size)
 		perror("write");
 		exit(EXIT_FAILURE);
 	}
-}
-
-int toaddr(terminal *term, int y, int x)
-{
-	return x + y * term->cols;
 }
