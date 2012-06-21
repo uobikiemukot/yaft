@@ -1,5 +1,5 @@
 /* font path */
-static char *font_path = "~/.fonts/shnm.yaft";
+static char *font_path = "~/.fonts/milk.yaft";
 
 /* framubuffer device */
 static char *fb_path = "/dev/fb0";
@@ -8,7 +8,7 @@ static char *fb_path = "/dev/fb0";
 static char *shell_cmd = "/bin/bash";
 
 /* TERM value */
-static char *term_name = "yaft";
+static char *term_name = "TERM=yaft-256color";
 
 /* color: you can specify colors defined in color.h
 	and 24bit rgb color like 0xFFFFFF */
@@ -23,12 +23,11 @@ enum {
 	DUMP = false,
 	DEBUG = false,
 	LAZYDRAW = true,
-	WALLPAPER = false,
-	OFFSET_X = 0,
-	OFFSET_Y = 0,
+	WALLPAPER = true,
+	OFFSET_X = 32,
+	OFFSET_Y = 32,
 	TERM_WIDTH = 0,
 	TERM_HEIGHT = 0,
 	TABSTOP = 8,
-	INTERVAL = 1000000, /* polling interval(usec) */
-	//SCROLLBACK = 1024, /* not implemented */
+	INTERVAL = 1000000,			/* polling interval(usec) */
 };
