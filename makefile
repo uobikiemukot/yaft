@@ -1,6 +1,5 @@
 CC = gcc
-CFLAGS = -march=native -mtune=native -O3 -pipe
-	#-pg
+CFLAGS = -std=c99 -pedantic -Wall -Os
 LDFLAGS = -lutil
 PREFIX = /usr/bin
 FONTDIR = ~/.fonts
