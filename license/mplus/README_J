@@ -1,0 +1,155 @@
+-
+M+ BITMAP FONTS            Copyright 2002-2005  COZ <coz@users.sourceforge.jp>
+-
+
+README
+
+
+
+
+M+ BITMAP FONTS はシンプルで可読性の高いデザインを目標として制作された、
+X Window System 用のビットマップフォントセットです。
+第二水準漢字まで揃った日本語フォントも含めて Free License で公開しています。
+
+高性能 PC や Scalable フォントと Antialias 機能の一般化で、OS を問わずに
+滑らかで美しいフォント表示が身近になり、このようなビットマップフォントの需要は
+失われつつあるようにも思われますが、グラフィック処理の遅い PC やディスプレイ
+解像度の低い携帯端末・携帯電話における必要性、さまざまな理由で滲みのない
+クリアなフォントを選択する方々の存在などを信じつつ改良を続けています。
+
+
+
+
+添付のシェルスクリプト install_mplus_fonts によって、
+以下のフォントがインストールされます（"---" 以下は使用可能な省略フォント名）。
+
+
+□ 日本語フォント
+
+・ -mplus-gothic-medium-r-normal--10-100-75-75-c-100-jisx0208.1983-0、
+   -mplus-gothic-bold-r-normal--10-100-75-75-c-100-jisx0208.1983-0、
+   -mplus-gothic-medium-r-normal--12-120-75-75-c-120-jisx0208.1983-0、
+   -mplus-gothic-bold-r-normal--12-120-75-75-c-120-jisx0208.1983-0
+   jisx0208.1990-0 フォントに未対応のプログラム用に alias 設定しています。
+
+・ mplus-gothic（10、12 ドット）
+   ---
+   mplus_j10r
+   mplus_j10r-jisx 
+   mplus_j10r-iso
+   mplus_j10b
+   mplus_j10b-jisx
+   mplus_j10b-iso
+   mplus_j12r
+   mplus_f12r-jisx
+   mplus_f12r-iso
+   mplus_j12b
+   mplus_f12b-jisx 
+   mplus_f12b-iso
+
+・ mplus-goth_p（10、12 ドット）
+   上記 mplus-gothic フォントの欧文文字部分を proportional 化しています。
+   -
+   mplus_h10r-jisx
+   mplus_h10r-iso
+   mplus_h10b-jisx
+   mplus_h10b-iso 
+   mplus_h12r-jisx
+   mplus_h12r-iso
+   mplus_h12b-jisx
+   mplus_h12b-iso
+
+
+□ 欧文フォント
+
+・ mplus-fxd（10、12 ドット）
+   fixed の代替フォントとして制作しました。
+   -
+   mplus_f10r
+   mplus_f10r-euro *1
+   mplus_f12r
+   mplus_f12r-euro *1
+   mplus_f10b
+   mplus_f10b-euro *1
+   mplus_f12b
+   mplus_f12b-euro *1
+
+・ mplus-hlv（10、12 ドット）
+   helvetica の代替フォントとして制作しました。
+   -
+   mplus_h10r
+   mplus_h10r-euro *1
+   mplus_h12r
+   mplus_h12r-euro *1
+   mplus_h10b
+   mplus_h10b-euro *1
+   mplus_h12b
+   mplus_h12b-euro *1
+
+・ mplus-hlvw（10、12 ドット）
+   上記 mplus-hlv の mplus_h12r のみ字間設定を 1 ドット拡げ、
+   高解像度ディスプレイなどで小さく表示された時の可読性を高めました。
+   -
+   mplus_h12rw
+   mplus_h12rw-euro *1
+ 
+・ mplus-sys（10 ドット）
+   ウインドウタイトル、メニューなどの表示用に制作しました。
+   -
+   mplus_s10r 
+   mplus_s10r-euro *1 
+   mplus_s10b
+   mplus_s10b-euro *1
+
+・ mplus-qub（6 ドット）
+   6 ドットの極小フォント。
+   -
+   mplus_q06r
+   mplus_q06r-euro *1
+
+   *1 Euro 文字セット（iso8859-15）
+
+
+□ M+ カーソル
+
+・ mplus_cursors.bdf
+   初期設定のままのインストールスクリプトからはインストールされませんので、
+   ご利用の場合は INSTALL_J をご覧ください。
+
+
+
+
+□ CVS 開発版の入手方法
+
+$ cvs -d:pserver:anonymous@cvs.sourceforge.jp:/cvsroot/mplus-fonts login
+として login すると、
+
+CVS password:
+と聞かれますが、何も入力しないで Enter キーを押してください。その後に
+
+$ cvs -z3 -d:pserver:anonymous@cvs.sourceforge.jp:/cvsroot/mplus-fonts \
+  co mplus_bitmap_fonts
+とすることで、最新版の mplus_bitmap_fonts ディレクトリが転送されます。
+以降、mplus_bitmap_fonts ディレクトリ内（README_J ファイルなどと同じ階層）で
+
+$ cvs update -dP
+とすれば、その時点での最新版と同期させることができます。
+同期後はインストールスクリプトを再実行してください。
+
+
+
+
+その他、最新情報は下記 URL をご覧ください。
+
+M+ BITMAP FONTS
+http://mplus-fonts.sourceforge.jp/mplus-bitmap-fonts/index.html
+
+
+
+□ M+ OUTLINE FONTS
+
+日本語アウトラインフォント M+ OUTLINE FONTS の制作を開始しました。
+完成にはまだまだ時間がかかりますが、試用版の公開も行っていますので
+ぜひご覧ください。
+
+http://mplus-fonts.sourceforge.jp/mplus-outline-fonts/index.html
