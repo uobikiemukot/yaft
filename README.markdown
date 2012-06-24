@@ -11,7 +11,7 @@ framebufferを用いたvt102系のターミナルエミュレータです．
 
 ## feature
 +	framebuffer  
-	consoleで依存ライブラリなしで動作します
+	consoleで動作します
 
 +	UTF-8対応  
 	というか他のエンコードが一切使えません  
@@ -95,6 +95,8 @@ $ make install-font
 $ sudo make install
 ~~~
 
+gccとglibcがあればコンパイルできるはずです．
+
 make installを使わなくても構いません．  
 その場合は手動でticコマンドでterminfoをinstallしてください．  
 また，フォントをconf.hで設定した場所に忘れずに移動させてください．
@@ -133,7 +135,7 @@ DEFAULT_CHAR(U+20) not found or invalid cell size x:0 y:0
 フォントにU+20(SPACE)が存在しているか確認してください．  
 SPACEのグリフが端末のセルサイズとして使われているのでないと起動できません．  
 
-SPACEが存在しな場合にはXALL 0のビットマップで良いので，  
+SPACEが存在しな場合にはALL 0のビットマップで良いので，  
 以下のように手動でエントリを追加してみてください(8x16のフォントの場合)．
 
 ~~~
