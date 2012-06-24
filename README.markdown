@@ -1,11 +1,6 @@
 # yaft - yet another framebuffer terminal
 
-framebufferを用いたターミナルエミュレータです．
-
-vt102系のエミュレータを参考に作っていますが，  
-今のところは完全な互換性はありません．
-
-詳細はinfo/yaft.srcや，後述するcontrol sequence listを参照してください．
+framebufferを用いたvt102系のターミナルエミュレータです．
 
 ![yaft]
 
@@ -15,11 +10,11 @@ vt102系のエミュレータを参考に作っていますが，
 - [latest](https://github.com/uobikiemukot/yaft/tarball/master)
 
 ## feature
++	framebuffer  
+	consoleで依存ライブラリなしで動作します
+
 +	UTF-8対応  
 	というか他のエンコードが一切使えません  
-
-+	East Asian Width  
-	ビットマップの幅を参照するので端末が文字幅を誤認することはありません
 
 +	256色  
 	xtermと同様の256色指定のエスケープシーケンスに対応しています  
@@ -32,7 +27,7 @@ vt102系のエミュレータを参考に作っていますが，
 
 ### path and terminal name
 
-+	static char *font_path = "~/.fonts/shnm.yaft";  
++	static char *font_path = "./fonts/shnm.yaft";  
 	fontのpathを設定します
 
 +	static char *fb_path = "/dev/fb0";  
@@ -44,22 +39,20 @@ vt102系のエミュレータを参考に作っていますが，
 +	static char *term_name = "TERM=yaft-256color";  
 	環境変数TERMの値を設定します
 
-pathは全て絶対pathで記述します．  
-font_pathの指定では，$HOMEのパスを省略して~と書くことができます．
+pathは絶対path(or 実行ディレクトリからの相対path)で記述します．
 
 ### color
-色は0xFFFFFF形式(RGBの順で各8bitずつ)かcolor.hでdefineされている色の名前を使用できます．
 
-+	DEFAULT_FG = GRAY,  
++	DEFAULT_FG = 7,  
 	デフォルトの前景色
 
-+	DEFAULT_BG = BLACK,  
++	DEFAULT_BG = 0,  
 	デフォルトの背景色
 
-+	CURSOR_COLOR = GREEN,  
++	CURSOR_COLOR = 2,  
 	カーソルの色の設定
 
-色の定義を変えたい場合はcolor.hを書き換えてください．
+色はcolor.hで定義されているcoloro_palette[]のインデックスを指定します．
 
 ### misc
 +	DUMP = false,  
@@ -92,7 +85,7 @@ font_pathの指定では，$HOMEのパスを省略して~と書くことがで�
 +	INTERVAL = 1000000,  
 	pollingの間隔をマイクロ秒単位で設定できます
 
-端末サイズやオフセットの値が不正だった場合，フルスクリーンでの起動を試みます
+端末サイズやオフセットの値が不正だった場合，フルスクリーンでの起動を試みます．
 
 ## install
 
@@ -106,10 +99,11 @@ make installを使わなくても構いません．
 その場合は手動でticコマンドでterminfoをinstallしてください．  
 また，フォントをconf.hで設定した場所に忘れずに移動させてください．
 
-sampleとして[shinonome font]を変換したyaft用のフォントを同封しています．  
-shinonome fontのライセンスについてはlisence/shinonome/以下のファイルを参照してください．
+sampleとして[shinonome font]と[mplus font]を変換したyaft用のフォントを同封しています．  
+各フォントのライセンスについてはlisence/以下のファイルを参照してください．
 
 [shinonome font]: http://openlab.ring.gr.jp/efont/shinonome/
+[mplus font]: http://mplus-fonts.sourceforge.jp/mplus-bitmap-fonts/
 
 ## usage
 コマンドラインオプションは存在しません．
@@ -133,13 +127,14 @@ fopen: No such file or directory
 ### グリフがない！
 
 ~~~
-fonts must have DEFAULT_CHAR(U+20)
+DEFAULT_CHAR(U+20) not found or invalid cell size x:0 y:0
 ~~~
 
 フォントにU+20(SPACE)が存在しているか確認してください．  
 SPACEのグリフが端末のセルサイズとして使われているのでないと起動できません．  
 
-ALL 0のビットマップで良いので，以下のように手動でエントリを追加してみてください(8x16のフォントの場合)．
+SPACEが存在しな場合にはXALL 0のビットマップで良いので，  
+以下のように手動でエントリを追加してみてください(8x16のフォントの場合)．
 
 ~~~
 20
@@ -165,12 +160,12 @@ ALL 0のビットマップで良いので，以下のように手動でエント
 ### framebufferがない！
 
 ~~~
-/dev/fb*
+/dev/fb0
 open: No such file or directory
 ~~~
 
-BSD系ではpathが違う場合があるようです．  
 /dev/fb0がない場合，Linuxではgrubのkernelオプションにvga=773等と書くと良いかもしれません．  
+(/dev/fb0の作り方はディストリビューションごとのframebufferの利用法を調べてください．)
 
 通常，framebufferの書き込みにはvideo groupのメンバである必要があります．  
 hogeというユーザをvideo groupに追加するには以下のようにします．  
@@ -181,9 +176,8 @@ $ sudo gpasswd -a hoge video
 
 変更を反映させるには一度logoutをする必要があります．
 
-
 ### screen上で色がおかしい！
-TERMの値がrxvt/xtermでない場合にANSI8-16の色が正常に表示されない場合があります．  
+TERMの値がrxvt/xtermでない場合にANSIカラーの8 ~ 15が正常に表示されない場合があります．  
 例えばrxvt-256colorという名前のsymbolic linkでyaftのterminfoを指して，  
 TERM=rxvt-256color screenと起動すれば上手く表示されるかもしれません．
 
@@ -204,13 +198,10 @@ BDFを簡略化したフォント形式を使っています．
 	bitmap...
 
 codeはUCS2のコードを10進で表記したものです．  
-widthとheightはフォントの横幅と高さです(pixel)．
-
+widthとheightはフォントの横幅と高さです(pixel)．  
 bitmapにはBDFと同様にグリフのビットマップ情報が列挙されます(16進)．  
-BDFと異なり，一行には1バイト分のビットマップ情報しか書けません．  
-バイト境界に合わない場合はLSB側に0をパディングします．
 
-また，バウンディングボックスの指定がないので，  
+バウンディングボックスの指定がないので，  
 ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
 
 ### bdf2yaft
@@ -295,8 +286,6 @@ listにないコントロールシーケンスは無視されます．
 -	0x0C nl
 -	0x0D cr
 -	0x1B enter_esc
-
-0x7FのDELも無視されます．
 
 ### escape sequence
 ESC(0x1B)ではじまるシーケンスのうち，CSIでもOSCでもないもの
