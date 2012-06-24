@@ -1,3 +1,4 @@
+/* See LICENSE for licence details. */
 void init_cell(cell * cp)
 {
 	cp->code = DEFAULT_CHAR;
@@ -9,24 +10,33 @@ void init_cell(cell * cp)
 
 int set_cell(terminal * term, int y, int x, u16 code)
 {
-	cell new_cell, *cp;
+	cell nc, *cp;
 	glyph_t *gp;
 
 	cp = &term->cells[x + y * term->cols];
 	gp = term->fonts[code];
 
-	new_cell.code = code;
-	new_cell.color.fg = term->color.fg;
-	new_cell.color.bg = term->color.bg;
-	new_cell.attribute = term->attribute;
-	new_cell.wide = (gp->size.x > term->cell_size.x) ? WIDE : HALF;
+	nc.code = code;
 
-	*cp = new_cell;
+	nc.color.fg = (term->attribute & attr_mask[BOLD]
+		&& 0 <= term->color.fg && term->color.fg <= 7) ?
+		term->color.fg + BRIGHT_INC: term->color.fg;
+	nc.color.bg = (term->attribute & attr_mask[BLINK]
+		&& 0 <= term->color.bg && term->color.bg <= 7) ?
+		term->color.bg + BRIGHT_INC: term->color.bg;
+
+	if (term->attribute & attr_mask[REVERSE])
+		swap(&nc.color.fg, &nc.color.bg);
+
+	nc.attribute = term->attribute;
+	nc.wide = (gp->size.x > term->cell_size.x) ? WIDE : HALF;
+
+	*cp = nc;
 	term->line_dirty[y] = true;
 
-	if (new_cell.wide == WIDE && x + 1 < term->cols) {
+	if (nc.wide == WIDE && x + 1 < term->cols) {
 		cp = &term->cells[x + 1 + y * term->cols];
-		*cp = new_cell;
+		*cp = nc;
 		cp->wide = NEXT_TO_WIDE;
 		return WIDE;
 	}
@@ -43,14 +53,14 @@ void scroll(terminal * term, int from, int to, int offset)
 		return;
 
 	if (DEBUG)
-		fprintf(stderr, "scroll from:%d to:%d offset:%d\n", from, to,
-				offset);
+		fprintf(stderr, "scroll from:%d to:%d offset:%d\n", from, to, offset);
 
 	for (i = from; i <= to; i++)
 		term->line_dirty[i] = true;
 
 	abs_offset = abs(offset);
 	size = sizeof(cell) * ((to - from + 1) - abs_offset) * term->cols;
+
 	dst = term->cells + from * term->cols;
 	src = term->cells + (from + abs_offset) * term->cols;
 
@@ -59,7 +69,8 @@ void scroll(terminal * term, int from, int to, int offset)
 		for (i = (to - offset + 1); i <= to; i++)
 			for (j = 0; j < term->cols; j++)
 				init_cell(&term->cells[j + i * term->cols]);
-	} else {
+	}
+	else {
 		memmove(src, dst, size);
 		for (i = from; i < from + abs_offset; i++)
 			for (j = 0; j < term->cols; j++)
@@ -73,6 +84,10 @@ void move_cursor(terminal * term, int y_offset, int x_offset)
 	int x, y, top, bottom;
 
 	x = term->cursor.x + x_offset;
+	y = term->cursor.y + y_offset;
+
+	top = term->scroll.top;
+	bottom = term->scroll.bottom;
 
 	if (x < 0)
 		x = 0;
@@ -81,23 +96,19 @@ void move_cursor(terminal * term, int y_offset, int x_offset)
 			term->wrap = true;
 		x = term->cols - 1;
 	}
-
 	term->cursor.x = x;
 
-	y = term->cursor.y + y_offset;
-	top = term->scroll.top;
-	bottom = term->scroll.bottom;
-
-	y = (y < 0) ? 0 : (y >= term->lines) ? term->lines - 1 : y;
+	y = (y < 0) ? 0:
+		(y >= term->lines) ? term->lines - 1: y;
 
 	if (term->cursor.y == top && y_offset < 0) {
 		y = top;
 		scroll(term, top, bottom, y_offset);
-	} else if (term->cursor.y == bottom && y_offset > 0) {
+	}
+	else if (term->cursor.y == bottom && y_offset > 0) {
 		y = bottom;
 		scroll(term, top, bottom, y_offset);
 	}
-
 	term->cursor.y = y;
 }
 
@@ -106,18 +117,18 @@ void set_cursor(terminal * term, int y, int x)
 {
 	int top, bottom;
 
-	top = 0;
-	bottom = term->lines - 1;
-
 	if (term->mode & ORIGIN) {
 		top = term->scroll.top;
 		bottom = term->scroll.bottom;
 		y += term->scroll.top;
 	}
+	else {
+		top = 0;
+		bottom = term->lines - 1;
+	}
 
-	x = (x < 0) ? 0 : (x >= term->cols) ? term->cols - 1 : x;
-
-	y = (y < top) ? top : (y > bottom) ? bottom : y;
+	x = (x < 0) ? 0: (x >= term->cols) ? term->cols - 1: x;
+	y = (y < top) ? top: (y > bottom) ? bottom: y;
 
 	term->cursor.x = x;
 	term->cursor.y = y;
@@ -127,24 +138,21 @@ void addch(terminal * term, u32 code)
 {
 	glyph_t *gp;
 
-	if (code == DEL)			/* ignore DEL */
+	if (code == DEL							/* ignore DEL */
+		|| code >= UCS_CHARS					/* only handle UCS2 (<= 0xFFFF) */
+		|| term->fonts[code] == NULL)		/* glyph not found */
 		return;
 
-	if (code >= UCS_CHARS		/* only handle UCS2 (<= 0xFFFF) */
-		|| term->fonts[code] == NULL)	/* glyph not found */
-		code = DEFAULT_CHAR;
-
-	gp = term->fonts[code];		/* folding */
+	gp = term->fonts[code];					/* folding */
 	if ((term->wrap && term->cursor.x == term->cols - 1)
-		|| (gp->size.x > term->cell_size.x
-			&& term->cursor.x == term->cols - 1)) {
+		|| (gp->size.x > term->cell_size.x && term->cursor.x == term->cols - 1)) {
 		set_cursor(term, term->cursor.y, 0);
 		move_cursor(term, 1, 0);
 	}
 	term->wrap = false;
 
 	move_cursor(term, 0,
-				set_cell(term, term->cursor.y, term->cursor.x, code));
+		set_cell(term, term->cursor.y, term->cursor.x, code));
 }
 
 void writeback(int fd, char *buf, int size)
@@ -155,35 +163,29 @@ void writeback(int fd, char *buf, int size)
 
 void reset_esc(terminal * term)
 {
-	escape *ep;
-	ep = &term->esc;
-
-	memset(ep->buf, '\0', BUFSIZE);
-	ep->bp = ep->buf;
-	ep->state = RESET;
+	memset(term->esc.buf, '\0', BUFSIZE);
+	term->esc.bp = term->esc.buf;
+	term->esc.state = RESET;
 }
 
-int push_esc(terminal * term, u8 c)
+int push_esc(terminal * term, u8 ch)
 {
-	escape *ep;
-	ep = &term->esc;
-
-	if (ep->bp == &ep->buf[BUFSIZE]	/* buffer limit */
-		||c == 0x18 || c == 0x1A) {	/* CAN or SUB */
+	if (term->esc.bp == &term->esc.buf[BUFSIZE - 1]	/* buffer limit */
+		|| ch == CAN || ch == SUB) {				/* CAN or SUB */
 		reset_esc(term);
 		return false;
 	}
 
-	*ep->bp++ = c;
-	if (ep->state == CSI && ('@' <= c && c <= '~'))
+	*term->esc.bp++ = ch;
+	if (term->esc.state == STATE_CSI && ('@' <= ch && ch <= '~'))
 		return true;
-	else if (ep->state == OSC && c == 0x07)
-		return true;
-	else if (ep->state == OSC && strlen((char *) ep->buf) > 1
-			 && *(ep->bp - 2) == 0x1B && c == 0x5C)
-		return true;
-	else
-		return false;
+	else if (term->esc.state == STATE_OSC) {
+		if (ch == BEL
+			|| (strlen((char *) term->esc.buf) > 1
+			&& *(term->esc.bp - 2) == ESC && ch == BACKSLASH))
+			return true;
+	}
+	return false;
 }
 
 void reset_ucs(terminal * term)
@@ -201,7 +203,6 @@ void reset_state(terminal * term)
 void reset(terminal * term)
 {
 	int i, j;
-	cell *cp;
 
 	term->mode = RESET;
 	term->mode |= (CURSOR | AMRIGHT);
@@ -219,8 +220,7 @@ void reset(terminal * term)
 
 	for (i = 0; i < term->lines; i++) {
 		for (j = 0; j < term->cols; j++) {
-			cp = &term->cells[j + i * term->cols];
-			init_cell(cp);
+			init_cell(&term->cells[j + i * term->cols]);
 			if ((j % TABSTOP) == 0)
 				term->tabstop[j] = true;
 			else
@@ -277,13 +277,11 @@ void term_init(terminal * term, framebuffer * fb)
 		|| term->width < term->cell_size.x
 		|| term->height < term->cell_size.y) {
 		if (DEBUG)
-			fprintf(stderr,
-					"invalid termnal size %dx%d: use screen size %dx%d\n",
-					term->width, term->height, fb->res.x, fb->res.y);
+			fprintf(stderr, "invalid termnal size %dx%d: use screen size %dx%d\n",
+				term->width, term->height, fb->res.x, fb->res.y);
 		term->width = fb->res.x;
 		term->height = fb->res.y;
-		term->offset.x = 0;
-		term->offset.y = 0;
+		term->offset.x = term->offset.y = 0;
 	}
 
 	term->cols = term->width / term->cell_size.x;
@@ -291,10 +289,10 @@ void term_init(terminal * term, framebuffer * fb)
 
 	if (DEBUG)
 		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",
-				term->width, term->height, term->cols, term->lines);
+			term->width, term->height, term->cols, term->lines);
 
-	term->wall =
-		(WALLPAPER) ? load_wallpaper(fb, term->width, term->height) : NULL;
+	term->wall = (WALLPAPER) ?
+		load_wallpaper(fb, term->width, term->height): NULL;
 
 	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
 
