@@ -1,5 +1,6 @@
+/* See LICENSE for licence details. */
 /* font path */
-static char *font_path = "~/.fonts/shnm.yaft";
+static char *font_path = "./fonts/default.yaft";
 
 /* framubuffer device */
 static char *fb_path = "/dev/fb0";
@@ -10,12 +11,11 @@ static char *shell_cmd = "/bin/bash";
 /* TERM value */
 static char *term_name = "TERM=yaft-256color";
 
-/* color: you can specify colors defined in color.h
-	and 24bit rgb color like 0xFFFFFF */
+/* color: index number of color_palette[] in color.h */
 enum {
-	DEFAULT_FG = GRAY,
-	DEFAULT_BG = BLACK,
-	CURSOR_COLOR = GREEN,
+	DEFAULT_FG = 7,
+	DEFAULT_BG = 0,
+	CURSOR_COLOR = 2,
 };
 
 /* terminal setting */
