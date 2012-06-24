@@ -1,4 +1,5 @@
-void reset_func(void (**func) (terminal * term, void *arg), int num)
+/* See LICENSE for licence details. */
+void reset_func(void (**func)(terminal *term, void *arg), int num)
 {
 	int i;
 
@@ -6,7 +7,7 @@ void reset_func(void (**func) (terminal * term, void *arg), int num)
 		func[i] = ignore;
 }
 
-void load_ctrl_func(void (**func) (terminal * term, void *arg), int num)
+void load_ctrl_func(void (**func)(terminal *term, void *arg), int num)
 {
 	reset_func(func, num);
 
@@ -19,7 +20,7 @@ void load_ctrl_func(void (**func) (terminal * term, void *arg), int num)
 	func[0x1B] = enter_esc;		/* ESC */
 }
 
-void load_esc_func(void (**func) (terminal * term, void *arg), int num)
+void load_esc_func(void (**func)(terminal *term, void *arg), int num)
 {
 	reset_func(func, num);
 
@@ -35,7 +36,7 @@ void load_esc_func(void (**func) (terminal * term, void *arg), int num)
 	func['c'] = ris;
 }
 
-void load_csi_func(void (**func) (terminal * term, void *arg), int num)
+void load_csi_func(void (**func)(terminal *term, void *arg), int num)
 {
 	reset_func(func, num);
 
@@ -71,26 +72,28 @@ void load_csi_func(void (**func) (terminal * term, void *arg), int num)
 }
 
 /* need to rewrite this function */
-u8 parse_csi(terminal * term, int *argc, char **argv)
+u8 parse_csi(terminal *term, int *argc, char **argv)
 {
 	int length;
-	u8 c, *cp;
-	escape *ep;
+	u8 ch, *cp, *buf;
 
-	ep = &term->esc;
+	buf = term->esc.buf;
+	length = strlen((char *) buf);
 
-	length = strlen((char *) ep->buf);
-	c = ep->buf[length - 1];
-	ep->buf[length - 1] = '\0';
+	if (length == 0 || length - 1 >= BUFSIZE)
+		return 0;
 
-	cp = ep->buf;
-	while (cp != &ep->buf[length - 1]) {
+	ch = buf[length - 1];
+	buf[length - 1] = '\0';
+
+	cp = buf;
+	while (cp != &buf[length - 1]) {
 		if (*cp == ';')
 			*cp = '\0';
 		cp++;
 	}
 
-	cp = ep->buf;
+	cp = buf;
   start:
 	if (isdigit(*cp)) {
 		argv[*argc] = (char *) cp;
@@ -100,13 +103,13 @@ u8 parse_csi(terminal * term, int *argc, char **argv)
 	while (isdigit(*cp))
 		cp++;
 
-	while (!isdigit(*cp) && cp != &ep->buf[length - 1])
+	while (!isdigit(*cp) && cp != &buf[length - 1])
 		cp++;
 
-	if (cp != &ep->buf[length - 1])
+	if (cp != &buf[length - 1])
 		goto start;
 
-	return c;
+	return ch;
 }
 
 static char *ctrl_char[] = {
@@ -116,20 +119,20 @@ static char *ctrl_char[] = {
 	"CAN", "EM ", "SUB", "ESC", "FS ", "GS ", "RS ", "US ",
 };
 
-void control_character(terminal * term, u8 ch)
+void control_character(terminal *term, u8 ch)
 {
 	if (DEBUG)
 		fprintf(stderr, "ctl: %s\n", ctrl_char[ch]);
 
-	ctrl_func[ch] (term, NULL);
+	ctrl_func[ch](term, NULL);
 }
 
-void esc_sequence(terminal * term, u8 ch)
+void esc_sequence(terminal *term, u8 ch)
 {
 	if (DEBUG)
 		fprintf(stderr, "esc: ESC %c\n", ch);
 
-	esc_func[ch] (term, NULL);
+	esc_func[ch & MASK_7BIT](term, NULL);
 
 	if (ch != '[' && ch != ']')
 		term->esc.state = RESET;
@@ -144,46 +147,50 @@ void reset_parm(parm_t * pt)
 		pt->argv[i] = NULL;
 }
 
-void csi_sequence(terminal * term)
+void csi_sequence(terminal *term)
 {
-	u8 c;
+	u8 ch;
 	parm_t parm;
 
 	if (DEBUG)
 		fprintf(stderr, "csi: CSI %s\n", term->esc.buf);
 
 	reset_parm(&parm);
-	c = parse_csi(term, &parm.argc, parm.argv);
+	ch = parse_csi(term, &parm.argc, parm.argv);
 
-	csi_func[c] (term, &parm);
+	csi_func[ch & MASK_7BIT](term, &parm);
 	reset_esc(term);
 }
 
-void osc_sequence(terminal * term)
+void osc_sequence(terminal *term)
 {
 	if (DEBUG)
 		fprintf(stderr, "osc: OSC %s\n", term->esc.buf);
+
 	reset_esc(term);
 }
 
-void utf8_character(terminal * term, u8 ch)
+void utf8_character(terminal *term, u8 ch)
 {
 	if (0xC2 <= ch && ch <= 0xDF) {
 		term->ucs.length = 1;
 		term->ucs.count = 0;
 		term->ucs.code = ch & 0x1F;
 		return;
-	} else if (0xE0 <= ch && ch <= 0xEF) {
+	}
+	else if (0xE0 <= ch && ch <= 0xEF) {
 		term->ucs.length = 2;
 		term->ucs.count = 0;
 		term->ucs.code = ch & 0x0F;
 		return;
-	} else if (0xF0 <= ch && ch <= 0xF4) {
+	}
+	else if (0xF0 <= ch && ch <= 0xF4) {
 		term->ucs.length = 3;
 		term->ucs.count = 0;
 		term->ucs.code = ch & 0x07;
 		return;
-	} else if (0x80 <= ch && ch <= 0xBF) {
+	}
+	else if (0x80 <= ch && ch <= 0xBF) {
 		if (term->ucs.length == 0) {
 			reset_ucs(term);
 			return;
@@ -191,7 +198,8 @@ void utf8_character(terminal * term, u8 ch)
 		term->ucs.code <<= 6;
 		term->ucs.code += ch & 0x3F;
 		term->ucs.count++;
-	} else {					/* 0xC0 - 0xC1, 0xF5 - 0xFF: illegal byte */
+	}
+	else {					/* 0xC0 - 0xC1, 0xF5 - 0xFF: illegal byte */
 		reset_ucs(term);
 		return;
 	}
@@ -204,7 +212,7 @@ void utf8_character(terminal * term, u8 ch)
 	}
 }
 
-void parse(terminal * term, u8 * buf, int size)
+void parse(terminal *term, u8 *buf, int size)
 {
 	u8 ch;
 	int i;
@@ -212,23 +220,27 @@ void parse(terminal * term, u8 * buf, int size)
 	for (i = 0; i < size; i++) {
 		ch = buf[i];
 		if (term->esc.state == RESET) {
-			if (ch <= 0x1F)
+			if (ch <= US)
 				control_character(term, ch);
-			else if (ch <= 0x7F) {
+			else if (ch <= DEL) {
 				if (DEBUG)
 					fprintf(stderr, "ascii: %c\n", ch);
 				addch(term, ch);
-			} else if (ch <= 0xFF)
+			}
+			else
 				utf8_character(term, ch);
-		} else if (term->esc.state == ESC) {
-			if (ch <= 0x7F)
+		}
+		else if (term->esc.state == STATE_ESC) {
+			if (ch <= DEL)
 				esc_sequence(term, ch);
 			else
 				term->esc.state = RESET;
-		} else if (term->esc.state == CSI) {
+		}
+		else if (term->esc.state == STATE_CSI) {
 			if (push_esc(term, ch))
 				csi_sequence(term);
-		} else if (term->esc.state == OSC) {
+		}
+		else if (term->esc.state == STATE_OSC) {
 			if (push_esc(term, ch))
 				osc_sequence(term);
 		}
