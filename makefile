@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -std=c99 -pedantic -Wall -Os
-LDFLAGS = -lutil
+LDFLAGS = -lutil -lm
 PREFIX = /usr/bin
 FONTDIR = ~/.fonts
 
