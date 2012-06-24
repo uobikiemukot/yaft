@@ -1,3 +1,4 @@
+/* See LICENSE for licence details. */
 int eopen(char *file, int flag)
 {
 	int fd;
@@ -7,7 +8,6 @@ int eopen(char *file, int flag)
 		perror("open");
 		exit(EXIT_FAILURE);
 	}
-
 	return fd;
 }
 
@@ -20,7 +20,6 @@ FILE *efopen(char *file, char *mode)
 		perror("fopen");
 		exit(EXIT_FAILURE);
 	}
-
 	return fp;
 }
 
@@ -40,7 +39,6 @@ u32 *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
 		perror("mmap");
 		exit(EXIT_FAILURE);
 	}
-
 	return fp;
 }
 
@@ -51,7 +49,6 @@ void *emalloc(size_t size)
 		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
-
 	return p;
 }
 
@@ -64,13 +61,10 @@ pid_t eforkpty(int *fd, int lines, int cols)
 	size.ws_row = lines;
 	size.ws_xpixel = size.ws_ypixel = 0;
 
-	/* forkpty(int *amaster, char *name,
-	   const struct termios *termp, const struct winsize *winp) */
 	if ((pid = forkpty(fd, NULL, NULL, &size)) == -1) {
 		perror("forkpty");
 		exit(EXIT_FAILURE);
 	}
-
 	return pid;
 }
 
@@ -98,4 +92,13 @@ void ewrite(int fd, u8 * buf, int size)
 		perror("write");
 		exit(EXIT_FAILURE);
 	}
+}
+
+void swap(int *a, int *b)
+{
+	int tmp;
+
+	tmp = *a;
+	*a = *b;
+	*b = tmp;
 }
