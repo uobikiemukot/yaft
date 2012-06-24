@@ -11,6 +11,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <cmath>
 
 #include "util.cpp"
 
@@ -19,42 +20,8 @@ using namespace std;
 enum {
 	NOT_BITMAP = 0,
 	IN_BITMAP = 1,
-	CHARS_PER_BYTE = 2,
 	UCS2_MAX = 0xFFFF,
 };
-
-typedef unsigned char u8;
-typedef unsigned short u16;
-
-typedef vector<u8> bitmap_t;
-typedef struct glyph_t glyph_t;
-typedef map<u16, glyph_t> glyph_map; /* <UCS2, glyph_t> */
-typedef map<u16, u16> conv_table;
-
-struct glyph_t {
-	u16 code; /* JIS */
-	int width, height; /* width, height */
-	bitmap_t bitmap;
-};
-
-void dump_glyph(glyph_t &glyph)
-{
-	int i;
-
-	cout << glyph.width << " " << glyph.height << endl;
-
-	for (i = 0; i < glyph.bitmap.size(); i++)
-		cout << hex << uppercase << setw(2) << setfill('0') << (int) glyph.bitmap[i] << endl;
-
-	cout.unsetf(ios::hex | ios::uppercase);
-}
-
-void reset_glyph(glyph_t &glyph)
-{
-	glyph.code = glyph.width = glyph.height = 0;
-	glyph.bitmap.clear();
-	
-}
 
 void read_table(ifstream &in, conv_table &table)
 {
@@ -118,8 +85,7 @@ void read_bdf(ifstream &in, conv_table *table, glyph_map &fonts)
 		}
 
 		if (state == IN_BITMAP) {
-			for (i = 0; i <  vec[0].length(); i += 2)
-				glyph.bitmap.push_back(str2int(vec[0].substr(i, CHARS_PER_BYTE), 16));
+			glyph.bitmap.push_back(str2int(vec[0], 16));
 			glyph.height++;
 		}
 	}
@@ -147,7 +113,7 @@ int main(int argc, char *argv[])
 		in.open(argv[1]);
 		read_table(in, table);
 		for (i = 2; i < argc; i++) {
-			in.open(argv[2]);
+			in.open(argv[i]);
 			read_bdf(in, &table, fonts);
 		}
 	}
