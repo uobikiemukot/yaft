@@ -1,3 +1,4 @@
+/* See LICENSE for licence details. */
 /* misc */
 int sum(parm_t * pt)
 {
@@ -30,7 +31,6 @@ void tab(terminal * term, void *arg)
 			return;
 		}
 	}
-
 	set_cursor(term, term->cursor.y, term->cols - 1);
 }
 
@@ -46,7 +46,7 @@ void cr(terminal * term, void *arg)
 
 void enter_esc(terminal * term, void *arg)
 {
-	term->esc.state = ESC;
+	term->esc.state = STATE_ESC;
 }
 
 /* function for escape sequence */
@@ -91,12 +91,12 @@ void identify(terminal * term, void *arg)
 
 void enter_csi(terminal * term, void *arg)
 {
-	term->esc.state = CSI;
+	term->esc.state = STATE_CSI;
 }
 
 void enter_osc(terminal * term, void *arg)
 {
-	term->esc.state = OSC;
+	term->esc.state = STATE_OSC;
 }
 
 void ris(terminal * term, void *arg)
@@ -229,13 +229,15 @@ void erase_display(terminal * term, void *arg)
 				if (i > term->cursor.y
 					|| (i == term->cursor.y && j >= term->cursor.x))
 					set_cell(term, i, j, DEFAULT_CHAR);
-	} else if (mode == 1) {
+	}
+	else if (mode == 1) {
 		for (i = 0; i <= term->cursor.y; i++)
 			for (j = 0; j < term->cols; j++)
 				if (i < term->cursor.y
 					|| (i == term->cursor.y && j <= term->cursor.x))
 					set_cell(term, i, j, DEFAULT_CHAR);
-	} else if (mode == 2) {
+	}
+	else if (mode == 2) {
 		for (i = 0; i < term->lines; i++)
 			for (j = 0; j < term->cols; j++)
 				set_cell(term, i, j, DEFAULT_CHAR);
@@ -256,10 +258,12 @@ void erase_line(terminal * term, void *arg)
 	if (mode == 0) {
 		for (i = term->cursor.x; i < term->cols; i++)
 			set_cell(term, term->cursor.y, i, DEFAULT_CHAR);
-	} else if (mode == 1) {
+	}
+	else if (mode == 1) {
 		for (i = 0; i <= term->cursor.x; i++)
 			set_cell(term, term->cursor.y, i, DEFAULT_CHAR);
-	} else if (mode == 2) {
+	}
+	else if (mode == 2) {
 		for (i = 0; i < term->cols; i++)
 			set_cell(term, term->cursor.y, i, DEFAULT_CHAR);
 	}
@@ -359,44 +363,39 @@ void set_attr(terminal * term, void *arg)
 	for (i = 0; i < argc; i++) {
 		num = atoi(argv[i]);
 
-		if (num == 0) {			/* reset all attribute and color */
+		if (num == 0) {						/* reset all attribute and color */
 			term->attribute = RESET;
 			term->color.fg = DEFAULT_FG;
 			term->color.bg = DEFAULT_BG;
-		} else if (1 <= num && num <= 7)	/* set attribute */
-			term->attribute |= attr_mask[num];
-		else if (21 <= num && num <= 27) {	/* reset attribute */
-			num -= 20;
-			term->attribute &= ~attr_mask[num];
-		} else if (30 <= num && num <= 37) {	/* set foreground */
-			num -= 30;
-			term->color.fg = (term->attribute & attr_mask[BOLD]) ?
-				color_palette[num + BRIGHT_INC] : color_palette[num];
-		} else if (num == 38) {	/* set 256 color to foreground */
-			if ((i + 2) < argc && atoi(argv[i + 1]) == 5) {
-				term->color.fg = color_palette[atoi(argv[i + 2])];
-				i += 2;
-			}
-		} else if (num == 39)	/* reset foreground */
-			term->color.fg = DEFAULT_FG;
-		else if (40 <= num && num <= 47) {	/* set background */
-			num -= 40;
-			term->color.bg = (term->attribute & attr_mask[BLINK]) ?
-				color_palette[num + BRIGHT_INC] : color_palette[num];
-		} else if (num == 48) {	/* set 256 color to background */
-			if ((i + 2) < argc && atoi(argv[i + 1]) == 5) {
-				term->color.bg = color_palette[atoi(argv[i + 2])];
-				i += 2;
-			}
-		} else if (num == 49)	/* reset background */
-			term->color.bg = DEFAULT_BG;
-		else if (90 <= num && num <= 97) {	/* set bright foreground */
-			num -= 90;
-			term->color.fg = color_palette[num + BRIGHT_INC];
-		} else if (100 <= num && num <= 107) {	/* set bright background */
-			num -= 100;
-			term->color.bg = color_palette[num + BRIGHT_INC];
 		}
+		else if (1 <= num && num <= 7)		/* set attribute */
+			term->attribute |= attr_mask[num];
+		else if (21 <= num && num <= 27)	/* reset attribute */
+			term->attribute &= ~attr_mask[num - 20];
+		else if (30 <= num && num <= 37)	/* set foreground */
+			term->color.fg = (num - 30);
+		else if (num == 38) {				/* set 256 color to foreground */
+			if ((i + 2) < argc && atoi(argv[i + 1]) == 5) {
+				term->color.fg = atoi(argv[i + 2]);
+				i += 2;
+			}
+		}
+		else if (num == 39)	/* reset foreground */
+			term->color.fg = DEFAULT_FG;
+		else if (40 <= num && num <= 47)	/* set background */
+			term->color.bg = (num - 40);
+		else if (num == 48) {				/* set 256 color to background */
+			if ((i + 2) < argc && atoi(argv[i + 1]) == 5) {
+				term->color.bg = atoi(argv[i + 2]);
+				i += 2;
+			}
+		}
+		else if (num == 49)	/* reset background */
+			term->color.bg = DEFAULT_BG;
+		else if (90 <= num && num <= 97) 	/* set bright foreground */
+			term->color.fg = (num - 90) + BRIGHT_INC;
+		else if (100 <= num && num <= 107)	/* set bright background */
+			term->color.bg = (num - 100) + BRIGHT_INC;
 	}
 }
 
@@ -415,7 +414,8 @@ void status_report(terminal * term, void *arg)
 			snprintf(buf, BUFSIZE, "\033[%d;%dR", term->cursor.y + 1,
 					 term->cursor.x + 1);
 			writeback(term->fd, buf, strlen(buf));
-		} else if (num == 15)	/* terminal response: printer not connected */
+		}
+		else if (num == 15)	/* terminal response: printer not connected */
 			writeback(term->fd, "\033[?13n", 6);
 	}
 }
@@ -434,7 +434,8 @@ void set_mode(terminal * term, void *arg)
 		if (mode == 6) {		/* private mode */
 			term->mode |= ORIGIN;
 			set_cursor(term, 0, 0);
-		} else if (mode == 7)
+		}
+		else if (mode == 7)
 			term->mode |= AMRIGHT;
 		else if (mode == 25)
 			term->mode |= CURSOR;
@@ -455,10 +456,12 @@ void reset_mode(terminal * term, void *arg)
 		if (mode == 6) {		/* private mode */
 			term->mode &= ~ORIGIN;
 			set_cursor(term, 0, 0);
-		} else if (mode == 7) {
+		}
+		else if (mode == 7) {
 			term->mode &= ~AMRIGHT;
 			term->wrap = false;
-		} else if (mode == 25)
+		}
+		else if (mode == 25)
 			term->mode &= ~CURSOR;
 	}
 }
