@@ -138,8 +138,7 @@ void addch(terminal * term, u32 code)
 {
 	glyph_t *gp;
 
-	if (code == DEL							/* ignore DEL */
-		|| code >= UCS_CHARS					/* only handle UCS2 (<= 0xFFFF) */
+	if (code >= UCS_CHARS					/* only handle UCS2 (<= 0xFFFF) */
 		|| term->fonts[code] == NULL)		/* glyph not found */
 		return;
 
