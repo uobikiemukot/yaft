@@ -36,3 +36,13 @@
 	* auto_right_margin(bw)を廃止した (terminal.h, function.h)
 	* OSCを廃止した (parse.h, function.h)
 	* 上記の変更に伴ってterminfoを更新 (info/yaft.src)
+
+2012-06-24 haru
+	* version 0.1.5
+	* スタイルはたぶん元に戻した
+	* mplus fontをsampleとして追加
+	* フォントの形式がおかしかったのでBDFと完全に互換なものに直した (load.h, framebuffer.h)
+	* 8x16dotのフォント以外では正常に描画できていなかったのを修正した (load.h, framebuffer.h)
+	* BOLD/REVERSEの処理方法を変更した (terminal.h, framebuffer.h)
+	* 色の参照方法を変更した (function.h, framebuffer.h, conf.h)
+	* その他色々?
