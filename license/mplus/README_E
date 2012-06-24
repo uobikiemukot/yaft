@@ -1,0 +1,166 @@
+-
+M+ BITMAP FONTS            Copyright 2002-2005  COZ <coz@users.sourceforge.jp>
+-
+
+README
+
+
+
+
+M+ BITMAP FONTS were designed to be simple and highly readable.
+It incorporates all Kanji (Chinese character in Japanese) until
+level 2 (the one described in JISX0208).
+
+With the increasing availability of powerful PCs, scalable fonts and
+anti-aliasing, one could question the need of such fonts nowadays,
+slow PCs and the increasing popularity of mobile phone with limited resources
+etc. are still in need of such font,
+and I have there started creating this font foundry at my own pace.
+
+
+
+
+Through the provided shell script "install_mplus_fonts", the following
+fonts will be installed.
+
+
+Latin fonts
+
++  mplus-fxd (10, 12 dots)
+   Created as an alternative to the "fixed" font.
+   -
+   mplus_f10r
+   mplus_f10r-euro *1
+   mplus_f12r
+   mplus_f12r-euro *1
+   mplus_f10b
+   mplus_f10b-euro *1
+   mplus_f12b
+   mplus_f12b-euro *1
+
++  mplus-hlv (10, 12 dots)
+   Created as an alternative to the "helvetica" font.
+   -
+   mplus_h10r
+   mplus_h10r-euro *1
+   mplus_h12r
+   mplus_h12r-euro *1
+   mplus_h10b
+   mplus_h10b-euro *1
+   mplus_h12b
+   mplus_h12b-euro *1
+
++  mplus-hlvw (10, 12 dots)
+   The space between character compared with "mplus-hlv (h12r)" being slightly
+   increased the readibility of small fonts on large displays increases.
+   -
+   mplus_h12rw
+   mplus_h12rw-euro *1
+ 
++  mplus-sys (10 dots)
+   Prepared for display in window titles and menu.
+   -
+   mplus_s10r 
+   mplus_s10r-euro *1 
+   mplus_s10b
+   mplus_s10b-euro *1
+
++ mplus-qub (6 dots)
+  Minimum 6 dot size font.
+  -
+  mplus_q06r
+  mplus_q06r-euro *1
+
+*1 Euro symbol (iso8859-15)
+
+
+Japanese Fonts
+
++  Aliases are set for future mappings of the fonts (mplus_j10*,mplus_j12*).
+   "jisx0208.1983-0" -> "jisx0208.1990-0"
+
++  mplus-gothic (10, 12 dots)
+   -
+   mplus_j10r (*1)
+   mplus_j10r-jisx
+   mplus_j10r-iso
+   mplus_j10b (*1)
+   mplus_j10b-jisx
+   mplus_j10b-iso
+   mplus_j12r
+   mplus_f12r-jisx
+   mplus_f12r-iso
+   mplus_j12b
+   mplus_f12b-jisx 
+   mplus_f12b-iso
+
++  mplus-goth_p (10, 12 dots)
+   This font is the "mplus-gothic" fonts described up here with the 
+   roman characters set as proportional.
+   In browsers like Mozilla, it might be difficult to read though.
+   Please set your browser preferences with
+   pref("font.scale.aa_bitmap.enable",false).
+   -
+   mplus_h10r-jisx
+   mplus_h10r-iso
+   mplus_h10b-jisx
+   mplus_h10b-iso 
+   mplus_h12r-jisx
+   mplus_h12r-iso
+   mplus_h12b-jisx
+   mplus_h12b-iso
+
+*1 Incorporates level 1 Kanji characters.
+   Now, I'm working to finish all level 2 Kanji characters.
+
+
+M+ cursors
+
++  mplus_cursors.bdf
+   You will need to edit shell script "install_mplus_fonts" to install it.
+   Please read the explanations in the provided file INSTALL_E.
+
+
+
+
+Anonymous CVS Access
+
+
+M+ BITMAP FONTS CVS repository can be checked out through
+anonymous (pserver) CVS with the following instruction set.
+
+1. "cvs -d:pserver:anonymous@cvs.sourceforge.jp:/cvsroot/mplus-fonts login"
+
+2. When prompted for a password like "CVS password: ",
+   simply press the Enter key.
+
+3. "cvs -z3 -d:pserver:anonymous@cvs.sourceforge.jp:/cvsroot/mplus-fonts \
+   co mplus_bitmap_fonts"
+
+To update, hit the following command in "mplus_bitmap_fonts" directory.
+
+4. "cvs update -dP"
+
+You will need to run install script "install_mplus_fonts" again.
+
+
+Latest informations can be found at the following project address.
+ 
+M+ BITMAP FONTS
+http://mplus-fonts.sourceforge.jp/mplus-bitmap-fonts/index.html
+
+
+
+
+M+ OUTLINE FONTS
+
+Free Japanese outline fonts project "M+ OUTLINE FONTS", start working!
+See. also,
+
+http://mplus-fonts.sourceforge.jp/mplus-outline-fonts/index.html
+(Japanese)
+
+
+
+
+[ Special thanks to Mr.Guillaume Proux ]
