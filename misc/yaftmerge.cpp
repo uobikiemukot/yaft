@@ -15,49 +15,6 @@
 
 using namespace std;
 
-void read_yaft(char *path, glyph_map &fonts)
-{
-	int state = 0, count = 0;
-	ifstream ifs;
-	string str;
-	vector<string> vec;
-
-	glyph_t glyph;
-	u16 code;
-
-	ifs.open(path);
-	
-	while (getline(ifs, str)) {
-		vec = split(str, ' ');
-		switch (state) {
-		case 0:
-			reset_glyph(glyph);
-			code = str2int(vec[0]);
-			state = 1;
-			break;
-		case 1:
-			glyph.width = str2int(vec[0]);
-			glyph.height = str2int(vec[1]);
-			state = 2;
-			break;
-		case 2:
-			glyph.bitmap.push_back(str2int(vec[0], 16));
-			count++;
-			if (count >= glyph.height) {
-				if (fonts.find(code) != fonts.end())
-					fonts.erase(code);
-				fonts.insert(make_pair(code, glyph));
-				count = state = 0;
-			}
-			break;
-		default:
-			break;
-		}
-	}
-
-	ifs.close();
-}
-
 int main(int argc, char *argv[])
 {
 	int i;

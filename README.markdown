@@ -14,13 +14,13 @@ framebufferを用いたvt102系のターミナルエミュレータです．
 	consoleで動作します
 
 +	UTF-8対応  
-	というか他のエンコードが一切使えません  
+	※他の文字コードが一切使えません
 
 +	256色  
-	xtermと同様の256色指定のエスケープシーケンスに対応しています  
+	xtermと同様の256色指定のエスケープシーケンスに対応しています
 
 +	壁紙表示  
-	起動直前のframebufferの内容を壁紙として取り込みます  
+	起動直前のframebufferの内容を壁紙として取り込みます
 
 ## configuration
 コンパイル前にconf.hを編集して適切な設定に書き換えてください．
@@ -85,7 +85,7 @@ pathは絶対path(or 実行ディレクトリからの相対path)で記述しま
 +	INTERVAL = 1000000,  
 	pollingの間隔をマイクロ秒単位で設定できます
 
-端末サイズやオフセットの値が不正だった場合，フルスクリーンでの起動を試みます．
+端末サイズやオフセットの値が不正だった場合，全画面の起動を試みます．
 
 ## install
 
@@ -97,11 +97,16 @@ $ sudo make install
 
 gccとglibcがあればコンパイルできるはずです．
 
+	開発環境:
+	gcc 4.7.1
+	glibc 2.15-11
+
 make installを使わなくても構いません．  
 その場合は手動でticコマンドでterminfoをinstallしてください．  
 また，フォントをconf.hで設定した場所に忘れずに移動させてください．
 
 sampleとして[shinonome font]と[mplus font]を変換したyaft用のフォントを同封しています．  
+(ambiguous widthのグリフは全角幅になるように生成しています．)  
 各フォントのライセンスについてはlisence/以下のファイルを参照してください．
 
 [shinonome font]: http://openlab.ring.gr.jp/efont/shinonome/
@@ -133,7 +138,7 @@ DEFAULT_CHAR(U+20) not found or invalid cell size x:0 y:0
 ~~~
 
 フォントにU+20(SPACE)が存在しているか確認してください．  
-SPACEのグリフが端末のセルサイズとして使われているのでないと起動できません．  
+SPACEのグリフが端末のセルサイズとして使われているのでないと起動できません．
 
 SPACEが存在しな場合にはALL 0のビットマップで良いので，  
 以下のように手動でエントリを追加してみてください(8x16のフォントの場合)．
@@ -179,9 +184,11 @@ $ sudo gpasswd -a hoge video
 変更を反映させるには一度logoutをする必要があります．
 
 ### screen上で色がおかしい！
-TERMの値がrxvt/xtermでない場合にANSIカラーの8 ~ 15が正常に表示されない場合があります．  
-例えばrxvt-256colorという名前のsymbolic linkでyaftのterminfoを指して，  
-TERM=rxvt-256color screenと起動すれば上手く表示されるかもしれません．
+TERMの値がrxvt/xtermでない場合にANSIカラーの8 ~ 15が正常に表示されない場合があります．
+
+その場合，rxvt-256colorという名前のsymbolic linkでyaftのterminfoを指して，  
+TERM=rxvt-256color screenと起動すれば上手く表示されるかもしれません．  
+(screenrcのtermはyaftにしておいたほうが良いです．)
 
 ~~~
 $ export TERMINFO="$HOME/.terminfo/"
@@ -201,14 +208,15 @@ BDFを簡略化したフォント形式を使っています．
 
 codeはUCS2のコードを10進で表記したものです．  
 widthとheightはフォントの横幅と高さです(pixel)．  
-bitmapにはBDFと同様にグリフのビットマップ情報が列挙されます(16進)．  
+bitmapにはBDFと同様にグリフのビットマップ情報が16進で列挙されます．  
+(バイト境界よりもwidthが小さい場合にはLSM側に0をパディングします．)
 
 バウンディングボックスの指定がないので，  
 ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
 
 ### bdf2yaft
 misc/bdf2yaft.cppというプログラムを用いると，  
-等幅BDFをyaftで用いているフォント形式に変換できます．  
+等幅BDFをyaftで用いているフォント形式に変換できます．
 
 その際，変換テーブルを指定するとUnicode以外のBDFも変換できます．
 
@@ -245,7 +253,7 @@ $ bdf2yaft BDF
 $ cat BDF1 BDF2 ... | ./bdf2yaft
 ~~~
 
-1番目のようにテーブルを指定しないと既にUnicodeのBDFであると見なされます．  
+1番目のようにテーブルを指定しないとUnicodeのBDFであると見なされます．  
 (この場合，複数のBDFを指定することはできません．)  
 また2番目のように複数のUnicodeのBDFをcatしてからbdf2yaftに渡すと，  
 複数のBDFをmergeして1つのフォントを生成することができます．
@@ -342,6 +350,109 @@ ESC [ *
 -	s save_state
 -	u restore_state
 -	` curs_col
+
+## additional
+補足のようなもの．
+
+### sgr
+
+~~~
+ESC [ Ps ... m
+~~~
+
+文字の色や属性を指定するescape sequenceです．  
+terminfoが読める場合には以下を見ればわかると思います．
+
+~~~
+setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m,
+setab=\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m,
+sgr=\E[0%?%p6%t;1%;%?%p2%t;4%;%?%p1%p3%|%t;7%;%?%p4%t;5%;m,
+op=\E[39;49m,
+sgr0=\E[m,
+~~~
+
+0 ~ 255までの色番号は以下のように指定します．  
+これはxterm/rxvtと全く同じです．
+
+-	0 ~ 7(ANSI Color)  
+	ESC [ 3* m (前景色)
+	ESC [ 4* m (背景色)
+	*の部分には色番号(0 ~ 7)がそのまま入ります
+
+-	8 ~ 15(ANSI Colorを明るくした色)  
+	ESC [ 9* m (前景色)
+	ESC [ 10* m (背景色)
+	*の部分には色番号から8を引いた数(0 ~ 7)が入ります
+
+-	16 ~ 255(256色拡張)  
+	ESC [ 38;5;* m (前景色)
+	ESC [ 48;5;* m (背景色)
+	*の部分には色番号(16 ~ 255)がそのまま入ります
+
+-	前景/背景色のリセット  
+	ESC [ 39 m (前景色)
+	ESC [ 49 m (背景色)
+	文字属性はリセットされません
+
+文字属性の指定は以下のようになっています．  
+異なる文字属性は重複可能です．
+
+-	0(Reset)  
+	ESC [ m
+	全ての文字属性をリセットします
+
+-	1(Bold)
+	ESC [ 1 m
+	前景色がAnsi Color(0 ~ 7)だった場合，その明色(8 ~ 17)に変更します
+
+-	4(Underline)  
+	ESC [ 4 m
+	文字に下線を引きます
+
+-	5(Blink)  
+	ESC [ 5 m
+	背景色がAnsi Color(0 ~ 7)だった場合，その明色(8 ~ 17)に変更します
+
+-	7(Reverse)  
+	ESC [ 7 m
+	前景色と背景色を入れ変えます
+
+色番号8 ~ 15はterminfoでは以下のものを使用するように指示していますが，  
+Bold/Blinkを指定しても同様の色になります．
+
+	ESC [ 9* m (前景色)
+	ESC [ 10* m (背景色)
+
+	ESC [ 1;* m (前景色)
+	ESC [ 5;* m (背景色)
+
+
+### glyph width
+グリフの幅はUCS2/UCS4から求めるのではなく，以下のようになっています．
+
+-	グリフがある場合: グリフを幅をそのまま使う
+-	グリフがない場合: 幅は0
+
+存在しないグリフが強制的に幅0になってしまうとまずいので，  
+[Markus Kuhn's free wcwidth() implementation]を用いて適切な幅でビットマップが空のフォントを作るプログラムを同封しています．  
+半角部分のグリフが8x16dotの空フォントを作る場合には以下のようにします．
+
+~~~
+$ cd misc/
+$ make
+$ ./mkblank 8 16 -cjk > blank.yaft
+~~~
+
+オプションの-cjkを付けずに実行すると，ambiguous widthのグリフ幅が半角の空フォントを生成します．
+
+~~~
+$ ./yaftmerge blank.yaft some.yaft
+~~~
+
+yaftmergeで使いたいフォントと空フォントと組み合わせて使ってください．
+
+[Markus Kuhn's free wcwidth() implementation]: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
+
 
 ## TODO
 
