@@ -20,7 +20,7 @@ framebufferを用いたvt102系のターミナルエミュレータです．
 	xtermと同様の256色指定のエスケープシーケンスに対応しています
 
 +	壁紙表示  
-	起動直前のframebufferの内容を壁紙として取り込みます
+	起動直前のframebufferの内容を壁紙として取り込むことができます
 
 ## configuration
 コンパイル前にconf.hを編集して適切な設定に書き換えてください．
@@ -184,11 +184,10 @@ $ sudo gpasswd -a hoge video
 変更を反映させるには一度logoutをする必要があります．
 
 ### screen上で色がおかしい！
-TERMの値がrxvt/xtermでない場合にANSIカラーの8 ~ 15が正常に表示されない場合があります．
+screenの仕様でTERMの値がrxvt/xtermでない場合にANSI Colorの8 ~ 15が正常に表示されません．
 
 その場合，rxvt-256colorという名前のsymbolic linkでyaftのterminfoを指して，  
-TERM=rxvt-256color screenと起動すれば上手く表示されるかもしれません．  
-(screenrcのtermはyaftにしておいたほうが良いです．)
+TERM=rxvt-256color screenと起動すれば上手く表示されるかもしれません．
 
 ~~~
 $ export TERMINFO="$HOME/.terminfo/"
@@ -209,7 +208,7 @@ BDFを簡略化したフォント形式を使っています．
 codeはUCS2のコードを10進で表記したものです．  
 widthとheightはフォントの横幅と高さです(pixel)．  
 bitmapにはBDFと同様にグリフのビットマップ情報が16進で列挙されます．  
-(バイト境界よりもwidthが小さい場合にはLSM側に0をパディングします．)
+(バイト境界よりもwidthが小さい場合にはBDFと同じくLSB側に0をパディングします．)
 
 バウンディングボックスの指定がないので，  
 ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
@@ -375,23 +374,27 @@ sgr0=\E[m,
 これはxterm/rxvtと全く同じです．
 
 -	0 ~ 7(ANSI Color)  
-	ESC [ 3* m (前景色)
+	ESC [ 3* m (前景色)  
 	ESC [ 4* m (背景色)
+
 	*の部分には色番号(0 ~ 7)がそのまま入ります
 
 -	8 ~ 15(ANSI Colorを明るくした色)  
-	ESC [ 9* m (前景色)
+	ESC [ 9* m (前景色)  
 	ESC [ 10* m (背景色)
+
 	*の部分には色番号から8を引いた数(0 ~ 7)が入ります
 
 -	16 ~ 255(256色拡張)  
-	ESC [ 38;5;* m (前景色)
+	ESC [ 38;5;* m (前景色)  
 	ESC [ 48;5;* m (背景色)
+
 	*の部分には色番号(16 ~ 255)がそのまま入ります
 
 -	前景/背景色のリセット  
-	ESC [ 39 m (前景色)
+	ESC [ 39 m (前景色)  
 	ESC [ 49 m (背景色)
+
 	文字属性はリセットされません
 
 文字属性の指定は以下のようになっています．  
@@ -399,33 +402,38 @@ sgr0=\E[m,
 
 -	0(Reset)  
 	ESC [ m
+
 	全ての文字属性をリセットします
 
--	1(Bold)
+-	1(Bold)  
 	ESC [ 1 m
+
 	前景色がAnsi Color(0 ~ 7)だった場合，その明色(8 ~ 17)に変更します
 
 -	4(Underline)  
 	ESC [ 4 m
+
 	文字に下線を引きます
 
 -	5(Blink)  
 	ESC [ 5 m
+
 	背景色がAnsi Color(0 ~ 7)だった場合，その明色(8 ~ 17)に変更します
 
 -	7(Reverse)  
 	ESC [ 7 m
+
 	前景色と背景色を入れ変えます
 
-色番号8 ~ 15はterminfoでは以下のものを使用するように指示していますが，  
-Bold/Blinkを指定しても同様の色になります．
+色番号8 ~ 15はterminfoでは以下のものを使用するように指示しています．
 
 	ESC [ 9* m (前景色)
 	ESC [ 10* m (背景色)
 
+これはBold/Blinkを指定しても同様の色になります．
+
 	ESC [ 1;* m (前景色)
 	ESC [ 5;* m (背景色)
-
 
 ### glyph width
 グリフの幅はUCS2/UCS4から求めるのではなく，以下のようになっています．
@@ -434,7 +442,7 @@ Bold/Blinkを指定しても同様の色になります．
 -	グリフがない場合: 幅は0
 
 存在しないグリフが強制的に幅0になってしまうとまずいので，  
-[Markus Kuhn's free wcwidth() implementation]を用いて適切な幅でビットマップが空のフォントを作るプログラムを同封しています．  
+[mk_wcwidth()]を用いて適切な幅でビットマップが空のフォントを作るプログラムを同封しています．  
 半角部分のグリフが8x16dotの空フォントを作る場合には以下のようにします．
 
 ~~~
@@ -451,8 +459,7 @@ $ ./yaftmerge blank.yaft some.yaft
 
 yaftmergeで使いたいフォントと空フォントと組み合わせて使ってください．
 
-[Markus Kuhn's free wcwidth() implementation]: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
-
+[mk_wcwidth()]: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
 
 ## TODO
 
@@ -460,6 +467,9 @@ yaftmergeで使いたいフォントと空フォントと組み合わせて使�
 -	スクロールバックの実装
 -	BDFを直接読めるようにする
 -	control sequence listをもうちょっと真面目に書く
+-	ウィンドウサイズ・位置を変更するESCに対応する
+-	sixelを実装する
+-	yaft用のinput methodを作る
 
 ## license
 MIT Licenseです．
