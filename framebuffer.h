@@ -49,7 +49,7 @@ void set_bitmap(terminal *term, int y, int x, int offset, u32 *src)
 		color.bg = color.fg;
 
 	for (i = 0; i < gp->size.x; i++) {
-		if (gp->bitmap[offset] & 0x01 << (shift - i - 1))
+		if (gp->bitmap[offset] & (0x01 << (shift - i - 1)))
 			*(src + i) = color_palette[color.fg];
 		else if (WALLPAPER && color.bg == DEFAULT_BG)
 			*(src + i) = *(term->wall + i + x * term->cell_size.x

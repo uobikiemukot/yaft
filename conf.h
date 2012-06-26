@@ -1,6 +1,6 @@
 /* See LICENSE for licence details. */
 /* font path */
-static char *font_path = "./fonts/default.yaft";
+static char *font_path = ".fonts/default.yaft";
 
 /* framubuffer device */
 static char *fb_path = "/dev/fb0";
@@ -23,7 +23,7 @@ enum {
 	DUMP = false,
 	DEBUG = false,
 	LAZYDRAW = true,
-	WALLPAPER = false,
+	WALLPAPER = true,
 	OFFSET_X = 32,
 	OFFSET_Y = 32,
 	TERM_WIDTH = 0,

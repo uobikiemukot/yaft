@@ -7,6 +7,15 @@ void reset_func(void (**func)(terminal *term, void *arg), int num)
 		func[i] = ignore;
 }
 
+void reset_parm(parm_t * pt)
+{
+	int i;
+
+	pt->argc = 0;
+	for (i = 0; i < ESC_PARAMS; i++)
+		pt->argv[i] = NULL;
+}
+
 void load_ctrl_func(void (**func)(terminal *term, void *arg), int num)
 {
 	reset_func(func, num);
@@ -72,18 +81,17 @@ void load_csi_func(void (**func)(terminal *term, void *arg), int num)
 }
 
 /* need to rewrite this function */
-u8 parse_csi(terminal *term, int *argc, char **argv)
+bool parse_csi(terminal *term, int *argc, char **argv)
 {
 	int length;
-	u8 ch, *cp, *buf;
+	u8 *cp, *buf;
 
 	buf = term->esc.buf;
 	length = strlen((char *) buf);
 
-	if (length == 0 || length - 1 >= BUFSIZE)
-		return 0;
+	if (length <= 0)
+		return false;
 
-	ch = buf[length - 1];
 	buf[length - 1] = '\0';
 
 	cp = buf;
@@ -109,7 +117,7 @@ u8 parse_csi(terminal *term, int *argc, char **argv)
 	if (cp != &buf[length - 1])
 		goto start;
 
-	return ch;
+	return true;
 }
 
 static char *ctrl_char[] = {
@@ -130,39 +138,30 @@ void control_character(terminal *term, u8 ch)
 void esc_sequence(terminal *term, u8 ch)
 {
 	if (DEBUG)
-		fprintf(stderr, "esc: ESC %c\n", ch);
+		fprintf(stderr, "esc: ESC %s\n", term->esc.buf);
 
-	esc_func[ch & MASK_7BIT](term, NULL);
+	if (strlen((char *) term->esc.buf) == 1)
+		esc_func[ch](term, NULL);
 
 	if (ch != '[' && ch != ']')
-		term->esc.state = RESET;
+		reset_esc(term);
 }
 
-void reset_parm(parm_t * pt)
+void csi_sequence(terminal *term, u8 ch)
 {
-	int i;
-
-	pt->argc = 0;
-	for (i = 0; i < ESC_PARAMS; i++)
-		pt->argv[i] = NULL;
-}
-
-void csi_sequence(terminal *term)
-{
-	u8 ch;
 	parm_t parm;
 
 	if (DEBUG)
 		fprintf(stderr, "csi: CSI %s\n", term->esc.buf);
 
 	reset_parm(&parm);
-	ch = parse_csi(term, &parm.argc, parm.argv);
+	if (parse_csi(term, &parm.argc, parm.argv))
+		csi_func[ch](term, &parm);
 
-	csi_func[ch & MASK_7BIT](term, &parm);
 	reset_esc(term);
 }
 
-void osc_sequence(terminal *term)
+void osc_sequence(terminal *term, u8 ch)
 {
 	if (DEBUG)
 		fprintf(stderr, "osc: OSC %s\n", term->esc.buf);
@@ -216,33 +215,39 @@ void parse(terminal *term, u8 *buf, int size)
 {
 	u8 ch;
 	int i;
+	/*
+		CTRL CHARS      : 0x00 ~ 0x1F
+		ASCII(printable): 0x20 ~ 0x7E
+		CTRL CHARS(DEL) : 0x7F
+		UTF-8           : 0x80 ~ 0xFF
+	*/
 
 	for (i = 0; i < size; i++) {
 		ch = buf[i];
 		if (term->esc.state == RESET) {
-			if (ch <= US)
+			if (ch <= 0x1F)
 				control_character(term, ch);
-			else if (ch <= DEL) {
+			else if (ch <= 0x7E) {
 				if (DEBUG)
 					fprintf(stderr, "ascii: %c\n", ch);
 				addch(term, ch);
 			}
+			else if (ch == DEL)
+				continue;
 			else
 				utf8_character(term, ch);
 		}
 		else if (term->esc.state == STATE_ESC) {
-			if (ch <= DEL)
+			if (push_esc(term, ch))
 				esc_sequence(term, ch);
-			else
-				term->esc.state = RESET;
 		}
 		else if (term->esc.state == STATE_CSI) {
 			if (push_esc(term, ch))
-				csi_sequence(term);
+				csi_sequence(term, ch);
 		}
 		else if (term->esc.state == STATE_OSC) {
 			if (push_esc(term, ch))
-				osc_sequence(term);
+				osc_sequence(term, ch);
 		}
 	}
 }
