@@ -177,30 +177,27 @@ int push_esc(terminal * term, u8 ch)
 
 	*term->esc.bp++ = ch;
 	if (term->esc.state == STATE_ESC) {
-		if ('0' <= ch && ch <= '~')					/* final character */
+		if ('0' <= ch && ch <= '~') {					/* final character */
 			return true;
-		else if (ch < ' ' || '/' < ch) {			/* invalid intermediate character */
+		} else if (ch < ' ' || '/' < ch) {				/* invalid intermediate character */
 			reset_esc(term);
-			return false;
 		}
 	}
 	else if (term->esc.state == STATE_CSI) {
-		if ('@' <= ch && ch <= '~')					/* final character */
+		if ('@' <= ch && ch <= '~') {					/* final character */
 			return true;
-		else if (ch < ' ' || '?' < ch) {			/* invalid intermediate character */
+		} else if (ch < ' ' || '?' < ch) {				/* invalid intermediate character */
 			reset_esc(term);
-			return false;
 		}
 	}
 	else if (term->esc.state == STATE_OSC) {
 		if ((ch == BEL)								/* final character */	
 			|| (ch == BACKSLASH
 			&& (term->esc.bp - term->esc.buf) >= 2
-			&& *(term->esc.bp - 2) == ESC))
+			&& *(term->esc.bp - 2) == ESC)) {
 			return true;
-		else if (ch < ' ' || '~' < ch) {			/* invalid intermediate character
+		} else if (ch < ' ' || '~' < ch) {				/* invalid intermediate character
 			reset_esc(term);							not accept from 0x08 to 0x13 in OSC */
-			return false;
 		}
 	}
 	return false;
