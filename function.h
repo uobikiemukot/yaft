@@ -220,7 +220,7 @@ void erase_display(terminal * term, void *arg)
 
 	mode = (argc == 0) ? 0 : atoi(argv[argc - 1]);
 
-	if (mode < 0 || mode > 2)
+	if (mode < 0 || 2 < mode)
 		return;
 
 	if (mode == 0) {
@@ -252,7 +252,7 @@ void erase_line(terminal * term, void *arg)
 
 	mode = (argc == 0) ? 0 : atoi(argv[argc - 1]);
 
-	if (mode < 0 || mode > 2)
+	if (mode < 0 || 2 < mode)
 		return;
 
 	if (mode == 0) {

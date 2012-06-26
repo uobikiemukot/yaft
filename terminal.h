@@ -78,7 +78,7 @@ void scroll(terminal * term, int from, int to, int offset)
 	}
 }
 
-/* relative movement: causes scroll */
+/* relative movement: cause scrolling */
 void move_cursor(terminal * term, int y_offset, int x_offset)
 {
 	int x, y, top, bottom;
@@ -138,8 +138,8 @@ void addch(terminal * term, u32 code)
 {
 	glyph_t *gp;
 
-	if (code >= UCS_CHARS					/* only handle UCS2 (<= 0xFFFF) */
-		|| term->fonts[code] == NULL)		/* glyph not found */
+	if (term->fonts[code] == NULL			/* glyph not found */
+		|| code >= UCS_CHARS)				/* not print over UCS2 (>= 0x10000) */
 		return;
 
 	gp = term->fonts[code];					/* folding */
@@ -169,20 +169,39 @@ void reset_esc(terminal * term)
 
 int push_esc(terminal * term, u8 ch)
 {
-	if (term->esc.bp == &term->esc.buf[BUFSIZE - 1]	/* buffer limit */
-		|| ch == CAN || ch == SUB) {				/* CAN or SUB */
+	if (ch == CAN || ch == SUB								/* interrupt */
+		|| term->esc.bp == &term->esc.buf[BUFSIZE - 1]) {	/* buffer limit */
 		reset_esc(term);
 		return false;
 	}
 
 	*term->esc.bp++ = ch;
-	if (term->esc.state == STATE_CSI && ('@' <= ch && ch <= '~'))
-		return true;
-	else if (term->esc.state == STATE_OSC) {
-		if (ch == BEL
-			|| (strlen((char *) term->esc.buf) > 1
-			&& *(term->esc.bp - 2) == ESC && ch == BACKSLASH))
+	if (term->esc.state == STATE_ESC) {
+		if ('0' <= ch && ch <= '~')					/* final character */
 			return true;
+		else if (ch < ' ' || '/' < ch) {			/* invalid intermediate character */
+			reset_esc(term);
+			return false;
+		}
+	}
+	else if (term->esc.state == STATE_CSI) {
+		if ('@' <= ch && ch <= '~')					/* final character */
+			return true;
+		else if (ch < ' ' || '?' < ch) {			/* invalid intermediate character */
+			reset_esc(term);
+			return false;
+		}
+	}
+	else if (term->esc.state == STATE_OSC) {
+		if ((ch == BEL)								/* final character */	
+			|| (ch == BACKSLASH
+			&& (term->esc.bp - term->esc.buf) >= 2
+			&& *(term->esc.bp - 2) == ESC))
+			return true;
+		else if (ch < ' ' || '~' < ch) {			/* invalid intermediate character
+			reset_esc(term);							not accept from 0x08 to 0x13 in OSC */
+			return false;
+		}
 	}
 	return false;
 }

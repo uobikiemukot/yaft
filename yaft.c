@@ -1,3 +1,4 @@
+/* See LICENSE for licence details. */
 #include "common.h"
 #include "util.h"
 #include "framebuffer.h"
@@ -36,13 +37,6 @@ void set_rawmode(int fd, termios * save_tm, termios * tm)
 	tcsetattr(fd, TCSAFLUSH, tm);
 }
 
-void load_func()
-{
-	load_ctrl_func(ctrl_func, CTRL_CHARS);
-	load_esc_func(esc_func, ESC_CHARS);
-	load_csi_func(csi_func, ESC_CHARS);
-}
-
 int main()
 {
 	int size;
@@ -58,7 +52,9 @@ int main()
 	/* init */
 	fb_init(&fb);
 	term_init(&term, &fb);
-	load_func();
+	load_ctrl_func(ctrl_func, CTRL_CHARS);
+	load_esc_func(esc_func, ESC_CHARS);
+	load_csi_func(csi_func, ESC_CHARS);
 
 	/* fork */
 	pid = eforkpty(&term.fd, term.lines, term.cols);

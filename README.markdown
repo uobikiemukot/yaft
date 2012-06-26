@@ -465,11 +465,14 @@ yaftmergeで使いたいフォントと空フォントと組み合わせて使�
 
 -	32bpp以外の環境でも動作するようにする
 -	スクロールバックの実装
+-	コピペの実装
 -	BDFを直接読めるようにする
 -	control sequence listをもうちょっと真面目に書く
 -	ウィンドウサイズ・位置を変更するESCに対応する
 -	sixelを実装する
 -	yaft用のinput methodを作る
+-	vttestの精度を上げる
+-	screen/dwmのような機能を付ける
 
 ## license
 MIT Licenseです．

@@ -50,7 +50,6 @@ enum char_code {
 enum {
 	/* misc */
 	BITS_PER_BYTE = 8,
-	MASK_7BIT = 0x7F,
 	BUFSIZE = 1024,				/* read, esc, various buffer size */
 	ESC_PARAMS = 16,			/* max parameters of csi/osc sequence */
 	COLORS = 256,				/* num of color */
