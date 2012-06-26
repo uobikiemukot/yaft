@@ -162,12 +162,14 @@ void writeback(int fd, char *buf, int size)
 
 void reset_esc(terminal * term)
 {
+	if (DEBUG)
+		fprintf(stderr, "reset!\n");
 	memset(term->esc.buf, '\0', BUFSIZE);
 	term->esc.bp = term->esc.buf;
 	term->esc.state = RESET;
 }
 
-int push_esc(terminal * term, u8 ch)
+bool push_esc(terminal *term, u8 ch)
 {
 	if (ch == CAN || ch == SUB								/* interrupt */
 		|| term->esc.bp == &term->esc.buf[BUFSIZE - 1]) {	/* buffer limit */
@@ -177,28 +179,25 @@ int push_esc(terminal * term, u8 ch)
 
 	*term->esc.bp++ = ch;
 	if (term->esc.state == STATE_ESC) {
-		if ('0' <= ch && ch <= '~') {					/* final character */
+		if ('0' <= ch && ch <= '~')
 			return true;
-		} else if (ch < ' ' || '/' < ch) {				/* invalid intermediate character */
+		else if (' ' > ch || ch > '/')
 			reset_esc(term);
-		}
 	}
 	else if (term->esc.state == STATE_CSI) {
-		if ('@' <= ch && ch <= '~') {					/* final character */
+		if ('@' <= ch && ch <= '~')
 			return true;
-		} else if (ch < ' ' || '?' < ch) {				/* invalid intermediate character */
+		else if (' ' > ch || ch > '?')
 			reset_esc(term);
-		}
 	}
 	else if (term->esc.state == STATE_OSC) {
-		if ((ch == BEL)								/* final character */	
+		if ((ch == BEL)
 			|| (ch == BACKSLASH
 			&& (term->esc.bp - term->esc.buf) >= 2
-			&& *(term->esc.bp - 2) == ESC)) {
+			&& *(term->esc.bp - 2) == ESC))
 			return true;
-		} else if (ch < ' ' || '~' < ch) {				/* invalid intermediate character
-			reset_esc(term);							not accept from 0x08 to 0x13 in OSC */
-		}
+		else if (' ' > ch || ch > '~')
+			reset_esc(term);
 	}
 	return false;
 }
