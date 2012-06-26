@@ -138,11 +138,11 @@ void addch(terminal * term, u32 code)
 {
 	glyph_t *gp;
 
-	if (term->fonts[code] == NULL			/* glyph not found */
-		|| code >= UCS_CHARS)				/* not print over UCS2 (>= 0x10000) */
+	if (code >= UCS_CHARS				/* not print over UCS2 (>= 0x10000) */
+		|| term->fonts[code] == NULL)	/* glyph not found */
 		return;
 
-	gp = term->fonts[code];					/* folding */
+	gp = term->fonts[code];				/* folding */
 	if ((term->wrap && term->cursor.x == term->cols - 1)
 		|| (gp->size.x > term->cell_size.x && term->cursor.x == term->cols - 1)) {
 		set_cursor(term, term->cursor.y, 0);
