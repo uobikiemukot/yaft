@@ -171,8 +171,7 @@ void reset_esc(terminal * term)
 
 bool push_esc(terminal *term, u8 ch)
 {
-	if (ch == CAN || ch == SUB								/* interrupt */
-		|| term->esc.bp == &term->esc.buf[BUFSIZE - 1]) {	/* buffer limit */
+	if (term->esc.bp == &term->esc.buf[BUFSIZE - 1]) {	/* buffer limit */
 		reset_esc(term);
 		return false;
 	}
@@ -196,7 +195,7 @@ bool push_esc(terminal *term, u8 ch)
 			&& (term->esc.bp - term->esc.buf) >= 2
 			&& *(term->esc.bp - 2) == ESC))
 			return true;
-		else if (' ' > ch || ch > '~')
+		else if ((ch != ESC) && (' ' > ch || ch > '~'))
 			reset_esc(term);
 	}
 	return false;
@@ -309,12 +308,10 @@ void term_init(terminal * term, framebuffer * fb)
 		load_wallpaper(fb, term->width, term->height): NULL;
 
 	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
-
 	term->tabstop = (bool *) emalloc(sizeof(bool) * term->cols);
 
 	term->cells = (cell *)
 		emalloc(sizeof(cell) * term->cols * term->lines);
-
 	reset(term);
 
 	writeback(STDIN_FILENO, "[?25l", 6);	/* cusor hide */
@@ -329,11 +326,8 @@ void term_die(terminal * term)
 			free(term->fonts[i]->bitmap);
 		free(term->fonts[i]);
 	}
-
 	free(term->wall);
-
 	free(term->line_dirty);
-
 	free(term->cells);
 
 	writeback(STDIN_FILENO, "[?25h", 6);	/* cursor visible */
