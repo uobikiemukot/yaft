@@ -14,37 +14,36 @@ void sigchld(int signal)
 	loop_flag = 0;
 }
 
-void check_fds(fd_set * fds, timeval * tv, int stdin, int master_fd)
+void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 {
 	FD_ZERO(fds);
 	FD_SET(stdin, fds);
-	FD_SET(master_fd, fds);
-	tv->tv_sec = 0;
-	tv->tv_usec = INTERVAL;
-	eselect(fds, tv, master_fd + 1);
+	FD_SET(master, fds);
+	eselect(master + 1, fds, tv);
 }
 
-void set_rawmode(int fd, termios * save_tm, termios * tm)
+void set_rawmode(int fd, struct termios *save_tm)
 {
+	struct termios tm;
+
 	tcgetattr(fd, save_tm);
-	*tm = *save_tm;
-	tm->c_iflag = tm->c_oflag = RESET;
-	tm->c_cflag &= ~CSIZE;
-	tm->c_cflag |= CS8;
-	tm->c_lflag &= ~(ECHO | ISIG | ICANON);
-	tm->c_cc[VMIN] = 1;			/* min data size (byte) */
-	tm->c_cc[VTIME] = 0;		/* time out */
-	tcsetattr(fd, TCSAFLUSH, tm);
+	tm = *save_tm;
+	tm.c_iflag = tm.c_oflag = RESET;
+	tm.c_cflag &= ~CSIZE;
+	tm.c_cflag |= CS8;
+	tm.c_lflag &= ~(ECHO | ISIG | ICANON);
+	tm.c_cc[VMIN] = 1;			/* min data size (byte) */
+	tm.c_cc[VTIME] = 0;			/* time out */
+	tcsetattr(fd, TCSAFLUSH, &tm);
 }
 
 int main()
 {
 	int size;
-	fd_set fds;
-	termios save_tm, tm;
-	timeval tv;
 	pid_t pid;
-
+	fd_set fds;
+	struct termios save_tm;
+	struct timeval tv;
 	u8 buf[BUFSIZE];
 	framebuffer fb;
 	terminal term;
@@ -65,7 +64,9 @@ int main()
 
 	/* parent */
 	signal(SIGCHLD, sigchld);
-	set_rawmode(STDIN_FILENO, &save_tm, &tm);
+	set_rawmode(STDIN_FILENO, &save_tm);
+	tv.tv_sec = 0;
+	tv.tv_usec = SELECT_TIMEOUT;
 
 	if (DUMP)
 		setvbuf(stdout, NULL, _IONBF, 0);
@@ -76,8 +77,9 @@ int main()
 
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
 			size = read(STDIN_FILENO, buf, BUFSIZE);
-			if (size > 0)
+			if (size > 0) {
 				ewrite(term.fd, buf, size);
+			}
 		}
 
 		if (FD_ISSET(term.fd, &fds)) {

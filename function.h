@@ -1,6 +1,6 @@
 /* See LICENSE for licence details. */
 /* misc */
-int sum(parm_t * pt)
+int sum(parm_t *pt)
 {
 	int i, sum = 0;
 
@@ -10,18 +10,18 @@ int sum(parm_t * pt)
 	return sum;
 }
 
-void ignore(terminal * term, void *arg)
+void ignore(terminal *term, void *arg)
 {
 	return;
 }
 
 /* function for control character */
-void bs(terminal * term, void *arg)
+void bs(terminal *term, void *arg)
 {
 	move_cursor(term, 0, -1);
 }
 
-void tab(terminal * term, void *arg)
+void tab(terminal *term, void *arg)
 {
 	int i;
 
@@ -34,30 +34,30 @@ void tab(terminal * term, void *arg)
 	set_cursor(term, term->cursor.y, term->cols - 1);
 }
 
-void nl(terminal * term, void *arg)
+void nl(terminal *term, void *arg)
 {
 	move_cursor(term, 1, 0);
 }
 
-void cr(terminal * term, void *arg)
+void cr(terminal *term, void *arg)
 {
 	set_cursor(term, term->cursor.y, 0);
 }
 
-void enter_esc(terminal * term, void *arg)
+void enter_esc(terminal *term, void *arg)
 {
 	term->esc.state = STATE_ESC;
 }
 
 /* function for escape sequence */
-void save_state(terminal * term, void *arg)
+void save_state(terminal *term, void *arg)
 {
 	term->save_state.cursor = term->cursor;
 	term->save_state.attribute = term->attribute;
 	term->save_state.mode = term->mode & ORIGIN;
 }
 
-void restore_state(terminal * term, void *arg)
+void restore_state(terminal *term, void *arg)
 {
 	term->cursor = term->save_state.cursor;
 	term->attribute = term->save_state.attribute;
@@ -68,44 +68,44 @@ void restore_state(terminal * term, void *arg)
 		term->mode &= ~ORIGIN;
 }
 
-void crnl(terminal * term, void *arg)
+void crnl(terminal *term, void *arg)
 {
 	cr(term, NULL);
 	nl(term, NULL);
 }
 
-void set_tabstop(terminal * term, void *arg)
+void set_tabstop(terminal *term, void *arg)
 {
 	term->tabstop[term->cursor.x] = true;
 }
 
-void reverse_nl(terminal * term, void *arg)
+void reverse_nl(terminal *term, void *arg)
 {
 	move_cursor(term, -1, 0);
 }
 
-void identify(terminal * term, void *arg)
+void identify(terminal *term, void *arg)
 {
 	writeback(term->fd, "\033[?6c", 5);
 }
 
-void enter_csi(terminal * term, void *arg)
+void enter_csi(terminal *term, void *arg)
 {
 	term->esc.state = STATE_CSI;
 }
 
-void enter_osc(terminal * term, void *arg)
+void enter_osc(terminal *term, void *arg)
 {
 	term->esc.state = STATE_OSC;
 }
 
-void ris(terminal * term, void *arg)
+void ris(terminal *term, void *arg)
 {
 	reset(term);
 }
 
 /* function for csi sequence */
-void insert_blank(terminal * term, void *arg)
+void insert_blank(terminal *term, void *arg)
 {
 	int i, num = sum((parm_t *) arg);
 	cell *cp, erase;
@@ -129,7 +129,7 @@ void insert_blank(terminal * term, void *arg)
 	}
 }
 
-void curs_up(terminal * term, void *arg)
+void curs_up(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
@@ -137,7 +137,7 @@ void curs_up(terminal * term, void *arg)
 	move_cursor(term, -num, 0);
 }
 
-void curs_down(terminal * term, void *arg)
+void curs_down(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
@@ -145,7 +145,7 @@ void curs_down(terminal * term, void *arg)
 	move_cursor(term, num, 0);
 }
 
-void curs_forward(terminal * term, void *arg)
+void curs_forward(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
@@ -153,7 +153,7 @@ void curs_forward(terminal * term, void *arg)
 	move_cursor(term, 0, num);
 }
 
-void curs_back(terminal * term, void *arg)
+void curs_back(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
@@ -161,7 +161,7 @@ void curs_back(terminal * term, void *arg)
 	move_cursor(term, 0, -num);
 }
 
-void curs_nl(terminal * term, void *arg)
+void curs_nl(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
@@ -170,7 +170,7 @@ void curs_nl(terminal * term, void *arg)
 	cr(term, NULL);
 }
 
-void curs_pl(terminal * term, void *arg)
+void curs_pl(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
@@ -179,7 +179,7 @@ void curs_pl(terminal * term, void *arg)
 	cr(term, NULL);
 }
 
-void curs_col(terminal * term, void *arg)
+void curs_col(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int num = sum(pt), argc = pt->argc;
@@ -193,7 +193,7 @@ void curs_col(terminal * term, void *arg)
 	set_cursor(term, term->cursor.y, num);
 }
 
-void curs_pos(terminal * term, void *arg)
+void curs_pos(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int argc = pt->argc, line, col;
@@ -212,7 +212,7 @@ void curs_pos(terminal * term, void *arg)
 	set_cursor(term, line, col);
 }
 
-void erase_display(terminal * term, void *arg)
+void erase_display(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int i, j, argc = pt->argc, mode;
@@ -244,7 +244,7 @@ void erase_display(terminal * term, void *arg)
 	}
 }
 
-void erase_line(terminal * term, void *arg)
+void erase_line(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int i, argc = pt->argc, mode;
@@ -269,7 +269,7 @@ void erase_line(terminal * term, void *arg)
 	}
 }
 
-void insert_line(terminal * term, void *arg)
+void insert_line(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
@@ -283,7 +283,7 @@ void insert_line(terminal * term, void *arg)
 	scroll(term, term->cursor.y, term->scroll.bottom, -num);
 }
 
-void delete_line(terminal * term, void *arg)
+void delete_line(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
@@ -297,7 +297,7 @@ void delete_line(terminal * term, void *arg)
 	scroll(term, term->cursor.y, term->scroll.bottom, num);
 }
 
-void delete_char(terminal * term, void *arg)
+void delete_char(terminal *term, void *arg)
 {
 	int i, num = sum((parm_t *) arg);
 	cell *cp, erase;
@@ -320,7 +320,7 @@ void delete_char(terminal * term, void *arg)
 	}
 }
 
-void erase_char(terminal * term, void *arg)
+void erase_char(terminal *term, void *arg)
 {
 	int i, num = sum((parm_t *) arg);
 
@@ -333,7 +333,7 @@ void erase_char(terminal * term, void *arg)
 		set_cell(term, term->cursor.y, i, DEFAULT_CHAR);
 }
 
-void curs_line(terminal * term, void *arg)
+void curs_line(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int num, argc = pt->argc;
@@ -347,7 +347,7 @@ void curs_line(terminal * term, void *arg)
 	set_cursor(term, num, term->cursor.x);
 }
 
-void set_attr(terminal * term, void *arg)
+void set_attr(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int i, argc = pt->argc, num;
@@ -399,7 +399,7 @@ void set_attr(terminal * term, void *arg)
 	}
 }
 
-void status_report(terminal * term, void *arg)
+void status_report(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int i, num, argc = pt->argc;
@@ -420,7 +420,7 @@ void status_report(terminal * term, void *arg)
 	}
 }
 
-void set_mode(terminal * term, void *arg)
+void set_mode(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int i, argc = pt->argc, mode;
@@ -442,7 +442,7 @@ void set_mode(terminal * term, void *arg)
 	}
 }
 
-void reset_mode(terminal * term, void *arg)
+void reset_mode(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int i, argc = pt->argc, mode;
@@ -466,7 +466,7 @@ void reset_mode(terminal * term, void *arg)
 	}
 }
 
-void set_margin(terminal * term, void *arg)
+void set_margin(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int argc = pt->argc, top, bottom;
@@ -493,7 +493,7 @@ void set_margin(terminal * term, void *arg)
 }
 
 
-void clear_tabstop(terminal * term, void *arg)
+void clear_tabstop(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
 	int i, j, argc = pt->argc, num;

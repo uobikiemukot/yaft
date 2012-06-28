@@ -1,5 +1,5 @@
 /* See LICENSE for licence details. */
-void init_cell(cell * cp)
+void init_cell(cell *cp)
 {
 	cp->code = DEFAULT_CHAR;
 	cp->color.fg = DEFAULT_FG;
@@ -8,7 +8,7 @@ void init_cell(cell * cp)
 	cp->wide = HALF;
 }
 
-int set_cell(terminal * term, int y, int x, u16 code)
+int set_cell(terminal *term, int y, int x, u16 code)
 {
 	cell nc, *cp;
 	glyph_t *gp;
@@ -44,7 +44,7 @@ int set_cell(terminal * term, int y, int x, u16 code)
 	return HALF;
 }
 
-void scroll(terminal * term, int from, int to, int offset)
+void scroll(terminal *term, int from, int to, int offset)
 {
 	int i, j, size, abs_offset;
 	cell *dst, *src;
@@ -79,7 +79,7 @@ void scroll(terminal * term, int from, int to, int offset)
 }
 
 /* relative movement: cause scrolling */
-void move_cursor(terminal * term, int y_offset, int x_offset)
+void move_cursor(terminal *term, int y_offset, int x_offset)
 {
 	int x, y, top, bottom;
 
@@ -113,7 +113,7 @@ void move_cursor(terminal * term, int y_offset, int x_offset)
 }
 
 /* absolute movement: never scroll */
-void set_cursor(terminal * term, int y, int x)
+void set_cursor(terminal *term, int y, int x)
 {
 	int top, bottom;
 
@@ -134,11 +134,11 @@ void set_cursor(terminal * term, int y, int x)
 	term->cursor.y = y;
 }
 
-void addch(terminal * term, u32 code)
+void addch(terminal *term, u32 code)
 {
 	glyph_t *gp;
 
-	if (code >= UCS_CHARS				/* not print over UCS2 (>= 0x10000) */
+	if (code >= UCS2_CHARS				/* not print over UCS2 (>= 0x10000) */
 		|| term->fonts[code] == NULL)	/* glyph not found */
 		return;
 
@@ -160,7 +160,7 @@ void writeback(int fd, char *buf, int size)
 		ewrite(fd, (u8 *) buf, size);
 }
 
-void reset_esc(terminal * term)
+void reset_esc(terminal *term)
 {
 	if (DEBUG)
 		fprintf(stderr, "reset!\n");
@@ -201,19 +201,19 @@ bool push_esc(terminal *term, u8 ch)
 	return false;
 }
 
-void reset_ucs(terminal * term)
+void reset_ucs(terminal *term)
 {
 	term->ucs.code = term->ucs.count = term->ucs.length = 0;
 }
 
-void reset_state(terminal * term)
+void reset_state(terminal *term)
 {
 	term->save_state.cursor.x = term->save_state.cursor.y = 0;
 	term->save_state.attribute = RESET;
 	term->save_state.mode = RESET;
 }
 
-void reset(terminal * term)
+void reset(terminal *term)
 {
 	int i, j;
 
@@ -247,9 +247,9 @@ void reset(terminal * term)
 	reset_ucs(term);
 }
 
-void resize(terminal * term, int lines, int cols)
+void resize(terminal *term, int lines, int cols)
 {
-	winsize size;
+	struct winsize size;
 
 	free(term->cells);
 
@@ -269,11 +269,11 @@ void resize(terminal * term, int lines, int cols)
 	eioctl(term->fd, TIOCSWINSZ, &size);
 }
 
-void term_init(terminal * term, framebuffer * fb)
+void term_init(terminal *term, framebuffer *fb)
 {
 	glyph_t *gp;
 
-	load_fonts(term->fonts, font_path);
+	load_fonts(term->fonts, font_path, glyph_alias);
 
 	gp = term->fonts[DEFAULT_CHAR];
 	term->cell_size.x = gp->size.x;
@@ -317,14 +317,21 @@ void term_init(terminal * term, framebuffer * fb)
 	writeback(STDIN_FILENO, "[?25l", 6);	/* cusor hide */
 }
 
-void term_die(terminal * term)
+void term_die(terminal *term)
 {
-	int i;
+	int i, j;
+	glyph_t *gp;
 
-	for (i = 0; i < UCS_CHARS; i++) {
-		if (term->fonts[i] != NULL)
-			free(term->fonts[i]->bitmap);
-		free(term->fonts[i]);
+	for (i = 0; i < UCS2_CHARS; i++) {
+		gp = term->fonts[i];
+		if (gp != NULL) {
+			free(gp->bitmap);
+			free(gp);
+			for (j = 0; j < UCS2_CHARS; j++) {
+				if (term->fonts[j] == gp)
+					term->fonts[j] = NULL;
+			}
+		}
 	}
 	free(term->wall);
 	free(term->line_dirty);

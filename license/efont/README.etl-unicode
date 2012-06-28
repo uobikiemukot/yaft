@@ -1,0 +1,42 @@
+-*- mode: text; -*-
+$Id: README.etl-unicode,v 1.1 2000/11/19 03:35:22 kazuhiko Exp $
+
+ETL Unicode Font Collection
+===========================
+
+1997-04-26: First public release.
+
+This distribution contains a subset of ISO 10646 (Unicode)
+character set implemented as fixed-width bitmapped fonts,
+supplied in Binary Distribution Format (BDF).  The fonts are
+based on Naoto Takahashi's <Naoto.Takahashi@imag.fr> ETL font
+collection, with Armenian and Georgian glyphs added by Mark
+Leisher <mleisher@crl.nmsu.edu>.
+
+The current subset of ISO 10646 is a superset of the proposed
+Minimum European Subset (MES; ENV 1973:1995,
+<http://www.indigo.ie/egt/standards/mes.html>) with the extension
+to Hebrew, Armenian and Georgian glyphs.
+
+It is assumed that a user knows how to install and use the fonts.
+If not, you can find a short step-by-step tutorial on WWW,
+<http://sizif.mf.uni-lj.si/linux/cee/x11/font.install.html>, or
+elsewhere.
+
+
+1999-02-05: A bug-fix release.
+
+You might also be interested in Roman Czyborra's GNU Unifont project,
+<http://czyborra.com/unifont/>, which in effect replaces etl16-unicode;
+as well as Markus Kuhn's initiative for a 6x16 `fixed´ font,
+<http://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html>, and finally Mark
+Leisher's ClearlyU font <http://crl.nmsu.edu/~mleisher/cu.html>.
+
+
+2000-02-18: Update.
+
+Taichi Kawabata <kawabata@exa.onlab.ntt.co.jp> contributed 79
+combining characters to go on page 0x03.
+
+--
+Primoz Peterlin <primoz.peterlin@biofiz.mf.uni-lj.si>

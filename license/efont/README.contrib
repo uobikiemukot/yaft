@@ -1,0 +1,86 @@
+How to contribute
+-----------------
+
+**** Most Important Notice ****
+CONTRIBUTE YOUR COPYRIGHTED BITMAPS ONLY. If you suggest any other
+bitmap fonts should be merged info efont-unicode-bdf, please let me
+(kazuhiko@ring.gr.jp) know.
+**** Most Important Notice ****
+
+If you want to help us in extending or improving the fonts, you will
+have to edit BDF font files. This is most comfortably done with the
+xmbdfed font editor (version 4.3 or higher), which is available from
+
+    http://crl.nmsu.edu/~mleisher/xmbdfed.html
+
+For example, suppose that you edit 'f14.bdf'...
+
+(A) if you are NOT a cvs committer of /efont/ project
+
+    $ cp f14_add.hex f14_add.hex.orig
+    $ make diff
+    $ diff -u f14_add.hex.orig f14_add.hex > f14.diff
+
+    Then send f14.diff to me (kazuhiko@ring.gr.jp). Of course ChangeLog
+    entry of what you did is welcome.
+
+(B) if you are a cvs commiter of /efont/ project
+
+    $ make diff
+
+    edit 'ChangeLog'.
+
+    $ cvs ci -m 'your comment'
+
+Please try to be careful with the glyphs you generate:
+
+  - Always look first at existing similar characters in order to
+    preserve a consistent look and feel for the entire font and
+    within the font family. For block graphics characters and geometric
+    symbols, take care of correct alignment.
+
+  - All characters must strictly fit into the pixel matrix and
+    absolutely no out-of-box ink is allowed.
+
+  - The character cells will be displayed directly next to each other,
+    without any additional pixels in between. Therefore, always make
+    sure that at least the LEFTMOST pixel column remains white, as
+    otherwise letters will stick together.
+
+  - Place accents as low as possible on the Latin characters.
+
+  - Try to keep the shape of accents consistent among each other and
+    with the combining characters in the U+03xx range.
+
+  - Use xmbdfed only to edit the BDF file directly and do not import
+    the font that you want to edit from the X server. Use xmbdfed 4.3
+    or higher.
+
+You should have a copy of the ISO 10646-1:1993 standard or Unicode 3.0
+book (preferably both!) available to do this work. You can get PDF
+version of code charts of Unicode book on
+
+  http://www.unicode.org/charts/
+
+Also check out the more recent ISO 10646 amendments on
+
+  http://www.indigo.ie/egt/standards/iso10646/pdf/
+
+and more recent Unicode updates and errata on
+
+  http://www.unicode.org/unicode/uni2errata/UnicodeErrata.html
+
+Please make the developer of your favourite software aware of the
+UTF-8 definition in RFC 2279 and of the existence of this font
+collection. For more information on how to use UTF-8, please check out
+
+  http://www.cl.cam.ac.uk/~mgk25/unicode.html
+  ftp://ftp.ilog.fr/pub/Users/haible/utf8/Unicode-HOWTO.html
+
+where you will also find information on joining the
+linux-utf8@nl.linux.org mailing list.
+
+A number of UTF-8 example text files can be found in the examples/
+subdirectory or on 
+
+  http://www.cl.cam.ac.uk/~mgk25/ucs/examples/

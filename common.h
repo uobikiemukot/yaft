@@ -1,31 +1,24 @@
 /* See LICENSE for licence details. */
 #define _XOPEN_SOURCE 600
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <unistd.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <linux/fb.h>
+#include <math.h>
+#include <pty.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/select.h>
-#include <ctype.h>
-#include <string.h>
-#include <signal.h>
 #include <termios.h>
-#include <pty.h>
-#include <math.h>
+#include <unistd.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
-
-typedef struct fb_fix_screeninfo fix_info;
-typedef struct fb_var_screeninfo var_info;
-typedef struct fb_bitfield bitfield;
-typedef struct termios termios;
-typedef struct timeval timeval;
-typedef struct winsize winsize;
 
 typedef struct framebuffer framebuffer;
 typedef struct terminal terminal;
@@ -53,7 +46,7 @@ enum {
 	BUFSIZE = 1024,				/* read, esc, various buffer size */
 	ESC_PARAMS = 16,			/* max parameters of csi/osc sequence */
 	COLORS = 256,				/* num of color */
-	UCS_CHARS = 0x10000,		/* number of UCS2 glyph */
+	UCS2_CHARS = 0x10000,		/* number of UCS2 glyph */
 	CTRL_CHARS = 0x20,			/* number of control character */
 	ESC_CHARS = 0x80,			/* number of final character of escape sequence */
 	DEFAULT_CHAR = SPACE,		/* erase char, and used for cell_size: SPACE */
@@ -63,8 +56,8 @@ enum {
 
 enum width_flag {
 	NEXT_TO_WIDE = 0,
-	HALF,
-	WIDE
+	HALF = 1,
+	WIDE = 2,
 };
 
 enum char_attr {
@@ -87,8 +80,8 @@ enum term_mode {
 
 enum esc_state {
 	STATE_ESC = 1,				/* 0x1B, \033, ESC */
-	STATE_CSI,					/* ESC [ */
-	STATE_OSC,					/* ESC ] */
+	STATE_CSI = 2,				/* ESC [ */
+	STATE_OSC = 3,				/* ESC ] */
 };
 
 struct pair {
@@ -148,7 +141,7 @@ struct parm_t {
 struct terminal {
 	int fd;						/* master fd */
 
-	glyph_t *fonts[UCS_CHARS];
+	glyph_t *fonts[UCS2_CHARS];
 	u32 *wall;					/* buffer for wallpaper */
 
 	pair offset;				/* window offset (x, y) */
