@@ -31,7 +31,7 @@ enum {
 	DUMP = false,
 	DEBUG = false,
 	LAZYDRAW = true,
-	WALLPAPER = true,
+	WALLPAPER = false,
 	OFFSET_X = 32,
 	OFFSET_Y = 32,
 	TERM_WIDTH = 0,
