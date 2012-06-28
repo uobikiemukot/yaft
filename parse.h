@@ -7,7 +7,7 @@ void reset_func(void (**func)(terminal *term, void *arg), int num)
 		func[i] = ignore;
 }
 
-void reset_parm(parm_t * pt)
+void reset_parm(parm_t *pt)
 {
 	int i;
 
@@ -88,14 +88,10 @@ bool parse_csi(terminal *term, int *argc, char **argv)
 
 	buf = term->esc.buf;
 	length = strlen((char *) buf);
-
-	if (length <= 0)
-		return false;
-
 	buf[length - 1] = '\0';
 
 	cp = buf;
-	while (cp != &buf[length - 1]) {
+	while (cp < &buf[length - 1]) {
 		if (*cp == ';')
 			*cp = '\0';
 		cp++;
@@ -111,10 +107,10 @@ bool parse_csi(terminal *term, int *argc, char **argv)
 	while (isdigit(*cp))
 		cp++;
 
-	while (!isdigit(*cp) && cp != &buf[length - 1])
+	while (!isdigit(*cp) && cp < &buf[length - 1])
 		cp++;
 
-	if (cp != &buf[length - 1])
+	if (cp < &buf[length - 1])
 		goto start;
 
 	return true;

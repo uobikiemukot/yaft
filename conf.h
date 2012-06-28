@@ -1,6 +1,14 @@
 /* See LICENSE for licence details. */
 /* font path */
-static char *font_path = ".fonts/default.yaft";
+static char *font_path[] = {
+	".fonts/shnm-jis0208.yaft",
+	".fonts/shnm-jis0201.yaft",
+	".fonts/shnm-iso8859.yaft",
+	NULL,
+};
+
+/* glyph alias file */
+static char *glyph_alias = ".fonts/ambiguous-wide.alias";
 
 /* framubuffer device */
 static char *fb_path = "/dev/fb0";
@@ -23,11 +31,11 @@ enum {
 	DUMP = false,
 	DEBUG = false,
 	LAZYDRAW = true,
-	WALLPAPER = false,
+	WALLPAPER = true,
 	OFFSET_X = 32,
 	OFFSET_Y = 32,
 	TERM_WIDTH = 0,
 	TERM_HEIGHT = 0,
 	TABSTOP = 8,
-	INTERVAL = 1000000,			/* polling interval(usec) */
+	SELECT_TIMEOUT = 1000000, /* usec */
 };

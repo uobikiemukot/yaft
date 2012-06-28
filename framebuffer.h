@@ -2,8 +2,8 @@
 void fb_init(framebuffer *fb)
 {
 	char *file;
-	fix_info finfo;
-	var_info vinfo;
+	struct fb_fix_screeninfo finfo;
+	struct fb_var_screeninfo vinfo;
 
 	if ((file = getenv("FRAMEBUFFER")) != NULL)
 		fb->fd = eopen(file, O_RDWR);
@@ -24,8 +24,8 @@ void fb_init(framebuffer *fb)
 
 void fb_die(framebuffer *fb)
 {
-	munmap(fb->fp, fb->sc_size);
-	close(fb->fd);
+	emunmap(fb->fp, fb->sc_size);
+	eclose(fb->fd);
 }
 
 void set_bitmap(terminal *term, int y, int x, int offset, u32 *src)
