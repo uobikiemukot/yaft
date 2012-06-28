@@ -83,11 +83,10 @@ void dump_glyph(glyph_t &glyph)
 	int i, wide;
 
 	cout << glyph.width << " " << glyph.height << endl;
+	wide = ceil((double) glyph.width / BITS_PER_BYTE) * CHARS_PER_BYTE;
 
-	for (i = 0; i < glyph.bitmap.size(); i++) {
-		wide = ceil((double) glyph.width / BITS_PER_BYTE) * CHARS_PER_BYTE;
+	for (i = 0; i < glyph.bitmap.size(); i++)
 		cout << hex << uppercase << setw(wide) << setfill('0') << glyph.bitmap[i] << endl;
-	}
 
 	cout.unsetf(ios::hex | ios::uppercase);
 }
