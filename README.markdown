@@ -37,7 +37,7 @@ linuxのframebufferを用いたvt102系ターミナルエミュレータです�
 	フォントは複数指定可能で，後ろで指定したフォントのグリフが優先的に使われます  
 	配列の最後はNULLで終わらせないといけません
 
-+	static char *glyph_alias = ".fonts/ambiguous-wide.alias";
++	static char *glyph_alias = ".fonts/ambiguous-wide.alias";  
 	代用グリフを指定するファイルのpathです
 
 +	static char *fb_path = "/dev/fb0";  
@@ -92,7 +92,7 @@ pathは絶対path(or 実行ディレクトリからの相対path)で記述しま
 +	TABSTOP = 8,  
 	ハードウェアタブの幅
 
-+	SELECT_TIMEOUT = 1000000,
++	SELECT_TIMEOUT = 1000000,  
 	select()のタイムアウトの指定
 
 端末サイズやオフセットの値が不正だった場合，全画面の起動を試みます．
