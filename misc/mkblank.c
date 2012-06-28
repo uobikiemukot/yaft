@@ -1,46 +1,38 @@
 /*
 	mkblank: create blank yaft font
-	usage: ./mkblank WIDTH HEIGHT
-		or ./mkblank WIDTH HEIGHT -cjk
+	usage: ./mkblank
+		or ./mkblank -cjk
 */
 #include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 #include <wchar.h>
 #include "wcwidth.h"
 
 enum {
-	UCS_MAX = 0x10000,
+	DEFAULT_HALF_GLYPH = 0x20, /* half space */
+	DEFAULT_WIDE_GLYPH = 0x3000, /* wide space */
+	UCS2_MAX = 0x10000,
 };
 
 int main(int argc, char **argv)
 {
-	int i, j, tmp, width, height, ambiguous;
+	int i, width;
 	int (*func)(wchar_t ucs);
 
-	if (argc < 3) {
-		printf("usage: ./mkblank WIDTH HEIGHT [-cjk]\n");
-		return 1;
-	}
-	else {
-		width = atoi(argv[1]);
-		height = atoi(argv[2]);
-	}
-
-	if (argc >= 4)
+	if (argc > 1)
 		func = mk_wcwidth_cjk;
 	else
 		func = mk_wcwidth;
 
 	/* wcha_t uses UCS4 in internal */
-	for (i = 0; i < UCS_MAX; i++) {
-		tmp = func(i);
-		if (tmp <= 0)
+	for (i = 0; i < UCS2_MAX; i++) {
+		width = func(i);
+		if (width <= 0)
 			continue;
 
-		tmp *= width;
-		printf("%d\n%d %d\n", i, tmp, height);
-		for (j = 0; j < height; j++)
-			printf("%.2X\n", 0);
+		if (width == 1)
+			printf("0x%.4X 0x%.4X\n", i, DEFAULT_HALF_GLYPH);
+		else if (width == 2)
+			printf("0x%.4X 0x%.4X\n", i, DEFAULT_WIDE_GLYPH);
 	}
 }

@@ -1,6 +1,6 @@
 # yaft - yet another framebuffer terminal
 
-framebufferを用いたvt102系のターミナルエミュレータです．
+linuxのframebufferを用いたvt102系ターミナルエミュレータです．
 
 ![yaft]
 
@@ -27,8 +27,18 @@ framebufferを用いたvt102系のターミナルエミュレータです．
 
 ### path and terminal name
 
-+	static char *font_path = "./fonts/shnm.yaft";  
-	fontのpathを設定します
++	static char *font_path[] = {  
+	".fonts/shnm-jis0208.yaft",  
+	".fonts/shnm-jis0201.yaft",  
+	".fonts/shnm-iso8859.yaft",  
+	NULL,  
+	};  
+	fontのpathを設定します  
+	フォントは複数指定可能で，後ろで指定したフォントのグリフが優先的に使われます  
+	配列の最後はNULLで終わらせないといけません
+
++	static char *glyph_alias = ".fonts/ambiguous-wide.alias";
+	代用グリフを指定するファイルのpathです
 
 +	static char *fb_path = "/dev/fb0";  
 	framebuffer deviceのpathを設定します
@@ -82,8 +92,8 @@ pathは絶対path(or 実行ディレクトリからの相対path)で記述しま
 +	TABSTOP = 8,  
 	ハードウェアタブの幅
 
-+	INTERVAL = 1000000,  
-	pollingの間隔をマイクロ秒単位で設定できます
++	SELECT_TIMEOUT = 1000000,
+	select()のタイムアウトの指定
 
 端末サイズやオフセットの値が不正だった場合，全画面の起動を試みます．
 
@@ -95,6 +105,7 @@ $ make install-font
 $ sudo make install
 ~~~
 
+外部ライブラリは必要ありません．  
 gccとglibcがあればコンパイルできるはずです．
 
 	開発環境:
@@ -105,12 +116,12 @@ make installを使わなくても構いません．
 その場合は手動でticコマンドでterminfoをinstallしてください．  
 また，フォントをconf.hで設定した場所に忘れずに移動させてください．
 
-sampleとして[shinonome font]と[mplus font]を変換したyaft用のフォントを同封しています．  
-(ambiguous widthのグリフは全角幅になるように生成しています．)  
+sampleとして[shinonome font]，[mplus font]，それに[efont]を変換したyaft用のフォントを同封しています．  
 各フォントのライセンスについてはlisence/以下のファイルを参照してください．
 
 [shinonome font]: http://openlab.ring.gr.jp/efont/shinonome/
 [mplus font]: http://mplus-fonts.sourceforge.jp/mplus-bitmap-fonts/
+[efont]: http://openlab.ring.gr.jp/efont/
 
 ## usage
 コマンドラインオプションは存在しません．
@@ -140,30 +151,6 @@ DEFAULT_CHAR(U+20) not found or invalid cell size x:0 y:0
 フォントにU+20(SPACE)が存在しているか確認してください．  
 SPACEのグリフが端末のセルサイズとして使われているのでないと起動できません．
 
-SPACEが存在しな場合にはALL 0のビットマップで良いので，  
-以下のように手動でエントリを追加してみてください(8x16のフォントの場合)．
-
-~~~
-20
-8 16
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
-~~~
-
 ### framebufferがない！
 
 ~~~
@@ -171,20 +158,10 @@ SPACEが存在しな場合にはALL 0のビットマップで良いので，
 open: No such file or directory
 ~~~
 
-/dev/fb0がない場合，Linuxではgrubのkernelオプションにvga=773等と書くと良いかもしれません．  
-(/dev/fb0の作り方はディストリビューションごとのframebufferの利用法を調べてください．)
-
-通常，framebufferの書き込みにはvideo groupのメンバである必要があります．  
-hogeというユーザをvideo groupに追加するには以下のようにします．  
-
-~~~
-$ sudo gpasswd -a hoge video
-~~~
-
-変更を反映させるには一度logoutをする必要があります．
+/dev/fb0の作り方はディストリビューションごとのframebufferの利用法を調べてください．
 
 ### screen上で色がおかしい！
-screenの仕様でTERMの値がrxvt/xtermでない場合にANSI Colorの8 ~ 15が正常に表示されません．
+screenの仕様でTERMの値がrxvt/xtermでない場合にANSI Colorの明色(8 ~ 15番目)が正常に表示されません．
 
 その場合，rxvt-256colorという名前のsymbolic linkでyaftのterminfoを指して，  
 TERM=rxvt-256color screenと起動すれば上手く表示されるかもしれません．
@@ -266,6 +243,34 @@ $ ./yaftmerge BDF1 BDF2 ...
 yaftmergeは変換済みのフォントをmergeすることができます．  
 bdf2yaftと同様に複数のフォントに同じグリフが存在する場合，  
 後ろで指定したフォントのものが使われます．
+
+yaft自体に複数のフォントを読み込ませることができるようになったため，  
+yaftmergeは特に使う必要がなくなりました．
+
+### glyph alias
+グリフの幅はUCS2/UCS4から求めるのではなく，以下のようになっています．
+
+-	グリフがある場合: グリフを幅をそのまま使う
+-	グリフがない場合: 幅は0
+
+存在しないグリフが強制的に幅0になってしまうとまずいので，  
+グリフが存在しない場合に代用として使うグリフを指定することができます．  
+fonts/以下に2つのaliasの定義ファイルが含まれています．
+
+-	fonts/ambiguous-half.alias
+-	fonts/ambiguous-wide.alias
+
+上記のファイルをconf.hのglyph_aliasに指定すると，  
+グリフが存在しない場合，半角のグリフはSPACE(U+20)，  
+全角のグリフはIDEOGRAPHIC SPACE(U+3000)に置き換えられます．
+
+*halfと*wideはCJK特有の文字の全角にするか半角にするかで使いわけてください．  
+(全角・半角の判定には[mk_wcwidth()]を使っています．)  
+
+shinonome fontの場合，ambiguous-half.yaftをfont_pathの最後に指定して，  
+ambiguous-half.aliasをglyph_aliasとして使用するとambiguousなフォントを半角にすることができます．
+
+[mk_wcwidth()]: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
 
 ## wallpaper
 背景画像を表示したい場合にはconf.hのWALLPAPERをtrueにしてコンパイルした上で，  
@@ -434,32 +439,6 @@ sgr0=\E[m,
 
 	ESC [ 1;* m (前景色)
 	ESC [ 5;* m (背景色)
-
-### glyph width
-グリフの幅はUCS2/UCS4から求めるのではなく，以下のようになっています．
-
--	グリフがある場合: グリフを幅をそのまま使う
--	グリフがない場合: 幅は0
-
-存在しないグリフが強制的に幅0になってしまうとまずいので，  
-[mk_wcwidth()]を用いて適切な幅でビットマップが空のフォントを作るプログラムを同封しています．  
-半角部分のグリフが8x16dotの空フォントを作る場合には以下のようにします．
-
-~~~
-$ cd misc/
-$ make
-$ ./mkblank 8 16 -cjk > blank.yaft
-~~~
-
-オプションの-cjkを付けずに実行すると，ambiguous widthのグリフ幅が半角の空フォントを生成します．
-
-~~~
-$ ./yaftmerge blank.yaft some.yaft
-~~~
-
-yaftmergeで使いたいフォントと空フォントと組み合わせて使ってください．
-
-[mk_wcwidth()]: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
 
 ## TODO
 
