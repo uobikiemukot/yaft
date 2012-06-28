@@ -27,18 +27,11 @@ linuxのframebufferを用いたvt102系ターミナルエミュレータです�
 
 ### path and terminal name
 
-+	static char *font_path[] = {  
-	".fonts/shnm-jis0208.yaft",  
-	".fonts/shnm-jis0201.yaft",  
-	".fonts/shnm-iso8859.yaft",  
-	NULL,  
-	};  
-	fontのpathを設定します  
-	フォントは複数指定可能で，後ろで指定したフォントのグリフが優先的に使われます  
-	配列の最後はNULLで終わらせないといけません
++	static char *font_path[] = { ".fonts/shnm-jis0208.yaft", ".fonts/shnm-jis0201.yaft", ".fonts/shnm-iso8859.yaft", NULL, };  
+	fontを指定します
 
 +	static char *glyph_alias = ".fonts/ambiguous-wide.alias";  
-	代用グリフを指定するファイルのpathです
+	グリフのaliasを定義するファイルのpathです
 
 +	static char *fb_path = "/dev/fb0";  
 	framebuffer deviceのpathを設定します
@@ -49,7 +42,13 @@ linuxのframebufferを用いたvt102系ターミナルエミュレータです�
 +	static char *term_name = "TERM=yaft-256color";  
 	環境変数TERMの値を設定します
 
-pathは絶対path(or 実行ディレクトリからの相対path)で記述します．
+pathは絶対path(or 実行ディレクトリからの相対path)で記述します．  
+
+fontは複数指定可能で，後ろに指定したフォントのグリフが優先的に使われます．  
+font_pathの配列の最後にはNULLを入れないといけません．
+
+glyph_aliasを使わない場合にはNULLを指定します．  
+(特に良いことはありません．)
 
 ### color
 
@@ -108,27 +107,28 @@ $ sudo make install
 外部ライブラリは必要ありません．  
 gccとglibcがあればコンパイルできるはずです．
 
-	開発環境:
-	gcc 4.7.1
-	glibc 2.15-11
-
 make installを使わなくても構いません．  
 その場合は手動でticコマンドでterminfoをinstallしてください．  
-また，フォントをconf.hで設定した場所に忘れずに移動させてください．
-
-sampleとして[shinonome font]，[mplus font]，それに[efont]を変換したyaft用のフォントを同封しています．  
-各フォントのライセンスについてはlisence/以下のファイルを参照してください．
-
-[shinonome font]: http://openlab.ring.gr.jp/efont/shinonome/
-[mplus font]: http://mplus-fonts.sourceforge.jp/mplus-bitmap-fonts/
-[efont]: http://openlab.ring.gr.jp/efont/
+また，フォント(とaliasのファイル)をconf.hで設定した場所に忘れずに移動させてください．
 
 ## usage
-コマンドラインオプションは存在しません．
 
 ~~~
 $ yaft
 ~~~
+
+コマンドラインオプションは存在しません．
+
+~~~
+$ yaft_wall /path/to/wallpaper.jpg
+~~~
+
+conf.hのWALLPAPERをtrueにしてcompileした上で，  
+上記のように起動すると壁紙を使うことができます．
+
+[fbv]とyaftがpathの通っているところにインストールされている必要があります．
+
+[fbv]: http://www.eclis.ch/fbv/
 
 ## troubleshooting
 
@@ -140,7 +140,7 @@ $ ./yaft
 fopen: No such file or directory
 ~~~
 
-フォントが適切な場所にあるかを確認してください．
+フォントとaliasを定義するファイルが適切な場所にあるかを確認してください．
 
 ### グリフがない！
 
@@ -175,6 +175,31 @@ $ TERM=rxvt-256color screen
 ~~~
 
 ## font
+
+### sample
+sampleとして[shinonome font]，[mplus font]，それに[efont]を変換したyaft用のフォントを同封しています．  
+自分用のフォントを生成したい場合はmisc/bdf2yaftを使ってください(additionalに説明があります)．
+
+-	shnm-*.yaft  
+	shinonome font(16dot)
+
+-	mplus-*.yaft  
+	mplus font(12dot)
+
+-	ambiguous-half.yaft  
+	efont(16dot)のうち，文字幅がambiguousのグリフ(半角)
+
+-	ambiguous-half.alias
+-	ambiguous-wide.alias  
+	代用グリフの設定ファイル
+
+各フォントのライセンスについてはlisence/以下のファイルを参照してください．
+
+[shinonome font]: http://openlab.ring.gr.jp/efont/shinonome/
+[mplus font]: http://mplus-fonts.sourceforge.jp/mplus-bitmap-fonts/
+[efont]: http://openlab.ring.gr.jp/efont/
+
+### format
 BDFを簡略化したフォント形式を使っています．  
 各グリフは以下の情報を持っており，それがグリフの数だけ並んでいます．
 
@@ -190,64 +215,7 @@ bitmapにはBDFと同様にグリフのビットマップ情報が16進で列挙
 バウンディングボックスの指定がないので，  
 ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
 
-### bdf2yaft
-misc/bdf2yaft.cppというプログラムを用いると，  
-等幅BDFをyaftで用いているフォント形式に変換できます．
-
-その際，変換テーブルを指定するとUnicode以外のBDFも変換できます．
-
-~~~
-$ cd misc
-$ make
-$ ./bdf2yaft TABLE BDF1 BDF2 ...
-~~~
-
-複数のフォントに同じグリフが存在する場合，  
-後ろで指定したフォントのものが使われます．
-
-変換テーブルの形式は変換元と変換先の文字コードを16進で列挙したものです．  
-以下のような書式になっています．
-
--	ペアの区切りはタブでなければいけません
--	先頭が#の行はコメントと見なされます
--	3つめ以降のフィールドは無視されます
-
-~~~
-0x00	0x0000  # NULL
-0x01	0x0001  # START OF HEADING
-0x02	0x0002  # START OF TEXT
-0x03	0x0003  # END OF TEXT
-0x04	0x0004  # END OF TRANSMISSION
-0x05	0x0005  # ENQUIRY
-...
-~~~
-
-以下のような使い方もできます．
-
-~~~
-$ bdf2yaft BDF
-$ cat BDF1 BDF2 ... | ./bdf2yaft
-~~~
-
-1番目のようにテーブルを指定しないとUnicodeのBDFであると見なされます．  
-(この場合，複数のBDFを指定することはできません．)  
-また2番目のように複数のUnicodeのBDFをcatしてからbdf2yaftに渡すと，  
-複数のBDFをmergeして1つのフォントを生成することができます．
-
-### yaftmerge
-
-~~~
-$ ./yaftmerge BDF1 BDF2 ...
-~~~
-
-yaftmergeは変換済みのフォントをmergeすることができます．  
-bdf2yaftと同様に複数のフォントに同じグリフが存在する場合，  
-後ろで指定したフォントのものが使われます．
-
-yaft自体に複数のフォントを読み込ませることができるようになったため，  
-yaftmergeは特に使う必要がなくなりました．
-
-### glyph alias
+### glyph width
 グリフの幅はUCS2/UCS4から求めるのではなく，以下のようになっています．
 
 -	グリフがある場合: グリフを幅をそのまま使う
@@ -264,27 +232,10 @@ fonts/以下に2つのaliasの定義ファイルが含まれています．
 グリフが存在しない場合，半角のグリフはSPACE(U+20)，  
 全角のグリフはIDEOGRAPHIC SPACE(U+3000)に置き換えられます．
 
-*halfと*wideはCJK特有の文字の全角にするか半角にするかで使いわけてください．  
-(全角・半角の判定には[mk_wcwidth()]を使っています．)  
-
-shinonome fontの場合，ambiguous-half.yaftをfont_pathの最後に指定して，  
-ambiguous-half.aliasをglyph_aliasとして使用するとambiguousなフォントを半角にすることができます．
+-halfと-wideはambiguous widthのグリフを全角にするか半角にするかで使いわけてください．  
+(全角・半角の判定には[mk_wcwidth()]を使っています．)
 
 [mk_wcwidth()]: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
-
-## wallpaper
-背景画像を表示したい場合にはconf.hのWALLPAPERをtrueにしてコンパイルした上で，  
-yaft_wallを以下のように実行してください．
-
-~~~
-$ ./yaft_wall /path/to/wallpaper.jpg
-~~~
-
-yaftがpathの通っている場所にインストールされている必要があります．  
-画像の表示には[fbv]を利用しています．  
-framebuffer上で画像が表示できるプログラムなら他のものでも構いません．
-
-[fbv]: http://www.eclis.ch/fbv/
 
 ## control sequence list
 listにないコントロールシーケンスは無視されます．  
@@ -439,6 +390,50 @@ sgr0=\E[m,
 
 	ESC [ 1;* m (前景色)
 	ESC [ 5;* m (背景色)
+
+### bdf2yaft
+misc/bdf2yaft.cppというプログラムを用いると，  
+等幅BDFをyaftで用いているフォント形式に変換できます．
+
+その際，変換テーブルを指定するとUnicode以外のBDFも変換できます．
+
+~~~
+$ cd misc
+$ make
+$ ./bdf2yaft TABLE BDF1 BDF2 ...
+~~~
+
+複数のフォントに同じグリフが存在する場合，  
+後ろで指定したフォントのものが使われます．
+
+変換テーブルの形式は変換元と変換先の文字コードを16進で列挙したものです．  
+以下のような書式になっています．
+
+-	ペアの区切りはタブでなければいけません
+-	先頭が#の行はコメントと見なされます
+-	3つめ以降のフィールドは無視されます
+
+~~~
+0x00	0x0000  # NULL
+0x01	0x0001  # START OF HEADING
+0x02	0x0002  # START OF TEXT
+0x03	0x0003  # END OF TEXT
+0x04	0x0004  # END OF TRANSMISSION
+0x05	0x0005  # ENQUIRY
+...
+~~~
+
+以下のような使い方もできます．
+
+~~~
+$ bdf2yaft BDF
+$ cat BDF1 BDF2 ... | ./bdf2yaft
+~~~
+
+1番目のようにテーブルを指定しないとUnicodeのBDFであると見なされます．  
+(この場合，複数のBDFを指定することはできません．)  
+また2番目のように複数のUnicodeのBDFをcatしてからbdf2yaftに渡すと，  
+複数のBDFをmergeして1つのフォントを生成することができます．
 
 ## TODO
 
