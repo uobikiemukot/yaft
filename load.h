@@ -72,7 +72,8 @@ void load_fonts(glyph_t **fonts, char **font_path, char *alias)
 	for (i = 0; font_path[i] != NULL; i++)
 		load_glyph(fonts, font_path[i]);
 
-	load_alias(fonts, alias);
+	if (alias != NULL)
+		load_alias(fonts, alias);
 
 	gp = fonts[DEFAULT_CHAR];
 	if (gp == NULL || gp->size.x == 0 || gp->size.y == 0) {
