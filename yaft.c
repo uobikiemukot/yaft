@@ -19,6 +19,8 @@ void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 	FD_ZERO(fds);
 	FD_SET(stdin, fds);
 	FD_SET(master, fds);
+	tv->tv_sec = 0;
+	tv->tv_usec = SELECT_TIMEOUT;
 	eselect(master + 1, fds, tv);
 }
 
@@ -65,8 +67,6 @@ int main()
 	/* parent */
 	signal(SIGCHLD, sigchld);
 	set_rawmode(STDIN_FILENO, &save_tm);
-	tv.tv_sec = 0;
-	tv.tv_usec = SELECT_TIMEOUT;
 
 	if (DUMP)
 		setvbuf(stdout, NULL, _IONBF, 0);
