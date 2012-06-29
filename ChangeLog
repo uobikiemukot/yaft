@@ -46,3 +46,10 @@
 	* BOLD/REVERSEの処理方法を変更した (terminal.h, framebuffer.h)
 	* 色の参照方法を変更した (function.h, framebuffer.h, conf.h)
 	* その他色々?
+
+2012-06-29 haru
+	* version 0.1.6
+	* フォントを複数指定できるようにした(load.h, terminal.h, conf.h)
+	(一部のグリフしかない場合に使用するメモリが減った)
+	* グリフの代用を指定できるようにした(load.h, terminal.h, conf.h)
+	* その他ちょっとした修正等
