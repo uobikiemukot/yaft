@@ -77,17 +77,16 @@ int main()
 
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
 			size = read(STDIN_FILENO, buf, BUFSIZE);
-			if (size > 0) {
+			if (size > 0)
 				ewrite(term.fd, buf, size);
-			}
 		}
 
 		if (FD_ISSET(term.fd, &fds)) {
 			size = read(term.fd, buf, BUFSIZE);
 			if (size > 0) {
-				parse(&term, buf, size);
 				if (DUMP)
 					ewrite(STDOUT_FILENO, buf, size);
+				parse(&term, buf, size);
 				if (LAZYDRAW && size == BUFSIZE)
 					continue;
 				refresh(&fb, &term);
