@@ -36,8 +36,7 @@ typedef struct parm_t parm_t;
 #include "conf.h"				/* user configuration */
 
 enum char_code {
-	BEL = 0x07, CAN = 0x18, SUB = 0x1A, ESC = 0x1B,
-	SPACE = 0x20, US = 0x1F, BACKSLASH = 0x5C, DEL = 0x7F,
+	BEL = 0x07, ESC = 0x1B, SPACE = 0x20, BACKSLASH = 0x5C, DEL = 0x7F,
 };
 
 enum {
@@ -56,8 +55,8 @@ enum {
 
 enum width_flag {
 	NEXT_TO_WIDE = 0,
-	HALF = 1,
-	WIDE = 2,
+	HALF,
+	WIDE,
 };
 
 enum char_attr {
@@ -80,8 +79,8 @@ enum term_mode {
 
 enum esc_state {
 	STATE_ESC = 1,				/* 0x1B, \033, ESC */
-	STATE_CSI = 2,				/* ESC [ */
-	STATE_OSC = 3,				/* ESC ] */
+	STATE_CSI,					/* ESC [ */
+	STATE_OSC,					/* ESC ] */
 };
 
 struct pair {
@@ -168,6 +167,6 @@ struct terminal {
 	uchar ucs;					/* store UTF-8 sequence */
 };
 
-static void (*ctrl_func[CTRL_CHARS]) (terminal * term, void *arg);
-static void (*esc_func[ESC_CHARS]) (terminal * term, void *arg);
-static void (*csi_func[ESC_CHARS]) (terminal * term, void *arg);
+static void (*ctrl_func[CTRL_CHARS])(terminal * term, void *arg);
+static void (*esc_func[ESC_CHARS])(terminal * term, void *arg);
+static void (*csi_func[ESC_CHARS])(terminal * term, void *arg);
