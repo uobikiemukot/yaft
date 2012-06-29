@@ -163,7 +163,7 @@ void writeback(int fd, char *buf, int size)
 void reset_esc(terminal *term)
 {
 	if (DEBUG)
-		fprintf(stderr, "reset!\n");
+		fprintf(stderr, "*esc reset*\n");
 	memset(term->esc.buf, '\0', BUFSIZE);
 	term->esc.bp = term->esc.buf;
 	term->esc.state = RESET;
@@ -314,7 +314,7 @@ void term_init(terminal *term, framebuffer *fb)
 		emalloc(sizeof(cell) * term->cols * term->lines);
 	reset(term);
 
-	writeback(STDIN_FILENO, "[?25l", 6);	/* cusor hide */
+	writeback(STDIN_FILENO, "\033[?25l", 6);	/* cusor hide */
 }
 
 void term_die(terminal *term)
@@ -337,5 +337,5 @@ void term_die(terminal *term)
 	free(term->line_dirty);
 	free(term->cells);
 
-	writeback(STDIN_FILENO, "[?25h", 6);	/* cursor visible */
+	writeback(STDIN_FILENO, "\033[?25h", 6);	/* cursor visible */
 }
