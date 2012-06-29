@@ -108,8 +108,13 @@ $ sudo make install
 gccとglibcがあればコンパイルできるはずです．
 
 make installを使わなくても構いません．  
-その場合は手動でticコマンドでterminfoをinstallしてください．  
-また，フォント(とaliasのファイル)をconf.hで設定した場所に忘れずに移動させてください．
+その場合は以下のコマンドでterminfoをinstallしてください．
+
+~~~
+$ tic info/yaft.src
+~~~
+
+また，フォント(とaliasの定義ファイル)をconf.hで設定した場所に忘れずに移動させてください．
 
 ## usage
 
@@ -177,7 +182,8 @@ $ TERM=rxvt-256color screen
 ## font
 
 ### sample
-sampleとして[shinonome font]，[mplus font]，それに[efont]を変換したyaft用のフォントを同封しています．  
+sampleとして[shinonome font]，[mplus font]，  
+それに[efont]を変換したyaft用のフォントをfont/以下に同封しています．  
 自分用のフォントを生成したい場合はmisc/bdf2yaftを使ってください(additionalに説明があります)．
 
 -	shnm-*.yaft  
@@ -189,31 +195,12 @@ sampleとして[shinonome font]，[mplus font]，それに[efont]を変換した
 -	ambiguous-half.yaft  
 	efont(16dot)のうち，文字幅がambiguousのグリフ(半角)
 
--	ambiguous-half.alias
--	ambiguous-wide.alias  
-	代用グリフの設定ファイル
-
 各フォントのライセンスについてはlisence/以下のファイルを参照してください．
 
 [shinonome font]: http://openlab.ring.gr.jp/efont/shinonome/
 [mplus font]: http://mplus-fonts.sourceforge.jp/mplus-bitmap-fonts/
 [efont]: http://openlab.ring.gr.jp/efont/
 
-### format
-BDFを簡略化したフォント形式を使っています．  
-各グリフは以下の情報を持っており，それがグリフの数だけ並んでいます．
-
-	code
-	width height
-	bitmap...
-
-codeはUCS2のコードを10進で表記したものです．  
-widthとheightはフォントの横幅と高さです(pixel)．  
-bitmapにはBDFと同様にグリフのビットマップ情報が16進で列挙されます．  
-(バイト境界よりもwidthが小さい場合にはBDFと同じくLSB側に0をパディングします．)
-
-バウンディングボックスの指定がないので，  
-ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
 
 ### glyph width
 グリフの幅はUCS2/UCS4から求めるのではなく，以下のようになっています．
@@ -230,7 +217,7 @@ fonts/以下に2つのaliasの定義ファイルが含まれています．
 
 上記のファイルをconf.hのglyph_aliasに指定すると，  
 グリフが存在しない場合，半角のグリフはSPACE(U+20)，  
-全角のグリフはIDEOGRAPHIC SPACE(U+3000)に置き換えられます．
+全角のグリフは全角スペース(U+3000)に置き換えられます．
 
 -halfと-wideはambiguous widthのグリフを全角にするか半角にするかで使いわけてください．  
 (全角・半角の判定には[mk_wcwidth()]を使っています．)
@@ -390,6 +377,28 @@ sgr0=\E[m,
 
 	ESC [ 1;* m (前景色)
 	ESC [ 5;* m (背景色)
+
+また，0 ~ 15の色は以下のようにも参照できます．  
+(文字数が多くなるだけなので普通は使いません．)
+
+	ESC [ 38;5;* m (前景色)
+	ESC [ 48;5;* m (背景色)
+
+### yaft font format
+BDFを簡略化したフォント形式を使っています．  
+各グリフは以下の情報を持っており，それがグリフの数だけ並んでいます．
+
+	code
+	width height
+	bitmap...
+
+codeはUCS2のコードを10進で表記したものです．  
+widthとheightはフォントの横幅と高さです(pixel)．  
+bitmapにはBDFと同様にグリフのビットマップ情報が16進で列挙されます．  
+(バイト境界よりもwidthが小さい場合にはBDFと同じくLSB側に0をパディングします．)
+
+バウンディングボックスの指定がないので，  
+ビットマップ情報としては常にwidth * height分の情報を記述しないといけません．
 
 ### bdf2yaft
 misc/bdf2yaft.cppというプログラムを用いると，  
