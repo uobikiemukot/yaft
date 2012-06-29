@@ -201,7 +201,7 @@ void utf8_character(terminal *term, u8 ch)
 
 	if (term->ucs.count >= term->ucs.length) {
 		if (DEBUG)
-			fprintf(stderr, "unicode: U+%4.4X\n", ch);
+			fprintf(stderr, "unicode: U+%4.4X\n", term->ucs.code);
 		addch(term, term->ucs.code);
 		reset_ucs(term);
 	}
