@@ -1,7 +1,7 @@
 /* See LICENSE for licence details. */
 #include "common.h"
 #include "util.h"
-#include "framebuffer.h"
+#include "x.h"
 #include "load.h"
 #include "terminal.h"
 #include "function.h"
@@ -14,10 +14,9 @@ void sigchld(int signal)
 	loop_flag = 0;
 }
 
-void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
+void check_fds(fd_set *fds, struct timeval *tv, int master)
 {
 	FD_ZERO(fds);
-	FD_SET(stdin, fds);
 	FD_SET(master, fds);
 	tv->tv_sec = 0;
 	tv->tv_usec = SELECT_TIMEOUT;
@@ -39,6 +38,49 @@ void set_rawmode(int fd, struct termios *save_tm)
 	tcsetattr(fd, TCSAFLUSH, &tm);
 }
 
+void xkeypress(xwindow *xw, terminal *term, XEvent *ev)
+{
+	int size;
+	char buf[BUFSIZE];
+	XKeyEvent *e = &ev->xkey;
+	KeySym keysym;
+
+	size = XLookupString(e, buf, BUFSIZE, &keysym, NULL);
+	ewrite(term->fd, (u8 *) buf, size);
+}
+
+void xresize(xwindow *xw, terminal *term, XEvent *ev)
+{
+	int lines, cols;
+
+	XFreePixmap(xw->dsp, xw->buf);
+
+	lines = ev->xconfigure.height / term->cell_size.y;
+	cols = ev->xconfigure.width / term->cell_size.x;
+
+	xw->buf = XCreatePixmap(xw->dsp, xw->win,
+		ev->xconfigure.width, ev->xconfigure.height,
+		XDefaultDepth(xw->dsp, xw->sc));
+
+	resize(term, lines, cols);
+}
+
+void xredraw(xwindow *xw, terminal *term, XEvent *ev)
+{
+	int i;
+
+	for (i = 0; i < term->lines; i++)
+		term->line_dirty[i] = true;
+
+	refresh(xw, term);
+}
+
+static void (*event_func[LASTEvent])(xwindow *xw, terminal *term, XEvent *ev) = {
+	[KeyPress] = xkeypress,
+	[ConfigureNotify] = xresize,
+	[Expose] = xredraw,
+};
+
 int main()
 {
 	int size;
@@ -46,30 +88,34 @@ int main()
 	struct termios save_tm;
 	struct timeval tv;
 	u8 buf[BUFSIZE];
-	framebuffer fb;
+	XEvent ev;
+	xwindow xw;
 	terminal term;
 
 	/* init */
-	fb_init(&fb);
-	term_init(&term, &fb);
+	x_init(&xw);
+	term_init(&term, xw.res);
 	load_ctrl_func(ctrl_func, CTRL_CHARS);
 	load_esc_func(esc_func, ESC_CHARS);
 	load_csi_func(csi_func, ESC_CHARS);
 
 	/* fork */
 	eforkpty(&term.fd, term.lines, term.cols);
+
 	signal(SIGCHLD, sigchld);
-	set_rawmode(STDIN_FILENO, &save_tm);
 	setvbuf(stdout, NULL, _IONBF, 0);
 
 	/* main loop */
 	while (loop_flag) {
-		check_fds(&fds, &tv, STDIN_FILENO, term.fd);
+		check_fds(&fds, &tv, term.fd);
 
-		if (FD_ISSET(STDIN_FILENO, &fds)) {
-			size = read(STDIN_FILENO, buf, BUFSIZE);
-			if (size > 0)
-				ewrite(term.fd, buf, size);
+		while(XPending(xw.dsp)) {
+			XNextEvent(xw.dsp, &ev);
+			//if(XFilterEvent(&ev, xw.win))
+			if(XFilterEvent(&ev, (Window) NULL) == True)
+				continue;
+			if (event_func[ev.type])
+				event_func[ev.type](&xw, &term, &ev);
 		}
 
 		if (FD_ISSET(term.fd, &fds)) {
@@ -80,14 +126,13 @@ int main()
 				parse(&term, buf, size);
 				if (LAZYDRAW && size == BUFSIZE)
 					continue;
-				refresh(&fb, &term);
+				refresh(&xw, &term);
 			}
 		}
 	}
 
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &save_tm);
 	term_die(&term);
-	fb_die(&fb);
+	x_die(&xw);
 
 	return 0;
 }

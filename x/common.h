@@ -16,11 +16,15 @@
 #include <sys/select.h>
 #include <termios.h>
 #include <unistd.h>
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 
+typedef struct xwindow xwindow;
 typedef struct framebuffer framebuffer;
 typedef struct terminal terminal;
 typedef struct escape escape;
@@ -33,8 +37,8 @@ typedef struct uchar uchar;
 typedef struct state state;
 typedef struct parm_t parm_t;
 
-#include "color.h"				/* 256color definition */
-#include "conf.h"				/* user configuration */
+#include "./color.h"				/* 256color definition */
+#include "./conf.h"				/* user configuration */
 
 enum char_code {
 	BEL = 0x07, ESC = 0x1B, SPACE = 0x20, BACKSLASH = 0x5C, DEL = 0x7F,
@@ -96,12 +100,13 @@ struct color_pair {
 	int fg, bg;
 };
 
-struct framebuffer {
-	u32 *fp;					/* pointer of framebuffer(read only), assume bits per pixel == 32 */
-	int fd;						/* file descriptor of framebuffer */
-	pair res;					/* resolution (x, y) */
-	long sc_size;				/* screen data size (bytes) */
-	int line_length;			/* (pixel) */
+struct xwindow {
+	Display *dsp;
+	Window win;
+	Pixmap buf;
+	GC gc;
+	pair res;
+	int sc;
 };
 
 struct cell {
