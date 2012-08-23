@@ -1,9 +1,17 @@
 /* See LICENSE for licence details. */
+void x_fatal(char *str)
+{
+	fprintf(stderr, "%s\n", str);
+	exit(EXIT_FAILURE);
+}
+
 void x_init(xwindow *xw)
 {
 	XTextProperty title;
 
-	xw->dsp = XOpenDisplay("");
+	if ((xw->dsp = XOpenDisplay("")) == NULL)
+		x_fatal("can't open display");
+
 	xw->sc = DefaultScreen(xw->dsp);
 
 	xw->win = XCreateSimpleWindow(xw->dsp, DefaultRootWindow(xw->dsp),

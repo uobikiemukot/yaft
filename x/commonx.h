@@ -3,7 +3,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <linux/fb.h>
 #include <math.h>
 #include <pty.h>
 #include <signal.h>
@@ -37,8 +36,8 @@ typedef struct uchar uchar;
 typedef struct state state;
 typedef struct parm_t parm_t;
 
-#include "./color.h"				/* 256color definition */
-#include "./conf.h"				/* user configuration */
+#include "../color.h"				/* 256color definition */
+#include "../conf.h"				/* user configuration */
 
 enum char_code {
 	BEL = 0x07, ESC = 0x1B, SPACE = 0x20, BACKSLASH = 0x5C, DEL = 0x7F,
@@ -107,6 +106,14 @@ struct xwindow {
 	GC gc;
 	pair res;
 	int sc;
+};
+
+struct framebuffer {
+	u32 *fp;					/* pointer of framebuffer(read only), assume bits per pixel == 32 */
+	int fd;						/* file descriptor of framebuffer */
+	pair res;					/* resolution (x, y) */
+	long sc_size;				/* screen data size (bytes) */
+	int line_length;			/* (pixel) */
 };
 
 struct cell {
