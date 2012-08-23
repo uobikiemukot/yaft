@@ -102,6 +102,7 @@ struct framebuffer {
 	pair res;					/* resolution (x, y) */
 	long sc_size;				/* screen data size (bytes) */
 	int line_length;			/* (pixel) */
+	u32 *wall;					/* buffer for wallpaper */
 };
 
 struct cell {
@@ -140,9 +141,7 @@ struct parm_t {
 
 struct terminal {
 	int fd;						/* master fd */
-
 	glyph_t *fonts[UCS2_CHARS];
-	u32 *wall;					/* buffer for wallpaper */
 
 	pair offset;				/* window offset (x, y) */
 	int width, height;			/* terminal size (pixel) */

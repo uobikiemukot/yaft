@@ -51,7 +51,7 @@ int main()
 
 	/* init */
 	fb_init(&fb);
-	term_init(&term, &fb);
+	term_init(&term, fb.res);
 	load_ctrl_func(ctrl_func, CTRL_CHARS);
 	load_esc_func(esc_func, ESC_CHARS);
 	load_csi_func(csi_func, ESC_CHARS);
