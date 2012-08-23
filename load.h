@@ -82,20 +82,3 @@ void load_fonts(glyph_t **fonts, char **font_path, char *alias)
 		exit(EXIT_FAILURE);
 	}
 }
-
-u32 *load_wallpaper(framebuffer *fb, int width, int height)
-{
-	int i, j, count = 0;
-	u32 *ptr;
-
-	ptr = (u32 *) emalloc(width * height * sizeof(u32));
-
-	for (i = 0; i < fb->res.y; i++) {
-		for (j = 0; j < fb->res.x; j++) {
-			if (i < height && j < width)
-				*(ptr + count++) = *(fb->fp + j + i * fb->line_length);
-		}
-	}
-
-	return ptr;
-}

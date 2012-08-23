@@ -1,4 +1,21 @@
 /* See LICENSE for licence details. */
+u32 *load_wallpaper(framebuffer *fb, int width, int height)
+{
+	int i, j, count = 0;
+	u32 *ptr;
+
+	ptr = (u32 *) emalloc(width * height * sizeof(u32));
+
+	for (i = 0; i < fb->res.y; i++) {
+		for (j = 0; j < fb->res.x; j++) {
+			if (i < height && j < width)
+				*(ptr + count++) = *(fb->fp + j + i * fb->line_length);
+		}
+	}
+
+	return ptr;
+}
+
 void fb_init(framebuffer *fb)
 {
 	char *file;
@@ -18,17 +35,21 @@ void fb_init(framebuffer *fb)
 	fb->sc_size = finfo.smem_len;
 	fb->line_length = finfo.line_length / sizeof(u32);
 
+	fb->wall = (WALLPAPER) ?
+			load_wallpaper(fb, fb->res.x, fb->res.y): NULL;
+
 	fb->fp = emmap(0, fb->sc_size,
 		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
 }
 
 void fb_die(framebuffer *fb)
 {
+	free(fb->wall);
 	emunmap(fb->fp, fb->sc_size);
 	eclose(fb->fd);
 }
 
-void set_bitmap(terminal *term, int y, int x, int offset, u32 *src)
+void set_bitmap(framebuffer *fb, terminal *term, int y, int x, int offset, u32 *src)
 {
 	int i, shift;
 	color_pair color;
@@ -52,7 +73,7 @@ void set_bitmap(terminal *term, int y, int x, int offset, u32 *src)
 		if (gp->bitmap[offset] & (0x01 << (shift - i - 1)))
 			*(src + i) = color_palette[color.fg];
 		else if (WALLPAPER && color.bg == DEFAULT_BG)
-			*(src + i) = *(term->wall + i + x * term->cell_size.x
+			*(src + i) = *(fb->wall + i + x * term->cell_size.x
 				+ (offset + y * term->cell_size.y) * term->width);
 		else
 			*(src + i) = color_palette[color.bg];
@@ -71,7 +92,7 @@ void draw_line(framebuffer *fb, terminal *term, int line)
 
 	for (i = 0; i < term->cell_size.y; i++) {
 		for (j = 0; j < term->cols; j++)
-			set_bitmap(term, line, j, i, src + j * term->cell_size.x);
+			set_bitmap(fb, term, line, j, i, src + j * term->cell_size.x);
 		dst = p + i * fb->line_length;
 		memcpy(dst, src, size);
 	}
@@ -110,7 +131,7 @@ void draw_curs(framebuffer *fb, terminal *term)
 	src = emalloc(size);
 
 	for (i = 0; i < term->cell_size.y; i++) {
-		set_bitmap(term, term->cursor.y, term->cursor.x, i, src);
+		set_bitmap(fb, term, term->cursor.y, term->cursor.x, i, src);
 		dst = p + i * fb->line_length;
 		memcpy(dst, src, size);
 	}

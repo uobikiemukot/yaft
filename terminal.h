@@ -274,7 +274,7 @@ void resize(terminal *term, int lines, int cols)
 	eioctl(term->fd, TIOCSWINSZ, &size);
 }
 
-void term_init(terminal *term, framebuffer *fb)
+void term_init(terminal *term, pair res)
 {
 	glyph_t *gp;
 
@@ -290,15 +290,15 @@ void term_init(terminal *term, framebuffer *fb)
 	term->offset.x = OFFSET_X;
 	term->offset.y = OFFSET_Y;
 
-	if (term->width + term->offset.x > fb->res.x
-		|| term->height + term->offset.y > fb->res.y
+	if (term->width + term->offset.x > res.x
+		|| term->height + term->offset.y > res.y
 		|| term->width < term->cell_size.x
 		|| term->height < term->cell_size.y) {
 		if (DEBUG)
 			fprintf(stderr, "invalid termnal size %dx%d: use screen size %dx%d\n",
-				term->width, term->height, fb->res.x, fb->res.y);
-		term->width = fb->res.x;
-		term->height = fb->res.y;
+				term->width, term->height, res.x, res.y);
+		term->width = res.x;
+		term->height = res.y;
 		term->offset.x = term->offset.y = 0;
 	}
 
@@ -308,9 +308,6 @@ void term_init(terminal *term, framebuffer *fb)
 	if (DEBUG)
 		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",
 			term->width, term->height, term->cols, term->lines);
-
-	term->wall = (WALLPAPER) ?
-		load_wallpaper(fb, term->width, term->height): NULL;
 
 	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
 	term->tabstop = (bool *) emalloc(sizeof(bool) * term->cols);
@@ -338,7 +335,6 @@ void term_die(terminal *term)
 			}
 		}
 	}
-	free(term->wall);
 	free(term->line_dirty);
 	free(term->cells);
 
