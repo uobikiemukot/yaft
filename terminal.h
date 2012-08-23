@@ -271,7 +271,11 @@ void resize(terminal *term, int lines, int cols)
 	size.ws_row = lines;
 	size.ws_col = cols;
 	size.ws_xpixel = size.ws_ypixel = 0;
+#ifdef __APPLE__
+	ioctl(term->fd, TIOCSWINSZ, &size);
+#else
 	eioctl(term->fd, TIOCSWINSZ, &size);
+#endif
 }
 
 void term_init(terminal *term, pair res)

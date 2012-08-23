@@ -4,7 +4,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
-#include <pty.h>
+#ifdef __APPLE__
+# include <util.h>
+# include <sys/ioctl.h>
+#else
+# include <pty.h>
+#endif
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
