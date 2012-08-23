@@ -1,11 +1,11 @@
 /* See LICENSE for licence details. */
-#include "common.h"
-#include "util.h"
+#include "commonx.h"
+#include "../util.h"
 #include "x.h"
-#include "load.h"
-#include "terminal.h"
-#include "function.h"
-#include "parse.h"
+#include "../load.h"
+#include "../terminal.h"
+#include "../function.h"
+#include "../parse.h"
 
 static int loop_flag = 1;
 
@@ -111,8 +111,7 @@ int main()
 
 		while(XPending(xw.dsp)) {
 			XNextEvent(xw.dsp, &ev);
-			//if(XFilterEvent(&ev, xw.win))
-			if(XFilterEvent(&ev, (Window) NULL) == True)
+			if(XFilterEvent(&ev, xw.win))
 				continue;
 			if (event_func[ev.type])
 				event_func[ev.type](&xw, &term, &ev);
