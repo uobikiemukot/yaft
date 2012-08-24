@@ -4,13 +4,13 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
-#include <pty.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <termios.h>
@@ -19,23 +19,15 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
+#if defined(__linux)
+#include <pty.h>
+#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+#include <util.h>
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
+#include <libutil.h>
+#endif
 
-typedef struct xwindow xwindow;
-typedef struct framebuffer framebuffer;
-typedef struct terminal terminal;
-typedef struct escape escape;
-typedef struct cell cell;
-typedef struct glyph_t glyph_t;
-typedef struct pair pair;
-typedef struct margin margin;
-typedef struct color_pair color_pair;
-typedef struct uchar uchar;
-typedef struct state state;
-typedef struct parm_t parm_t;
-
+#include "../type.h"
 #include "../color.h"				/* 256color definition */
 #include "../conf.h"				/* user configuration */
 
