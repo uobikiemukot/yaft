@@ -12,27 +12,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stropts.h>
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <termios.h>
 #include <unistd.h>
 
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-
-typedef struct framebuffer framebuffer;
-typedef struct terminal terminal;
-typedef struct escape escape;
-typedef struct cell cell;
-typedef struct glyph_t glyph_t;
-typedef struct pair pair;
-typedef struct margin margin;
-typedef struct color_pair color_pair;
-typedef struct uchar uchar;
-typedef struct state state;
-typedef struct parm_t parm_t;
-
+#include "type.h"
 #include "color.h"				/* 256color definition */
 #include "conf.h"				/* user configuration */
 

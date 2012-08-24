@@ -2,7 +2,6 @@
 void fatal(char *str)
 {
 	perror(str);
-	//fprintf(stderr, "fatal error: %s\n", strerror(errno));
 	exit(EXIT_FAILURE);
 }
 
@@ -100,8 +99,7 @@ void eforkpty(int *master, int lines, int cols)
 		dup2(slave, STDIN_FILENO);
 		dup2(slave, STDOUT_FILENO);
 		dup2(slave, STDERR_FILENO);
-		if(ioctl(slave, TIOCSCTTY, NULL) < 0)
-			fatal("ioctl TIOSCTTY");
+		eioctl(slave, TIOCSCTTY, NULL);
 		close(slave);
 		close(*master);
 		putenv(term_name);
