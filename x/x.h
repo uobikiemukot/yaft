@@ -105,7 +105,7 @@ void draw_line(xwindow *xw, terminal *term, int line)
 
 void draw_curs(xwindow *xw, terminal *term)
 {
-	int i;
+	int i, width;
 	color_pair store_color;
 	pair store_curs;
 	u8 store_attr;
@@ -123,18 +123,21 @@ void draw_curs(xwindow *xw, terminal *term)
 	store_attr = cp->attribute;
 	cp->attribute = RESET;
 
+	width = (cp->wide == WIDE) ? 
+		term->cell_size.x * 2: term->cell_size.x;
+
 	for (i = 0; i < term->cell_size.y; i++)
 		set_bitmap(xw, term, term->cursor.y, term->cursor.x, i);
 
 	XCopyArea(xw->dsp, xw->buf, xw->win, xw->gc,
 				term->cursor.x * term->cell_size.x, term->cursor.y * term->cell_size.y,
-				term->cell_size.x, term->cell_size.y,
+				width, term->cell_size.y,
 				term->cursor.x * term->cell_size.x, term->cursor.y * term->cell_size.y);
 
 	cp->color = store_color;
 	cp->attribute = store_attr;
 	term->cursor = store_curs;
-	term->line_dirty[term->cursor.y] = true;
+	//term->line_dirty[term->cursor.y] = true;
 }
 
 void refresh(xwindow *xw, terminal *term)
