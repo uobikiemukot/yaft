@@ -33,7 +33,7 @@ void x_init(xwindow *xw)
 	xw->buf = XCreatePixmap(xw->dsp, xw->win,
 		TERM_WIDTH, TERM_HEIGHT,
 		XDefaultDepth(xw->dsp, xw->sc));
-
+	
 	XSelectInput(xw->dsp, xw->win,
 		KeyPressMask | StructureNotifyMask | ExposureMask);
 

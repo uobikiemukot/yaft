@@ -5,18 +5,25 @@
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <math.h>
-#include <pty.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stropts.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <termios.h>
 #include <unistd.h>
+
+#if defined(__linux)
+#include <pty.h>
+#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+#include <util.h>
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
+#include <libutil.h>
+#endif
 
 #include "type.h"
 #include "color.h"				/* 256color definition */
