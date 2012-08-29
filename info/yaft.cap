@@ -1,0 +1,13 @@
+#	Reconstructed via infocmp from file: /home/nak/haru/.terminfo//r/rxvt-256color
+yaft|yaft-256color|yet another framebuffer terminal:\
+	:am:ms:xn:\
+	:co#80:it#8:li#24:\
+	:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:IC=\E[%d@:\
+	:LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:al=\E[L:cd=\E[J:ce=\E[K:\
+	:cl=\E[H\E[J:cm=\E[%i%d;%dH:cr=^M:cs=\E[%i%d;%dr:\
+	:ct=\E[3g:dc=\E[P:dl=\E[M:do=^J:ec=\E[%dX:ei=:ho=\E[H:\
+	:ic=\E[@:im=:is=\Ec:le=^H:mb=\E[5m:md=\E[1m:me=\E[m:\
+	:mr=\E[7m:nd=\E[C:nw=\EE:rc=\E8:rs=\Ec:\
+	:..sa=\E[0%?%p6%t;1%;%?%p2%t;4%;%?%p1%p3%|%t;7%;%?%p4%t;5%;m:\
+	:sc=\E7:se=\E[27m:sf=^J:so=\E[7m:sr=\EM:st=\EH:ta=^I:\
+	:ue=\E[24m:up=\E[A:us=\E[4m:ve=\E[?25h:vi=\E[?25l:
