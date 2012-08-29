@@ -137,7 +137,7 @@ void draw_curs(xwindow *xw, terminal *term)
 	cp->color = store_color;
 	cp->attribute = store_attr;
 	term->cursor = store_curs;
-	//term->line_dirty[term->cursor.y] = true;
+	term->line_dirty[term->cursor.y] = true;
 }
 
 void refresh(xwindow *xw, terminal *term)

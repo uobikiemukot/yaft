@@ -1,9 +1,9 @@
 CC = gcc
 CFLAGS = -std=c99 -pedantic -Os
 	-march=native -mtune=native \
-	-Ofast -flto -pipe -Wall
+	-Ofast -flto -pipe -Wall -I/usr/X11R6/include -L/usr/X11R6/lib
 	#-pg
-LDFLAGS = -lutil -lm -lX11
+LDFLAGS = -lutil -lm -lX11 -I/usr/X11R6/include -L/usr/X11R6/lib
 
 HDR = *.h
 DST = yaftx
