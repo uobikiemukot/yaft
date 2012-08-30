@@ -1,14 +1,15 @@
 /* See LICENSE for licence details. */
 /* font path */
 static char *font_path[] = {
-	".fonts/shnm-jis0208.yaft",
-	".fonts/shnm-jis0201.yaft",
-	".fonts/shnm-iso8859.yaft",
+	".fonts/milkjf-jis0208.yaft",
+	".fonts/milkjf-jis0201.yaft",
+	".fonts/milkjf-iso8859.yaft",
+	".fonts/ambiguous-half.yaft",
 	NULL,
 };
 
 /* glyph alias file */
-static char *glyph_alias = ".fonts/ambiguous-wide.alias";
+static char *glyph_alias = ".fonts/ambiguous-half.alias";
 
 /* framubuffer device */
 static char *fb_path = "/dev/fb0";
@@ -37,5 +38,5 @@ enum {
 	TERM_WIDTH = 0,
 	TERM_HEIGHT = 0,
 	TABSTOP = 8,
-	SELECT_TIMEOUT = 1000000, /* usec */
+	SELECT_TIMEOUT = 20000, /* usec */
 };
