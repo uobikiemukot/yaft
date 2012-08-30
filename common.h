@@ -3,7 +3,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <linux/fb.h>
 #include <math.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -18,6 +17,7 @@
 #include <unistd.h>
 
 #if defined(__linux)
+#include <linux/fb.h>
 #include <pty.h>
 #elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 #include <util.h>
