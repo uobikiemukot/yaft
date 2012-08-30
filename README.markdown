@@ -135,6 +135,10 @@ conf.hのWALLPAPERをtrueにしてcompileした上で，
 
 [fbv]: http://www.eclis.ch/fbv/
 
+## TODO
++	bits per pixel = 32 の環境以外でも動作するように
++	vttestの互換性向上
+
 ## license
 MIT Licenseです．
 
