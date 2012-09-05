@@ -1,15 +1,15 @@
 /* See LICENSE for licence details. */
 /* font path */
 static char *font_path[] = {
-	".fonts/milkjf-jis0208.yaft",
-	".fonts/milkjf-jis0201.yaft",
-	".fonts/milkjf-iso8859.yaft",
-	".fonts/ambiguous-half.yaft",
+	"fonts/milkjf-jis0208.yaft",
+	"fonts/milkjf-jis0201.yaft",
+	"fonts/milkjf-iso8859.yaft",
+	"fonts/ambiguous-half.yaft",
 	NULL,
 };
 
 /* glyph alias file */
-static char *glyph_alias = ".fonts/ambiguous-half.alias";
+static char *glyph_alias = "fonts/ambiguous-half.alias";
 
 /* framubuffer device */
 static char *fb_path = "/dev/fb0";
