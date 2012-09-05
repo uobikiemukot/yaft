@@ -1,16 +1,16 @@
-CC = g++
-CFLAGS = -Wall -std=c++98 -pedantic \
-	-march=native -O3 -pipe -msse2
-LDFLAGS =
+CC = gcc
+CFLAGS = -std=c99 -pedantic -Os -march=native -pipe -Wall -I/usr/X11R6/include -L/usr/X11R6/lib
+LDFLAGS = -lutil -lm -lX11 -I/usr/X11R6/include -L/usr/X11R6/lib
 
 HDR = *.h
-DST = nakshogi
-SRC = nakshogi.cpp
+DST = yaftx
+SRC = yaftx.c
 
 all: $(DST)
 
 $(DST): $(SRC) $(HDR)
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
+	strip $@
 
 clean:
 	rm -f $(DST)
