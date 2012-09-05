@@ -35,11 +35,11 @@ void fb_init(framebuffer *fb)
 	fb->sc_size = finfo.smem_len;
 	fb->line_length = finfo.line_length / sizeof(u32);
 
-	fb->wall = (WALLPAPER) ?
-			load_wallpaper(fb, fb->res.x, fb->res.y): NULL;
-
 	fb->fp = emmap(0, fb->sc_size,
 		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
+
+	fb->wall = (WALLPAPER) ?
+			load_wallpaper(fb, fb->res.x, fb->res.y): NULL;
 }
 
 void fb_die(framebuffer *fb)
