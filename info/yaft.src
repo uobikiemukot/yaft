@@ -1,4 +1,4 @@
-yaft|yaft-256color|yet another framebuffer terminal,
+yaft-256color|yet another framebuffer terminal,
 	am, bce, msgr, xenl,
 
 	cols#80, lines#24, it#8, colors#256, pairs#32767,
@@ -47,4 +47,4 @@ yaft|yaft-256color|yet another framebuffer terminal,
 	bold=\E[1m, rev=\E[7m, blink=\E[5m,
 	smso=\E[7m, rmso=\E[27m,
 	smul=\E[4m, rmul=\E[24m,
-	smam=\E[?7h, rmam=\E?7l,
+	smam=\E[?7h, rmam=\E[?7l,
