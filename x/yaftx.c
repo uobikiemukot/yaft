@@ -85,7 +85,6 @@ int main()
 {
 	int size;
 	fd_set fds;
-	struct termios save_tm;
 	struct timeval tv;
 	u8 buf[BUFSIZE];
 	XEvent ev;
@@ -120,10 +119,10 @@ int main()
 		if (FD_ISSET(term.fd, &fds)) {
 			size = read(term.fd, buf, BUFSIZE);
 			if (size > 0) {
-				if (DUMP)
+				if (DEBUG)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
-				if (LAZYDRAW && size == BUFSIZE)
+				if (size == BUFSIZE)
 					continue;
 				refresh(&xw, &term);
 			}

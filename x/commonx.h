@@ -4,6 +4,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+typedef struct xwindow xwindow;
 struct xwindow {
 	Display *dsp;
 	Window win;
