@@ -5,4 +5,5 @@ fbv -ciuker "$1" << EOF
 q
 EOF
 
+export YAFT_WALLPAPER=1
 exec yaft

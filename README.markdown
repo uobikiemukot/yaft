@@ -1,148 +1,67 @@
-# yaft - yet another framebuffer terminal
-
-linuxのframebufferを用いたvt102系ターミナルエミュレータです．
+# yaft
+yet another framebuffer terminal
 
 ![yaft]
 
-[yaft]: https://github.com/uobikiemukot/yaft/raw/master/img/yaft-blue.png
+[yaft]: http://www.nak.ics.keio.ac.jp/~haru/yaft/yaft-blue.png
 
 ## download
-- [latest](https://github.com/uobikiemukot/yaft/tarball/master)
+- [yaft-0.1.6](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-0.1.6.tar.gz)
 
 ## feature
-+	framebuffer  
-	consoleで動作します
-
-+	UTF-8対応  
-	※他の文字コードが一切使えません
-
-+	256色  
-	xtermと同様の256色指定のエスケープシーケンスに対応しています
-
-+	壁紙表示  
-	起動直前のframebufferの内容を壁紙として取り込むことができます
++	linux framebuffer  
++	UTF-8 support
++	256 colors
++	wallpaper
 
 ## configuration
-コンパイル前にconf.hを編集して適切な設定に書き換えてください．
+if you want to change configuration, rewrite conf.h
 
 ### path and terminal name
 
-+	static char *font_path[] = { ".fonts/shnm-jis0208.yaft", ".fonts/shnm-jis0201.yaft", ".fonts/shnm-iso8859.yaft", NULL, };  
-	fontを指定します
-
-+	static char *glyph_alias = ".fonts/ambiguous-wide.alias";  
-	グリフのaliasを定義するファイルのpathです
-
++	static char *font_path[] = { "/path/to/fonts0.yaft", "/path/to/fonts1.yaft", ..., NULL, };  
++	static char *glyph_alias = "/path/to/alias";  
 +	static char *fb_path = "/dev/fb0";  
-	framebuffer deviceのpathを設定します
-
 +	static char *shell_cmd = "/bin/bash";  
-	端末から起動するshellを設定します
-
 +	static char *term_name = "TERM=yaft-256color";  
-	環境変数TERMの値を設定します
-
-pathは絶対path(or 実行ディレクトリからの相対path)で記述します．  
-
-fontは複数指定可能で，後ろに指定したフォントのグリフが優先的に使われます．  
-font_pathの配列の最後にはNULLを入れないといけません．
-
-glyph_aliasを使わない場合にはNULLを指定します．  
-(特に良いことはありません．)
 
 ### color
+all color defined in color.h
 
 +	DEFAULT_FG = 7,  
-	デフォルトの前景色
-
 +	DEFAULT_BG = 0,  
-	デフォルトの背景色
-
 +	CURSOR_COLOR = 2,  
-	カーソルの色の設定
-
-色はcolor.hで定義されているcoloro_palette[]のインデックスを指定します．
 
 ### misc
-+	DUMP = false,  
-	端末に送られてきたデータを標準出力にdumpします(デバッグ用)
 
 +	DEBUG = false,  
-	parseの結果を標準エラー出力に表示します(デバッグ用)
-
-+	LAZYDRAW = true,  
-	描画をサボるかどうか．見かけ上の描画速度が向上します
-
-+	WALLPAPER = false,  
-	直前のframebufferの内容を壁紙として取り込むかどうか
-
-+	OFFSET_X = 0,  
-	画面内のどこに端末を表示するかのオフセット値
-
-+	OFFSET_Y = 0,  
-	同上
-
-+	TERM_WIDTH = 0,  
-	端末のサイズ．0を指定すると画面のサイズを使用します
-
-+	TERM_HEIGHT = 0,  
-	同上
-
 +	TABSTOP = 8,  
-	ハードウェアタブの幅
-
-+	SELECT_TIMEOUT = 1000000,  
-	select()のタイムアウトの指定
-
-端末サイズやオフセットの値が不正だった場合，全画面の起動を試みます．
++	SELECT_TIMEOUT = 20000,  
 
 ## install
 
 ~~~
 $ make
-$ make install-font
-$ sudo make install
+# make install
 ~~~
-
-外部ライブラリは必要ありません．  
-gccとglibcがあればコンパイルできるはずです．
-
-make installを使わなくても構いません．  
-その場合は以下のコマンドでterminfoをinstallしてください．
-
-~~~
-$ tic info/yaft.src
-~~~
-
-また，フォント(とaliasの定義ファイル)をconf.hで設定した場所に忘れずに移動させてください．
 
 ## usage
+yaft_wall requires [fbv]
 
 ~~~
 $ yaft
 ~~~
 
-コマンドラインオプションは存在しません．
+OR
 
 ~~~
 $ yaft_wall /path/to/wallpaper.jpg
 ~~~
 
-conf.hのWALLPAPERをtrueにしてcompileした上で，  
-上記のように起動すると壁紙を使うことができます．
-
-[fbv]とyaftがpathの通っているところにインストールされている必要があります．
-
 [fbv]: http://www.eclis.ch/fbv/
 
-## TODO
-+	bits per pixel = 32 の環境以外でも動作するように
-+	vttestの互換性向上
-
 ## license
-MIT Licenseです．
-
-Copyright (c) 2012 haru
+Copyright (c) 2012 haru (uobikiemukot at gmail dot com)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
