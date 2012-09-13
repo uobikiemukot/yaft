@@ -8,6 +8,7 @@ void x_fatal(char *str)
 void x_init(xwindow *xw)
 {
 	XTextProperty title;
+	int width = 640, height= 384;
 
 	if ((xw->dsp = XOpenDisplay("")) == NULL)
 		x_fatal("can't open display");
@@ -15,8 +16,7 @@ void x_init(xwindow *xw)
 	xw->sc = DefaultScreen(xw->dsp);
 
 	xw->win = XCreateSimpleWindow(xw->dsp, DefaultRootWindow(xw->dsp),
-		OFFSET_X, OFFSET_Y,
-		TERM_WIDTH, TERM_HEIGHT,
+		0, 0, width, height,
 		0, color_palette[DEFAULT_FG], color_palette[DEFAULT_BG]);
 
 	title.value = (unsigned char *) "yaft";
@@ -27,11 +27,11 @@ void x_init(xwindow *xw)
 
 	xw->gc = XCreateGC(xw->dsp, xw->win, 0, NULL);
 
-	xw->res.x = TERM_WIDTH;
-	xw->res.y = TERM_HEIGHT;
+	xw->res.x = width;
+	xw->res.y = height;
 
 	xw->buf = XCreatePixmap(xw->dsp, xw->win,
-		TERM_WIDTH, TERM_HEIGHT,
+		width, height,
 		XDefaultDepth(xw->dsp, xw->sc));
 	
 	XSelectInput(xw->dsp, xw->win,
