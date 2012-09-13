@@ -1,4 +1,11 @@
 /* See LICENSE for licence details. */
+const char *ctrl_char[] = {
+	"NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
+	"BS ", "HT ", "LF ", "VT ", "FF ", "CR ", "SO ", "SI ",
+	"DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
+	"CAN", "EM ", "SUB", "ESC", "FS ", "GS ", "RS ", "US ",
+};
+
 void reset_func(void (**func)(terminal *term, void *arg), int num)
 {
 	int i;
@@ -76,12 +83,10 @@ void load_csi_func(void (**func)(terminal *term, void *arg), int num)
 	func['n'] = status_report;
 	func['r'] = set_margin;
 	func['s'] = save_state;
-	func['t'] = window_control;
 	func['u'] = restore_state;
 	func['`'] = curs_col;
 }
 
-/* need to rewrite this function */
 bool parse_csi(terminal *term, int *argc, char **argv)
 {
 	int length;
@@ -116,13 +121,6 @@ bool parse_csi(terminal *term, int *argc, char **argv)
 
 	return true;
 }
-
-static char *ctrl_char[] = {
-	"NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
-	"BS ", "HT ", "LF ", "VT ", "FF ", "CR ", "SO ", "SI ",
-	"DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
-	"CAN", "EM ", "SUB", "ESC", "FS ", "GS ", "RS ", "US ",
-};
 
 void control_character(terminal *term, u8 ch)
 {

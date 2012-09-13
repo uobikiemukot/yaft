@@ -7,11 +7,11 @@
 #include "function.h"
 #include "parse.h"
 
-static int loop_flag = 1;
+bool loop_flag = true;
 
 void sigchld(int signal)
 {
-	loop_flag = 0;
+	loop_flag = false;
 }
 
 void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
@@ -75,10 +75,10 @@ int main()
 		if (FD_ISSET(term.fd, &fds)) {
 			size = read(term.fd, buf, BUFSIZE);
 			if (size > 0) {
-				if (DUMP)
+				if (DEBUG)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
-				if (LAZYDRAW && size == BUFSIZE)
+				if (size == BUFSIZE) /* lazy drawing */
 					continue;
 				refresh(&fb, &term);
 			}

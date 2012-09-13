@@ -60,7 +60,7 @@ enum char_attr {
 	REVERSE = 7,
 };
 
-static const u8 attr_mask[] = {
+const u8 attr_mask[] = {
 	0x00, 0x01, 0x00, 0x00,		/* 0:none      1:bold  2:none 3:none */
 	0x02, 0x04, 0x00, 0x08,		/* 4:underline 5:blink 6:none 7:reverse */
 };
@@ -160,6 +160,6 @@ struct terminal {
 	uchar ucs;					/* store UTF-8 sequence */
 };
 
-static void (*ctrl_func[CTRL_CHARS])(terminal * term, void *arg);
-static void (*esc_func[ESC_CHARS])(terminal * term, void *arg);
-static void (*csi_func[ESC_CHARS])(terminal * term, void *arg);
+void (*ctrl_func[CTRL_CHARS])(terminal * term, void *arg);
+void (*esc_func[ESC_CHARS])(terminal * term, void *arg);
+void (*csi_func[ESC_CHARS])(terminal * term, void *arg);
