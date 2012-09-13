@@ -492,7 +492,6 @@ void set_margin(terminal *term, void *arg)
 	set_cursor(term, 0, 0);		/* move cursor to home */
 }
 
-
 void clear_tabstop(terminal *term, void *arg)
 {
 	parm_t *pt = (parm_t *) arg;
@@ -514,41 +513,5 @@ void clear_tabstop(terminal *term, void *arg)
 		}
 	}
 }
-
-void window_control(terminal *term, void *arg)
-{
-	/*
-		CSI 3 ; x ; y t
-			move window (x, y)
-		CSI 7 t
-			refresh window
-		CSI 8 ; height ; width t
-			resize window(character)
-	*/
-	parm_t *pt = (parm_t *) arg;
-	int i, argc = pt->argc, num;
-	char **argv = pt->argv;
-
-	if (argc == 0)
-		return;
-
-	num = atoi(argv[0]);
-	if (num == 3) {
-		if (argc != 3)
-			return;
-		term->offset.x = atoi(argv[1]);
-		term->offset.y = atoi(argv[2]);
-	}
-	else if (num == 7) {
-		for (i = 0; i < term->lines; i++)
-			term->line_dirty[i] = true;
-	}
-	else if (num == 8) {
-		if (argc != 3)
-			return;
-		resize(term, atoi(argv[1]), atoi(argv[2]));
-	}
-}
-
 /* function for osc sequence */
 /* not implemented */

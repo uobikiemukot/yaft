@@ -284,23 +284,10 @@ void term_init(terminal *term, pair res)
 	term->cell_size.x = gp->size.x;
 	term->cell_size.y = gp->size.y;
 
-	term->width = TERM_WIDTH;
-	term->height = TERM_HEIGHT;
+	term->width = res.x;
+	term->height = res.y;
 
-	term->offset.x = OFFSET_X;
-	term->offset.y = OFFSET_Y;
-
-	if (term->width + term->offset.x > res.x
-		|| term->height + term->offset.y > res.y
-		|| term->width < term->cell_size.x
-		|| term->height < term->cell_size.y) {
-		if (DEBUG)
-			fprintf(stderr, "invalid termnal size %dx%d: use screen size %dx%d\n",
-				term->width, term->height, res.x, res.y);
-		term->width = res.x;
-		term->height = res.y;
-		term->offset.x = term->offset.y = 0;
-	}
+	term->offset.x = term->offset.y = 0;
 
 	term->cols = term->width / term->cell_size.x;
 	term->lines = term->height / term->cell_size.y;

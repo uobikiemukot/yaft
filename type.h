@@ -4,7 +4,6 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 
 typedef struct framebuffer framebuffer;
-typedef struct xwindow xwindow;
 typedef struct terminal terminal;
 typedef struct escape escape;
 typedef struct cell cell;

@@ -10,6 +10,9 @@ void load_glyph(glyph_t **fonts, char *path)
 	fp = efopen(path, "r");
 
 	while (fgets(buf, BUFSIZE, fp) != NULL) {
+		if (strlen(buf) == 0 || buf[0] == '#')
+			continue;
+
 		switch (state) {
 		case 0:
 			code = atoi(buf);

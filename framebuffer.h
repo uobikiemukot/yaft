@@ -1,4 +1,6 @@
 /* See LICENSE for licence details. */
+bool wallpaper = false;
+
 u32 *load_wallpaper(framebuffer *fb, int width, int height)
 {
 	int i, j, count = 0;
@@ -38,8 +40,11 @@ void fb_init(framebuffer *fb)
 	fb->fp = emmap(0, fb->sc_size,
 		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
 
-	fb->wall = (WALLPAPER) ?
-			load_wallpaper(fb, fb->res.x, fb->res.y): NULL;
+	if (getenv("YAFT_WALLPAPER") != NULL)
+		wallpaper = true;
+
+	fb->wall = wallpaper ?
+		load_wallpaper(fb, fb->res.x, fb->res.y): NULL;
 }
 
 void fb_die(framebuffer *fb)
@@ -72,7 +77,7 @@ void set_bitmap(framebuffer *fb, terminal *term, int y, int x, int offset, u32 *
 	for (i = 0; i < gp->size.x; i++) {
 		if (gp->bitmap[offset] & (0x01 << (shift - i - 1)))
 			*(src + i) = color_palette[color.fg];
-		else if (WALLPAPER && color.bg == DEFAULT_BG)
+		else if (fb->wall && color.bg == DEFAULT_BG)
 			*(src + i) = *(fb->wall + i + x * term->cell_size.x
 				+ (offset + y * term->cell_size.y) * term->width);
 		else
