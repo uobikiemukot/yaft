@@ -125,7 +125,7 @@ void insert_blank(terminal *term, void *arg)
 			cp = &erase;
 
 		if (cp->wide != NEXT_TO_WIDE)
-			set_cell(term, term->cursor.y, i, cp->code);
+			term->cells[i + term->cursor.y * term->cols] = *cp;
 	}
 }
 
@@ -316,7 +316,7 @@ void delete_char(terminal *term, void *arg)
 			cp = &erase;
 
 		if (cp->wide != NEXT_TO_WIDE)
-			set_cell(term, term->cursor.y, i, cp->code);
+			term->cells[i + term->cursor.y * term->cols] = *cp;
 	}
 }
 
