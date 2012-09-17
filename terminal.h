@@ -44,6 +44,16 @@ int set_cell(terminal *term, int y, int x, u16 code)
 	return HALF;
 }
 
+void copy_cell(cell *dst, cell *src)
+{
+	*dst = *src;
+
+	if (src->wide == WIDE) {
+		*(dst + 1) = *src;
+		(dst + 1)->wide = NEXT_TO_WIDE;
+	}
+}
+
 void scroll(terminal *term, int from, int to, int offset)
 {
 	int i, j, size, abs_offset;
