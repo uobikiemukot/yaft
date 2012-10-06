@@ -3,7 +3,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <math.h>
+#include <linux/fb.h>
+#include <pty.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -16,21 +17,13 @@
 #include <termios.h>
 #include <unistd.h>
 
-#if defined(__linux)
-#include <linux/fb.h>
-#include <pty.h>
-#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-#include <util.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
-#include <libutil.h>
-#endif
-
-#include "type.h"
-#include "color.h"				/* 256color definition */
-#include "conf.h"				/* user configuration */
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
 
 enum char_code {
-	BEL = 0x07, ESC = 0x1B, SPACE = 0x20, BACKSLASH = 0x5C, DEL = 0x7F,
+	BEL = 0x07, ESC = 0x1B, SPACE = 0x20,
+	BACKSLASH = 0x5C, DEL = 0x7F,
 };
 
 enum {
@@ -61,8 +54,16 @@ enum char_attr {
 };
 
 const u8 attr_mask[] = {
-	0x00, 0x01, 0x00, 0x00,		/* 0:none      1:bold  2:none 3:none */
+	0x00, 0x01, 0x00, 0x00,		/* 0:none	  1:bold  2:none 3:none */
 	0x02, 0x04, 0x00, 0x08,		/* 4:underline 5:blink 6:none 7:reverse */
+};
+
+u32 bit_mask[] = {
+	0x00,
+	0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF,
+	0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF, 0x3FFF, 0x7FFF, 0xFFFF,
+	0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF, 0x1FFFFF, 0x3FFFFF, 0x7FFFFF, 0xFFFFFF,
+	0x1FFFFFF, 0x3FFFFFF, 0x7FFFFFF, 0xFFFFFFF, 0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF,
 };
 
 enum term_mode {
@@ -77,88 +78,9 @@ enum esc_state {
 	STATE_OSC,					/* ESC ] */
 };
 
-struct pair {
-	int x, y;
-};
-
-struct margin {
-	int top, bottom;
-};
-
-struct color_pair {
-	int fg, bg;
-};
-
-struct framebuffer {
-	u32 *fp;					/* pointer of framebuffer(read only), assume bits per pixel == 32 */
-	int fd;						/* file descriptor of framebuffer */
-	pair res;					/* resolution (x, y) */
-	long sc_size;				/* screen data size (bytes) */
-	int line_length;			/* (pixel) */
-	u32 *wall;					/* buffer for wallpaper */
-};
-
-struct cell {
-	u16 code;					/* UCS2 */
-	color_pair color;			/* color (fg, bg) */
-	u8 attribute;				/* bold, underscore, etc... */
-	int wide;					/* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
-};
-
-struct escape {
-	u8 buf[BUFSIZE];
-	u8 *bp;
-	int state;					/* esc state */
-};
-
-struct uchar {
-	u32 code;					/* UCS4: but only print UCS2 (< 0xFFFF) */
-	int length, count;
-};
-
-struct glyph_t {
-	pair size;
-	u32 *bitmap;
-};
-
-struct state {					/* for save/restore state */
-	int mode;
-	pair cursor;
-	u8 attribute;
-};
-
-struct parm_t {
-	int argc;
-	char *argv[ESC_PARAMS];
-};
-
-struct terminal {
-	int fd;						/* master fd */
-	glyph_t *fonts[UCS2_CHARS];
-
-	pair offset;				/* window offset (x, y) */
-	int width, height;			/* terminal size (pixel) */
-
-	int cols, lines;			/* terminal size (cell) */
-	cell *cells;				/* pointer of each cell: cells[cols + lines * num_of_cols] */
-	pair cell_size;				/* default glyph size */
-
-	margin scroll;				/* scroll margin */
-	pair cursor;				/* cursor pos (x, y) */
-
-	bool *line_dirty;			/* dirty flag */
-	bool *tabstop;				/* tabstop flag */
-
-	int mode;					/* for set/reset mode */
-	bool wrap;					/* whether auto wrap occured or not */
-	state save_state;			/* for restore */
-
-	color_pair color;			/* color (fg, bg) */
-	u8 attribute;				/* bold, underscore, etc... */
-
-	escape esc;					/* store escape sequence */
-	uchar ucs;					/* store UTF-8 sequence */
-};
+#include "conf.h"				/* user configuration */
+#include "type.h"				/* struct and typedef */
+#include "color.h"				/* 256color definition */
 
 void (*ctrl_func[CTRL_CHARS])(terminal * term, void *arg);
 void (*esc_func[ESC_CHARS])(terminal * term, void *arg);
