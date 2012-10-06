@@ -6,13 +6,14 @@ yet another framebuffer terminal
 [yaft]: http://www.nak.ics.keio.ac.jp/~haru/yaft/yaft-blue.png
 
 ## download
-- [yaft-0.1.6](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-0.1.6.tar.gz)
+- [yaft-0.1.7](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-0.1.7.tar.gz)
 
 ## feature
-+	linux framebuffer  
-+	UTF-8 support
-+	256 colors
-+	wallpaper
++	recognize basic escape sequences (most of vt102 and linux console)
++	support various framebuffer types (8/15/16/24/32bpp)
++	support UTF-8 encoding (but never handle other character encodings)
++	support 256 colors (rxvt, xterm like)
++	support wallpaper
 
 ## configuration
 if you want to change configuration, rewrite conf.h
@@ -46,13 +47,12 @@ $ make
 ~~~
 
 ## usage
-yaft_wall requires [fbv]
 
 ~~~
 $ yaft
 ~~~
 
-OR
+for wallpaper, you can use yaft_wall script (yaft_wall requires [fbv])
 
 ~~~
 $ yaft_wall /path/to/wallpaper.jpg

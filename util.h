@@ -49,7 +49,7 @@ void eioctl(int fd, int req, void *arg)
 		fatal("ioctl");
 }
 
-u32 *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
+void *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
 {
 	u32 *fp;
 
@@ -58,7 +58,7 @@ u32 *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
 	return fp;
 }
 
-void emunmap(u32 *ptr, size_t len)
+void emunmap(void *ptr, size_t len)
 {
 	if (munmap(ptr, len) < 0)
 		fatal("munmap");
@@ -82,7 +82,7 @@ void eforkpty(int *master, int lines, int cols)
 {
 	int slave;
 	pid_t pid;
-	struct winsize size;
+	winsize size;
 
 	size.ws_col = cols;
 	size.ws_row = lines;
@@ -109,7 +109,7 @@ void eforkpty(int *master, int lines, int cols)
 		close(slave);
 }
 
-void eselect(int max_fd, fd_set *fds, struct timeval *tv)
+void eselect(int max_fd, fd_set *fds, timeval *tv)
 {
 	if (select(max_fd, fds, NULL, NULL, tv) < 0) {
 		if (errno == EINTR)
@@ -125,11 +125,31 @@ void ewrite(int fd, u8 *buf, int size)
 		fatal("write");
 }
 
-void swap(int *a, int *b)
+/* non system calls */
+int bit2byte(int num)
+{
+	return (num + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
+}
+
+u32 bit_reverse(u32 v, int bits)
+{
+	u32 r = v;
+	int s = bits - 1;
+
+	for (v >>= 1; v; v >>= 1) {
+		r <<= 1;
+		r |= v & 1;
+		s--;
+	}
+
+	return r <<= s;
+}
+
+void swap_color(color_pair *cp)
 {
 	int tmp;
 
-	tmp = *a;
-	*a = *b;
-	*b = tmp;
+	tmp = cp->fg;
+	cp->fg = cp->bg;
+	cp->bg = tmp;
 }

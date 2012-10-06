@@ -8,6 +8,16 @@ void init_cell(cell *cp)
 	cp->wide = HALF;
 }
 
+void copy_cell(cell *dst, cell *src)
+{
+	*dst = *src;
+
+	if (src->wide == WIDE) {
+		*(dst + 1) = *src;
+		(dst + 1)->wide = NEXT_TO_WIDE;
+	}
+}
+
 int set_cell(terminal *term, int y, int x, u16 code)
 {
 	cell nc, *cp;
@@ -26,7 +36,7 @@ int set_cell(terminal *term, int y, int x, u16 code)
 		term->color.bg + BRIGHT_INC: term->color.bg;
 
 	if (term->attribute & attr_mask[REVERSE])
-		swap(&nc.color.fg, &nc.color.bg);
+		swap_color(&nc.color);
 
 	nc.attribute = term->attribute;
 	nc.wide = (gp->size.x > term->cell_size.x) ? WIDE : HALF;
@@ -42,16 +52,6 @@ int set_cell(terminal *term, int y, int x, u16 code)
 	}
 
 	return HALF;
-}
-
-void copy_cell(cell *dst, cell *src)
-{
-	*dst = *src;
-
-	if (src->wide == WIDE) {
-		*(dst + 1) = *src;
-		(dst + 1)->wide = NEXT_TO_WIDE;
-	}
 }
 
 void scroll(terminal *term, int from, int to, int offset)
@@ -259,7 +259,7 @@ void reset(terminal *term)
 
 void resize(terminal *term, int lines, int cols)
 {
-	struct winsize size;
+	winsize size;
 
 	term->lines = lines;
 	term->cols = cols;
