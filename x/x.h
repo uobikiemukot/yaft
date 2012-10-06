@@ -60,7 +60,7 @@ void set_bitmap(xwindow *xw, terminal *term, int y, int x, int offset)
 		return;
 
 	gp = term->fonts[cp->code];
-	shift = ceil((double) gp->size.x / BITS_PER_BYTE) * BITS_PER_BYTE;
+	shift = bit2byte((double) gp->size.x / BITS_PER_BYTE) * BITS_PER_BYTE;
 	color = cp->color;
 
 	/* attribute */
