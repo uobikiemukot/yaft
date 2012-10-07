@@ -102,7 +102,7 @@ void move_cursor(terminal *term, int y_offset, int x_offset)
 	if (x < 0)
 		x = 0;
 	else if (x >= term->cols) {
-		if (term->mode & AMRIGHT)
+		if (term->mode & MODE_AMRIGHT)
 			term->wrap = true;
 		x = term->cols - 1;
 	}
@@ -127,7 +127,7 @@ void set_cursor(terminal *term, int y, int x)
 {
 	int top, bottom;
 
-	if (term->mode & ORIGIN) {
+	if (term->mode & MODE_ORIGIN) {
 		top = term->scroll.top;
 		bottom = term->scroll.bottom;
 		y += term->scroll.top;
@@ -228,7 +228,7 @@ void reset(terminal *term)
 	int i, j;
 
 	term->mode = RESET;
-	term->mode |= (CURSOR | AMRIGHT);
+	term->mode |= (MODE_CURSOR | MODE_AMRIGHT);
 	term->wrap = false;
 
 	term->scroll.top = 0;

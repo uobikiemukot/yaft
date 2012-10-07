@@ -10,11 +10,6 @@ int sum(parm_t *pt)
 	return sum;
 }
 
-void ignore(terminal *term, void *arg)
-{
-	return;
-}
-
 /* function for control character */
 void bs(terminal *term, void *arg)
 {
@@ -54,7 +49,7 @@ void save_state(terminal *term, void *arg)
 {
 	term->save_state.cursor = term->cursor;
 	term->save_state.attribute = term->attribute;
-	term->save_state.mode = term->mode & ORIGIN;
+	term->save_state.mode = term->mode & MODE_ORIGIN;
 }
 
 void restore_state(terminal *term, void *arg)
@@ -62,10 +57,10 @@ void restore_state(terminal *term, void *arg)
 	term->cursor = term->save_state.cursor;
 	term->attribute = term->save_state.attribute;
 
-	if (term->save_state.mode & ORIGIN)
-		term->mode |= ORIGIN;
+	if (term->save_state.mode & MODE_ORIGIN)
+		term->mode |= MODE_ORIGIN;
 	else
-		term->mode &= ~ORIGIN;
+		term->mode &= ~MODE_ORIGIN;
 }
 
 void crnl(terminal *term, void *arg)
@@ -273,7 +268,7 @@ void insert_line(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
-	if (term->mode & ORIGIN) {
+	if (term->mode & MODE_ORIGIN) {
 		if (term->cursor.y < term->scroll.top
 			|| term->cursor.y > term->scroll.bottom)
 			return;
@@ -287,7 +282,7 @@ void delete_line(terminal *term, void *arg)
 {
 	int num = sum((parm_t *) arg);
 
-	if (term->mode & ORIGIN) {
+	if (term->mode & MODE_ORIGIN) {
 		if (term->cursor.y < term->scroll.top
 			|| term->cursor.y > term->scroll.bottom)
 			return;
@@ -428,18 +423,19 @@ void set_mode(terminal *term, void *arg)
 
 	for (i = 0; i < argc; i++) {
 		mode = atoi(argv[i]);
-		if (term->esc.buf[0] != '?')
+		if (term->esc.buf[1] != '?')
 			continue;			/* ansi mode: not implemented */
 
 		if (mode == 6) {		/* private mode */
-			term->mode |= ORIGIN;
+			term->mode |= MODE_ORIGIN;
 			set_cursor(term, 0, 0);
 		}
 		else if (mode == 7)
-			term->mode |= AMRIGHT;
+			term->mode |= MODE_AMRIGHT;
 		else if (mode == 25)
-			term->mode |= CURSOR;
+			term->mode |= MODE_CURSOR;
 	}
+
 }
 
 void reset_mode(terminal *term, void *arg)
@@ -450,20 +446,21 @@ void reset_mode(terminal *term, void *arg)
 
 	for (i = 0; i < argc; i++) {
 		mode = atoi(argv[i]);
-		if (term->esc.buf[0] != '?')
+		if (term->esc.buf[1] != '?')
 			continue;			/* ansi mode: not implemented */
 
 		if (mode == 6) {		/* private mode */
-			term->mode &= ~ORIGIN;
+			term->mode &= ~MODE_ORIGIN;
 			set_cursor(term, 0, 0);
 		}
 		else if (mode == 7) {
-			term->mode &= ~AMRIGHT;
+			term->mode &= ~MODE_AMRIGHT;
 			term->wrap = false;
 		}
 		else if (mode == 25)
-			term->mode &= ~CURSOR;
+			term->mode &= ~MODE_CURSOR;
 	}
+
 }
 
 void set_margin(terminal *term, void *arg)

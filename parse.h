@@ -6,13 +6,60 @@ const char *ctrl_char[] = {
 	"CAN", "EM ", "SUB", "ESC", "FS ", "GS ", "RS ", "US ",
 };
 
-void reset_func(void (**func)(terminal *term, void *arg), int num)
-{
-	int i;
+void (*ctrl_func[CTRL_CHARS])(terminal * term, void *arg) = {
+	[BS] = bs,
+	[HT] = tab,
+	[LF] = nl,
+	[VT] = nl,
+	[FF] = nl,
+	[CR] = cr,
+	[ESC] = enter_esc,
+};
 
-	for (i = 0; i < num; i++)
-		func[i] = ignore;
-}
+void (*esc_func[ESC_CHARS])(terminal * term, void *arg) = {
+	['7'] = save_state,
+	['8'] = restore_state,
+	['D'] = nl,
+	['E'] = crnl,
+	['H'] = set_tabstop,
+	['M'] = reverse_nl,
+	['Z'] = identify,
+	['['] = enter_csi,
+	[']'] = enter_osc,
+	['c'] = ris,
+};
+
+void (*csi_func[ESC_CHARS])(terminal * term, void *arg) = {
+	['@'] = insert_blank,
+	['A'] = curs_up,
+	['B'] = curs_down,
+	['C'] = curs_forward,
+	['D'] = curs_back,
+	['E'] = curs_nl,
+	['F'] = curs_pl,
+	['G'] = curs_col,
+	['H'] = curs_pos,
+	['J'] = erase_display,
+	['K'] = erase_line,
+	['L'] = insert_line,
+	['M'] = delete_line,
+	['P'] = delete_char,
+	['X'] = erase_char,
+	['a'] = curs_forward,
+	['c'] = identify,
+	['d'] = curs_line,
+	['e'] = curs_down,
+	['f'] = curs_pos,
+	['g'] = clear_tabstop,
+	['h'] = set_mode,
+	['l'] = reset_mode,
+	['m'] = set_attr,
+	['n'] = status_report,
+	['r'] = set_margin,
+	['s'] = save_state,
+	['u'] = restore_state,
+	['`'] = curs_col,
+};
 
 void reset_parm(parm_t *pt)
 {
@@ -23,71 +70,7 @@ void reset_parm(parm_t *pt)
 		pt->argv[i] = NULL;
 }
 
-void load_ctrl_func(void (**func)(terminal *term, void *arg), int num)
-{
-	reset_func(func, num);
-
-	func[0x08] = bs;			/* BS  */
-	func[0x09] = tab;			/* HT  */
-	func[0x0A] = nl;			/* LF  */
-	func[0x0B] = nl;			/* VT  */
-	func[0x0C] = nl;			/* FF  */
-	func[0x0D] = cr;			/* CR  */
-	func[0x1B] = enter_esc;		/* ESC */
-}
-
-void load_esc_func(void (**func)(terminal *term, void *arg), int num)
-{
-	reset_func(func, num);
-
-	func['7'] = save_state;
-	func['8'] = restore_state;
-	func['D'] = nl;
-	func['E'] = crnl;
-	func['H'] = set_tabstop;
-	func['M'] = reverse_nl;
-	func['Z'] = identify;
-	func['['] = enter_csi;
-	func[']'] = enter_osc;
-	func['c'] = ris;
-}
-
-void load_csi_func(void (**func)(terminal *term, void *arg), int num)
-{
-	reset_func(func, num);
-
-	func['@'] = insert_blank;
-	func['A'] = curs_up;
-	func['B'] = curs_down;
-	func['C'] = curs_forward;
-	func['D'] = curs_back;
-	func['E'] = curs_nl;
-	func['F'] = curs_pl;
-	func['G'] = curs_col;
-	func['H'] = curs_pos;
-	func['J'] = erase_display;
-	func['K'] = erase_line;
-	func['L'] = insert_line;
-	func['M'] = delete_line;
-	func['P'] = delete_char;
-	func['X'] = erase_char;
-	func['a'] = curs_forward;
-	func['c'] = identify;
-	func['d'] = curs_line;
-	func['e'] = curs_down;
-	func['f'] = curs_pos;
-	func['g'] = clear_tabstop;
-	func['h'] = set_mode;
-	func['l'] = reset_mode;
-	func['m'] = set_attr;
-	func['n'] = status_report;
-	func['r'] = set_margin;
-	func['s'] = save_state;
-	func['u'] = restore_state;
-	func['`'] = curs_col;
-}
-
-bool parse_csi(terminal *term, int *argc, char **argv)
+void parse_csi(terminal *term, int *argc, char **argv)
 {
 	int length;
 	u8 *cp, *buf;
@@ -118,8 +101,6 @@ bool parse_csi(terminal *term, int *argc, char **argv)
 
 	if (cp < &buf[length - 1])
 		goto start;
-
-	return true;
 }
 
 void control_character(terminal *term, u8 ch)
@@ -127,7 +108,8 @@ void control_character(terminal *term, u8 ch)
 	if (DEBUG)
 		fprintf(stderr, "ctl: %s\n", ctrl_char[ch]);
 
-	ctrl_func[ch](term, NULL);
+	if (ctrl_func[ch])
+		ctrl_func[ch](term, NULL);
 }
 
 void esc_sequence(terminal *term, u8 ch)
@@ -135,7 +117,7 @@ void esc_sequence(terminal *term, u8 ch)
 	if (DEBUG)
 		fprintf(stderr, "esc: ESC %s\n", term->esc.buf);
 
-	if (strlen((char *) term->esc.buf) == 1)
+	if (strlen((char *) term->esc.buf) == 1 && esc_func[ch])
 		esc_func[ch](term, NULL);
 
 	if (ch != '[' && ch != ']')
@@ -150,7 +132,9 @@ void csi_sequence(terminal *term, u8 ch)
 		fprintf(stderr, "csi: CSI %s\n", term->esc.buf);
 
 	reset_parm(&parm);
-	if (parse_csi(term, &parm.argc, parm.argv))
+	parse_csi(term, &parm.argc, parm.argv);
+
+	if (csi_func[ch])
 		csi_func[ch](term, &parm);
 
 	reset_esc(term);
