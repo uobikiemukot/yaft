@@ -170,8 +170,8 @@ void set_bitmap(framebuffer *fb, terminal *term, int y, int x, int offset, u8 *s
 	shift = bit2byte(gp->size.x) * BITS_PER_BYTE;
 	color = cp->color;
 
-	if (term->mode & MODE_CURSOR /* cursor */
-		&& y == term->cursor.y && x == term->cursor.x) {
+	if ((term->mode & MODE_CURSOR && y == term->cursor.y) /* cursor */
+		&& (x == term->cursor.x || (cp->wide == WIDE && (x + 1) == term->cursor.x))) {
 		color.fg = DEFAULT_BG;
 		color.bg = CURSOR_COLOR;
 	}
