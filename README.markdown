@@ -1,19 +1,19 @@
 # yaft
 yet another framebuffer terminal
 
-![yaft]
+![screenshot]
 
-[yaft]: http://www.nak.ics.keio.ac.jp/~haru/yaft/yaft-blue.png
+[screenshot]: http://www.nak.ics.keio.ac.jp/~haru/yaft/img/yaft-screenshot.png
 
 ## download
 - [yaft-0.1.7](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-0.1.7.tar.gz)
 
 ## feature
-+	recognize basic escape sequences (most of vt102 and linux console)
-+	support various framebuffer types (8/15/16/24/32bpp)
-+	support UTF-8 encoding (but never handle other character encodings)
-+	support 256 colors (rxvt, xterm like)
-+	support wallpaper
++	recognizes basic escape sequences (most of vt102 and linux console)
++	supports various framebuffer types (8/15/16/24/32bpp)
++	supports UTF-8 encoding (but never handle other character encodings)
++	supports 256 colors (rxvt, xterm like)
++	supports wallpaper
 
 ## configuration
 if you want to change configuration, rewrite conf.h

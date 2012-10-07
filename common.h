@@ -20,9 +20,30 @@
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
+typedef struct termios termios;
+typedef struct timeval timeval;
+typedef struct winsize winsize;
+typedef struct fb_fix_screeninfo finfo_t;
+typedef struct fb_var_screeninfo vinfo_t;
+typedef struct fb_cmap cmap_t;
+
+typedef struct framebuffer framebuffer;
+typedef struct terminal terminal;
+typedef struct escape escape;
+typedef struct cell cell;
+typedef struct glyph_t glyph_t;
+typedef struct pair pair;
+typedef struct margin margin;
+typedef struct color_t color_t;
+typedef struct color_pair color_pair;
+typedef struct uchar uchar;
+typedef struct state state;
+typedef struct parm_t parm_t;
 
 enum char_code {
-	BEL = 0x07, ESC = 0x1B, SPACE = 0x20,
+	BEL = 0x07, BS = 0x08, HT = 0x09,
+	LF = 0x0A, VT = 0x0B, FF = 0x0C,
+	CR = 0x0D, ESC = 0x1B, SPACE = 0x20,
 	BACKSLASH = 0x5C, DEL = 0x7F,
 };
 
@@ -38,12 +59,6 @@ enum {
 	DEFAULT_CHAR = SPACE,		/* erase char, and used for cell_size: SPACE */
 	RESET = 0x00,				/* reset for char_attr, term_mode, esc_state */
 	BRIGHT_INC = 8,				/* incrment value: from dark color to light color */
-};
-
-enum width_flag {
-	NEXT_TO_WIDE = 0,
-	HALF,
-	WIDE,
 };
 
 enum char_attr {
@@ -67,9 +82,9 @@ u32 bit_mask[] = {
 };
 
 enum term_mode {
-	ORIGIN = 0x01,				/* origin mode: DECOM */
-	CURSOR = 0x02,				/* cursor visible: DECTECM */
-	AMRIGHT = 0x04,				/* auto wrap: DECAWM */
+	MODE_ORIGIN = 0x01,				/* origin mode: DECOM */
+	MODE_CURSOR = 0x02,				/* cursor visible: DECTECM */
+	MODE_AMRIGHT = 0x04,			/* auto wrap: DECAWM */
 };
 
 enum esc_state {
@@ -78,10 +93,87 @@ enum esc_state {
 	STATE_OSC,					/* ESC ] */
 };
 
-#include "conf.h"				/* user configuration */
-#include "type.h"				/* struct and typedef */
-#include "color.h"				/* 256color definition */
+enum width_flag {
+	NEXT_TO_WIDE = 0,
+	HALF,
+	WIDE,
+};
 
-void (*ctrl_func[CTRL_CHARS])(terminal * term, void *arg);
-void (*esc_func[ESC_CHARS])(terminal * term, void *arg);
-void (*csi_func[ESC_CHARS])(terminal * term, void *arg);
+struct pair { int x, y; };
+
+struct margin { int top, bottom; };
+
+struct color_t { u32 r, g, b; };
+
+struct color_pair { int fg, bg; };
+
+struct framebuffer {
+	u8 *fp;						/* pointer of framebuffer(read only), assume bits per pixel == 32 */
+	u8 *wall;					/* buffer for wallpaper */
+	int fd;						/* file descriptor of framebuffer */
+	pair res;					/* resolution (x, y) */
+	long screen_size;			/* screen data size (byte) */
+	int line_len;				/* line length (byte) */
+	int bpp;					/* "bytes" per pixel */
+	u32 color_palette[COLORS];
+	cmap_t *cmap, *cmap_org;
+};
+
+struct cell {
+	u16 code;					/* UCS2 */
+	color_pair color;			/* color (fg, bg) */
+	u8 attribute;				/* bold, underscore, etc... */
+	int wide;					/* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
+};
+
+struct escape {
+	u8 buf[BUFSIZE];
+	u8 *bp;
+	int state;					/* esc state */
+};
+
+struct uchar {
+	u32 code;					/* UCS4: but only print UCS2 (< 0xFFFF) */
+	int length, count;
+};
+
+struct glyph_t {
+	pair size;
+	u32 *bitmap;
+};
+
+
+struct state {					/* for save/restore state */
+	int mode;
+	pair cursor;
+	u8 attribute;
+};
+
+struct parm_t {
+	int argc;
+	char *argv[ESC_PARAMS];
+};
+
+struct terminal {
+	int fd;						/* master fd */
+	pair offset;				/* window offset (x, y) */
+	int width, height;			/* terminal size (pixel) */
+	int cols, lines;			/* terminal size (cell) */
+	cell *cells;				/* pointer of each cell: cells[cols + lines * num_of_cols] */
+	pair cell_size;				/* default glyph size */
+	margin scroll;				/* scroll margin */
+	pair cursor;				/* cursor pos (x, y) */
+	bool *line_dirty;			/* dirty flag */
+	bool *tabstop;				/* tabstop flag */
+	int mode;					/* for set/reset mode */
+	bool wrap;					/* whether auto wrap occured or not */
+	state save_state;			/* for restore */
+	color_pair color;			/* color (fg, bg) */
+	u8 attribute;				/* bold, underscore, etc... */
+	escape esc;					/* store escape sequence */
+	uchar ucs;					/* store UTF-8 sequence */
+	glyph_t *fonts[UCS2_CHARS];
+};
+
+#include "conf.h"				/* user configuration */
+#include "color.h"				/* 256color definition */

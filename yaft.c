@@ -2,7 +2,7 @@
 #include "common.h"
 #include "util.h"
 #include "framebuffer.h"
-#include "load.h"
+#include "font.h"
 #include "terminal.h"
 #include "function.h"
 #include "parse.h"
@@ -14,7 +14,7 @@ void sigchld(int signal)
 	loop_flag = false;
 }
 
-void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
+void check_fds(fd_set *fds, timeval *tv, int stdin, int master)
 {
 	FD_ZERO(fds);
 	FD_SET(stdin, fds);
@@ -24,9 +24,9 @@ void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 	eselect(master + 1, fds, tv);
 }
 
-void set_rawmode(int fd, struct termios *save_tm)
+void set_rawmode(int fd, termios *save_tm)
 {
-	struct termios tm;
+	termios tm;
 
 	tcgetattr(fd, save_tm);
 	tm = *save_tm;
@@ -43,8 +43,8 @@ int main()
 {
 	int size;
 	fd_set fds;
-	struct termios save_tm;
-	struct timeval tv;
+	termios save_tm;
+	timeval tv;
 	u8 buf[BUFSIZE];
 	framebuffer fb;
 	terminal term;
@@ -52,9 +52,6 @@ int main()
 	/* init */
 	fb_init(&fb);
 	term_init(&term, fb.res);
-	load_ctrl_func(ctrl_func, CTRL_CHARS);
-	load_esc_func(esc_func, ESC_CHARS);
-	load_csi_func(csi_func, ESC_CHARS);
 
 	/* fork */
 	eforkpty(&term.fd, term.lines, term.cols);
