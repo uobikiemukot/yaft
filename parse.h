@@ -1,11 +1,4 @@
 /* See LICENSE for licence details. */
-const char *ctrl_char[] = {
-	"NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
-	"BS ", "HT ", "LF ", "VT ", "FF ", "CR ", "SO ", "SI ",
-	"DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
-	"CAN", "EM ", "SUB", "ESC", "FS ", "GS ", "RS ", "US ",
-};
-
 void (*ctrl_func[CTRL_CHARS])(terminal * term, void *arg) = {
 	[BS] = bs,
 	[HT] = tab,
@@ -61,50 +54,15 @@ void (*csi_func[ESC_CHARS])(terminal * term, void *arg) = {
 	['`'] = curs_col,
 };
 
-void reset_parm(parm_t *pt)
-{
-	int i;
-
-	pt->argc = 0;
-	for (i = 0; i < ESC_PARAMS; i++)
-		pt->argv[i] = NULL;
-}
-
-void parse_csi(terminal *term, int *argc, char **argv)
-{
-	int length;
-	u8 *cp, *buf;
-
-	buf = term->esc.buf;
-	length = strlen((char *) buf);
-	buf[length - 1] = '\0';
-
-	cp = buf;
-	while (cp < &buf[length - 1]) {
-		if (*cp == ';')
-			*cp = '\0';
-		cp++;
-	}
-
-	cp = buf;
-  start:
-	if (isdigit(*cp)) {
-		argv[*argc] = (char *) cp;
-		*argc += 1;
-	}
-
-	while (isdigit(*cp))
-		cp++;
-
-	while (!isdigit(*cp) && cp < &buf[length - 1])
-		cp++;
-
-	if (cp < &buf[length - 1])
-		goto start;
-}
-
 void control_character(terminal *term, u8 ch)
 {
+	const char *ctrl_char[] = {
+		"NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
+		"BS ", "HT ", "LF ", "VT ", "FF ", "CR ", "SO ", "SI ",
+		"DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
+		"CAN", "EM ", "SUB", "ESC", "FS ", "GS ", "RS ", "US ",
+	};
+
 	if (DEBUG)
 		fprintf(stderr, "ctl: %s\n", ctrl_char[ch]);
 
@@ -132,7 +90,8 @@ void csi_sequence(terminal *term, u8 ch)
 		fprintf(stderr, "csi: CSI %s\n", term->esc.buf);
 
 	reset_parm(&parm);
-	parse_csi(term, &parm.argc, parm.argv);
+	parse_arg(term->esc.buf, &parm, ';', isdigit);
+	*(term->esc.bp - 1) = '\0'; /* omit final character */
 
 	if (csi_func[ch])
 		csi_func[ch](term, &parm);
@@ -170,6 +129,10 @@ void utf8_character(terminal *term, u8 ch)
 	}
 	else if (0x80 <= ch && ch <= 0xBF) {
 		if (term->ucs.length == 0) {
+			/* some DEC terminals (ex VT320) recognize following C1 (8bit) contorol character,
+				but these are not implemented in yaft.
+				0x84 IND 0x85 NEL 0x88 HTS 0x8D RI  0x8E SS2 0x8F SS3
+				0x90 DCS 0x9B CSI 0x9C ST  0x9D OSC 0x9E PM  0x9F APC */
 			reset_ucs(term);
 			return;
 		}
@@ -177,7 +140,7 @@ void utf8_character(terminal *term, u8 ch)
 		term->ucs.code += ch & 0x3F;
 		term->ucs.count++;
 	}
-	else {					/* 0xC0 - 0xC1, 0xF5 - 0xFF: illegal byte */
+	else { /* 0xC0 - 0xC1, 0xF5 - 0xFF: illegal byte */
 		reset_ucs(term);
 		return;
 	}

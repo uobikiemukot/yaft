@@ -1,17 +1,15 @@
-# yaft
+## yaft
 yet another framebuffer terminal
 
-![screenshot]
-
-[screenshot]: http://www.nak.ics.keio.ac.jp/~haru/yaft/img/yaft-screenshot.png
+![screenshot](http://www.nak.ics.keio.ac.jp/~haru/yaft/img/yaft-screenshot.png)
 
 ## download
-- [yaft-0.1.7](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-0.1.7.tar.gz)
+-	[yaft-0.1.8](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-0.1.8.tar.gz)
 
 ## feature
 +	recognizes basic escape sequences (most of vt102 and linux console)
 +	supports various framebuffer types (8/15/16/24/32bpp)
-+	supports UTF-8 encoding (but never handle other character encodings)
++	supports UTF-8 encoding (but cannot handle other character encodings)
 +	supports 256 colors (rxvt, xterm like)
 +	supports wallpaper
 
@@ -20,14 +18,14 @@ if you want to change configuration, rewrite conf.h
 
 ### path and terminal name
 
-+	static char *font_path[] = { "/path/to/fonts0.yaft", "/path/to/fonts1.yaft", ..., NULL, };  
++	static char *font_path[] = { "/path/to/font.yaft", ..., NULL, };  
 +	static char *glyph_alias = "/path/to/alias";  
 +	static char *fb_path = "/dev/fb0";  
 +	static char *shell_cmd = "/bin/bash";  
 +	static char *term_name = "TERM=yaft-256color";  
 
 ### color
-all color defined in color.h
+the value is an index of color_list[] in color.h
 
 +	DEFAULT_FG = 7,  
 +	DEFAULT_BG = 0,  
@@ -52,13 +50,16 @@ $ make
 $ yaft
 ~~~
 
-for wallpaper, you can use yaft_wall script (yaft_wall requires [fbv])
+for displaying wallpaper, you can use yaft_wall script (it requires [fbv])
 
 ~~~
 $ yaft_wall /path/to/wallpaper.jpg
 ~~~
 
 [fbv]: http://www.eclis.ch/fbv/
+
+## tools
+some useful tools (bdf to yaft font converter etc) are found in tools/ directory
 
 ## license
 Copyright (c) 2012 haru (uobikiemukot at gmail dot com)

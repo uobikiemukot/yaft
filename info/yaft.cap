@@ -1,13 +1,20 @@
-#	Reconstructed via infocmp from file: /home/nak/haru/.terminfo//r/rxvt-256color
-yaft|yaft-256color|yet another framebuffer terminal:\
-	:am:ms:xn:\
-	:co#80:it#8:li#24:\
-	:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:IC=\E[%d@:\
-	:LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:al=\E[L:cd=\E[J:ce=\E[K:\
-	:cl=\E[H\E[J:cm=\E[%i%d;%dH:cr=^M:cs=\E[%i%d;%dr:\
-	:ct=\E[3g:dc=\E[P:dl=\E[M:do=^J:ec=\E[%dX:ei=:ho=\E[H:\
-	:ic=\E[@:im=:is=\Ec:le=^H:mb=\E[5m:md=\E[1m:me=\E[m:\
-	:mr=\E[7m:nd=\E[C:nw=\EE:rc=\E8:rs=\Ec:\
-	:..sa=\E[0%?%p6%t;1%;%?%p2%t;4%;%?%p1%p3%|%t;7%;%?%p4%t;5%;m:\
-	:sc=\E7:se=\E[27m:sf=^J:so=\E[7m:sr=\EM:st=\EH:ta=^I:\
-	:ue=\E[24m:up=\E[A:us=\E[4m:ve=\E[?25h:vi=\E[?25l:
+# (untranslatable capabilities removed to fit entry within 1023 bytes)
+yaft-256color|yet another framebuffer terminal:\
+	:am:ms:ut:xn:\
+	:Co#256:co#80:it#8:li#24:pa#32767:\
+	:&7=^Z:@7=\E[4~:AB=\E[48;5;%dm:AF=\E[38;5;%dm:AL=\E[%dL:\
+	:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:F1=\E[23~:F2=\E[24~:\
+	:F3=\E[25~:F4=\E[26~:F5=\E[28~:F6=\E[29~:F7=\E[31~:\
+	:F8=\E[32~:F9=\E[33~:FA=\E[34~:IC=\E[%d@:K2=\E[G:Km=\E[M:\
+	:LE=\E[%dD:RA=\E[?7l:RI=\E[%dC:SA=\E[?7h:UP=\E[%dA:\
+	:al=\E[L:cb=\E[1K:cd=\E[J:ce=\E[K:ch=\E[%i%dG:cl=\E[H\E[J:\
+	:cm=\E[%i%d;%dH:cr=^M:cs=\E[%i%d;%dr:ct=\E[3g:\
+	:cv=\E[%i%dd:dc=\E[P:dl=\E[M:do=^J:ec=\E[%dX:ei=:ho=\E[H:\
+	:ic=\E[@:im=:is=\Ec:k1=\E[[A:k2=\E[[B:k3=\E[[C:k4=\E[[D:\
+	:k5=\E[[E:k6=\E[17~:k7=\E[18~:k8=\E[19~:k9=\E[20~:\
+	:k;=\E[21~:kB=\E[Z:kD=\E[3~:kI=\E[2~:kN=\E[6~:kP=\E[5~:\
+	:kb=\177:kd=\E[B:kh=\E[1~:kl=\E[D:kr=\E[C:ku=\E[A:le=^H:\
+	:mb=\E[5m:md=\E[1m:me=\E[m:mr=\E[7m:nd=\E[C:nw=\EE:\
+	:op=\E[39;49m:rc=\E8:rs=\Ec:sc=\E7:se=\E[27m:sf=^J:\
+	:so=\E[7m:sr=\EM:st=\EH:ta=^I:ue=\E[24m:up=\E[A:us=\E[4m:\
+	:ve=\E[?25h:vi=\E[?25l:
