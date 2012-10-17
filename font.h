@@ -1,5 +1,5 @@
 /* See LICENSE for licence details. */
-void load_glyph(glyph_t **fonts, char *path)
+void load_glyph(font_t *fonts, char *path)
 {
 	int count = 0, state = 0;
 	char buf[BUFSIZE], *endp;
@@ -16,9 +16,9 @@ void load_glyph(glyph_t **fonts, char *path)
 		switch (state) {
 		case 0:
 			code = atoi(buf);
-			if (fonts[code] != NULL) {
-				free(fonts[code]->bitmap);
-				free(fonts[code]);
+			if (fonts[code].gp != NULL) {
+				free(fonts[code].gp->bitmap);
+				free(fonts[code].gp);
 			}
 			gp = (glyph_t *) emalloc(sizeof(glyph_t));
 			state = 1;
@@ -31,7 +31,8 @@ void load_glyph(glyph_t **fonts, char *path)
 		case 2:
 			gp->bitmap[count++] = strtol(buf, &endp, 16);
 			if (count >= gp->size.y) {
-				fonts[code] = gp;
+				fonts[code].gp = gp;
+				fonts[code].is_alias = false;
 				state = count = 0;
 			}
 			break;
@@ -43,7 +44,7 @@ void load_glyph(glyph_t **fonts, char *path)
 	efclose(fp);
 }
 
-void load_alias(glyph_t **fonts, char *alias)
+void load_alias(font_t *fonts, char *alias)
 {
 	unsigned int dst, src;
 	char buf[BUFSIZE];
@@ -57,20 +58,22 @@ void load_alias(glyph_t **fonts, char *alias)
 			|| src < 0 || src >= UCS2_CHARS)
 			continue;
 
-		if (fonts[dst] == NULL && fonts[src] != NULL)
-			fonts[dst] = fonts[src];
+		if (fonts[dst].gp == NULL && fonts[src].gp != NULL)
+			fonts[dst].gp = fonts[src].gp;
 	}
 
 	efclose(fp);
 }
 
-void load_fonts(glyph_t **fonts, char **font_path, char *alias)
+void load_fonts(font_t *fonts, char **font_path, char *alias)
 {
 	int i;
 	glyph_t *gp;
 
-	for (i = 0; i < UCS2_CHARS; i++)
-		fonts[i] = NULL;
+	for (i = 0; i < UCS2_CHARS; i++) {
+		fonts[i].gp = NULL;
+		fonts[i].is_alias = true;
+	}
 
 	for (i = 0; font_path[i] != NULL; i++)
 		load_glyph(fonts, font_path[i]);
@@ -78,7 +81,7 @@ void load_fonts(glyph_t **fonts, char **font_path, char *alias)
 	if (alias != NULL)
 		load_alias(fonts, alias);
 
-	gp = fonts[DEFAULT_CHAR];
+	gp = fonts[DEFAULT_CHAR].gp;
 	if (gp == NULL || gp->size.x == 0 || gp->size.y == 0) {
 		fprintf(stderr, "DEFAULT_CHAR(U+%.2X) not found or invalid cell size x:%d y:%d\n",
 				DEFAULT_CHAR, gp->size.x, gp->size.y);

@@ -81,7 +81,7 @@ void reverse_nl(terminal *term, void *arg)
 
 void identify(terminal *term, void *arg)
 {
-	writeback(term->fd, "\033[?6c", 5);
+	ewrite(term->fd, (u8 *) "\033[?6c", 5); /* "I am a VT102" */
 }
 
 void enter_csi(terminal *term, void *arg)
@@ -403,15 +403,14 @@ void status_report(terminal *term, void *arg)
 	for (i = 0; i < argc; i++) {
 		num = atoi(argv[i]);
 		if (num == 5)			/* terminal response: ready */
-			writeback(term->fd, "\033[0n", 4);
+			ewrite(term->fd, (u8 *) "\033[0n", 4);
 		else if (num == 6) {	/* cursor position report */
-			memset(buf, '\0', BUFSIZE);
-			snprintf(buf, BUFSIZE, "\033[%d;%dR", term->cursor.y + 1,
-					 term->cursor.x + 1);
-			writeback(term->fd, buf, strlen(buf));
+			snprintf(buf, BUFSIZE, "\033[%d;%dR",
+				term->cursor.y + 1, term->cursor.x + 1);
+			ewrite(term->fd, (u8 *) buf, strlen(buf));
 		}
 		else if (num == 15)	/* terminal response: printer not connected */
-			writeback(term->fd, "\033[?13n", 6);
+			ewrite(term->fd, (u8 *) "\033[?13n", 6);
 	}
 }
 
@@ -510,5 +509,6 @@ void clear_tabstop(terminal *term, void *arg)
 		}
 	}
 }
+
 /* function for osc sequence */
 /* not implemented */

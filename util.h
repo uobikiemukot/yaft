@@ -5,12 +5,12 @@ void fatal(char *str)
 	exit(EXIT_FAILURE);
 }
 
-int eopen(char *file, int flag)
+int eopen(char *path, int flag)
 {
 	int fd;
 
-	if ((fd = open(file, flag)) < 0) {
-		fprintf(stderr, "%s\n", file);
+	if ((fd = open(path, flag)) < 0) {
+		fprintf(stderr, "cannot open \"%s\"\n", path);
 		fatal("open");
 	}
 	return fd;
@@ -26,12 +26,12 @@ void eclose(int fd)
 	}
 }
 
-FILE *efopen(char *file, char *mode)
+FILE *efopen(char *path, char *mode)
 {
 	FILE *fp;
 
-	if ((fp = fopen(file, mode)) == NULL) {
-		fprintf(stderr, "%s\n", file);
+	if ((fp = fopen(path, mode)) == NULL) {
+		fprintf(stderr, "cannot open \"%s\"\n", path);
 		fatal("fopen");
 	}
 	return fp;
@@ -67,7 +67,7 @@ void emunmap(void *ptr, size_t len)
 void *emalloc(size_t size)
 {
 	void *p;
-	if ((p = malloc(size)) == NULL)
+	if ((p = calloc(1, size)) == NULL)
 		fatal("malloc");
 	return p;
 }
@@ -95,10 +95,10 @@ void eforkpty(int *master, int lines, int cols)
 	if (pid < 0)
 		fatal("fork");
 	else if (pid == 0) { /* child */
-		setsid();
 		dup2(slave, STDIN_FILENO);
 		dup2(slave, STDOUT_FILENO);
 		dup2(slave, STDERR_FILENO);
+		setsid();
 		eioctl(slave, TIOCSCTTY, NULL);
 		close(slave);
 		close(*master);
@@ -125,12 +125,7 @@ void ewrite(int fd, u8 *buf, int size)
 		fatal("write");
 }
 
-/* non system calls */
-int bit2byte(int num)
-{
-	return (num + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
-}
-
+/* non system call function */
 u32 bit_reverse(u32 v, int bits)
 {
 	u32 r = v;
@@ -152,4 +147,44 @@ void swap_color(color_pair *cp)
 	tmp = cp->fg;
 	cp->fg = cp->bg;
 	cp->bg = tmp;
+}
+
+void reset_parm(parm_t *pt)
+{
+	int i;
+
+	pt->argc = 0;
+	for (i = 0; i < ESC_PARAMS; i++)
+		pt->argv[i] = NULL;
+}
+
+void parse_arg(u8 *buf, parm_t *pt, int delim, int (is_valid)(int c))
+{
+	int length;
+	u8 *cp;
+
+	length = strlen((char *) buf);
+	cp = buf;
+
+	while (cp < &buf[length - 1]) {
+		if (*cp == delim)
+			*cp = '\0';
+		cp++;
+	}
+
+	cp = buf;
+  start:
+	if (pt->argc < ESC_PARAMS && is_valid(*cp)) {
+		pt->argv[pt->argc] = (char *) cp;
+		pt->argc++;
+	}
+
+	while (is_valid(*cp))
+		cp++;
+
+	while (!is_valid(*cp) && cp < &buf[length - 1])
+		cp++;
+
+	if (cp < &buf[length - 1])
+		goto start;
 }

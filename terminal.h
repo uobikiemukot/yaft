@@ -24,7 +24,7 @@ int set_cell(terminal *term, int y, int x, u16 code)
 	glyph_t *gp;
 
 	cp = &term->cells[x + y * term->cols];
-	gp = term->fonts[code];
+	gp = term->fonts[code].gp;
 
 	nc.code = code;
 
@@ -149,10 +149,10 @@ void addch(terminal *term, u32 code)
 	glyph_t *gp;
 
 	if (code >= UCS2_CHARS				/* not print over UCS2 (>= 0x10000) */
-		|| term->fonts[code] == NULL)	/* glyph not found */
+		|| term->fonts[code].gp == NULL)	/* glyph not found */
 		return;
 
-	gp = term->fonts[code];				/* folding */
+	gp = term->fonts[code].gp;				/* folding */
 	if ((term->wrap && term->cursor.x == term->cols - 1)
 		|| (gp->size.x > term->cell_size.x && term->cursor.x == term->cols - 1)) {
 		set_cursor(term, term->cursor.y, 0);
@@ -162,12 +162,6 @@ void addch(terminal *term, u32 code)
 
 	move_cursor(term, 0,
 		set_cell(term, term->cursor.y, term->cursor.x, code));
-}
-
-void writeback(int fd, char *buf, int size)
-{
-	if (size > 0)
-		ewrite(fd, (u8 *) buf, size);
 }
 
 void reset_esc(terminal *term)
@@ -257,31 +251,12 @@ void reset(terminal *term)
 	reset_ucs(term);
 }
 
-void resize(terminal *term, int lines, int cols)
+void redraw(terminal *term)
 {
-	winsize size;
+	int i;
 
-	term->lines = lines;
-	term->cols = cols;
-	term->width = term->cols * term->cell_size.x;
-	term->height = term->lines * term->cell_size.y;
-
-	free(term->line_dirty);
-	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
-
-	free(term->tabstop);
-	term->tabstop = (bool *) emalloc(sizeof(bool) * term->cols);
-
-	free(term->cells);
-	term->cells = (cell *)
-		emalloc(sizeof(cell) * term->cols * term->lines);
-
-	reset(term);
-
-	size.ws_row = lines;
-	size.ws_col = cols;
-	size.ws_xpixel = size.ws_ypixel = 0;
-	eioctl(term->fd, TIOCSWINSZ, &size);
+	for (i = 0; i < term->lines; i++)
+		term->line_dirty[i] = true;
 }
 
 void term_init(terminal *term, pair res)
@@ -290,13 +265,12 @@ void term_init(terminal *term, pair res)
 
 	load_fonts(term->fonts, font_path, glyph_alias);
 
-	gp = term->fonts[DEFAULT_CHAR];
+	gp = term->fonts[DEFAULT_CHAR].gp;
 	term->cell_size.x = gp->size.x;
 	term->cell_size.y = gp->size.y;
 
 	term->width = res.x;
 	term->height = res.y;
-
 	term->offset.x = term->offset.y = 0;
 
 	term->cols = term->width / term->cell_size.x;
@@ -313,27 +287,21 @@ void term_init(terminal *term, pair res)
 		emalloc(sizeof(cell) * term->cols * term->lines);
 	reset(term);
 
-	writeback(STDIN_FILENO, "\033[?25l", 6);	/* cusor hide */
+	ewrite(STDIN_FILENO, (u8 *) "\033[?25l", 6);	/* cusor hidden */
 }
 
 void term_die(terminal *term)
 {
-	int i, j;
-	glyph_t *gp;
+	int i;
 
 	for (i = 0; i < UCS2_CHARS; i++) {
-		gp = term->fonts[i];
-		if (gp != NULL) {
-			free(gp->bitmap);
-			free(gp);
-			for (j = 0; j < UCS2_CHARS; j++) {
-				if (term->fonts[j] == gp)
-					term->fonts[j] = NULL;
-			}
+		if (!term->fonts[i].is_alias) {
+			free(term->fonts[i].gp->bitmap);
+			free(term->fonts[i].gp);
 		}
 	}
 	free(term->line_dirty);
 	free(term->cells);
 
-	writeback(STDIN_FILENO, "\033[?25h", 6);	/* cursor visible */
+	ewrite(STDIN_FILENO, (u8 *) "\033[?25h", 6);	/* cursor visible */
 }

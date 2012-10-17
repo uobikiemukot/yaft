@@ -1,9 +1,10 @@
 #!/bin/sh
+# usage: yaft_wall /path/to/image
 
 echo -ne "\e[?25l" # hide cursor
 fbv -ciuker "$1" << EOF
 q
 EOF
 
-export YAFT_WALLPAPER=1
+export YAFT="wall"
 exec yaft

@@ -4,6 +4,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/fb.h>
+#include <linux/vt.h>
+#include <linux/kd.h>
 #include <pty.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -26,12 +28,14 @@ typedef struct winsize winsize;
 typedef struct fb_fix_screeninfo finfo_t;
 typedef struct fb_var_screeninfo vinfo_t;
 typedef struct fb_cmap cmap_t;
+typedef struct vt_mode vt_mode;
 
 typedef struct framebuffer framebuffer;
 typedef struct terminal terminal;
 typedef struct escape escape;
 typedef struct cell cell;
 typedef struct glyph_t glyph_t;
+typedef struct font_t font_t;
 typedef struct pair pair;
 typedef struct margin margin;
 typedef struct color_t color_t;
@@ -39,6 +43,8 @@ typedef struct color_pair color_pair;
 typedef struct uchar uchar;
 typedef struct state state;
 typedef struct parm_t parm_t;
+typedef struct tty_state tty_state;
+typedef struct info_t info_t;
 
 enum char_code {
 	BEL = 0x07, BS = 0x08, HT = 0x09,
@@ -50,7 +56,7 @@ enum char_code {
 enum {
 	/* misc */
 	BITS_PER_BYTE = 8,
-	BUFSIZE = 1024,				/* read, esc, various buffer size */
+	BUFSIZE = 512,				/* read, esc, various buffer size */
 	ESC_PARAMS = 16,			/* max parameters of csi/osc sequence */
 	COLORS = 256,				/* num of color */
 	UCS2_CHARS = 0x10000,		/* number of UCS2 glyph */
@@ -62,14 +68,14 @@ enum {
 };
 
 enum char_attr {
-	BOLD = 1,					/* bright foreground */
+	BOLD = 1,					/* brighten foreground */
 	UNDERLINE = 4,
-	BLINK = 5,					/* bright background */
+	BLINK = 5,					/* brighten background */
 	REVERSE = 7,
 };
 
 const u8 attr_mask[] = {
-	0x00, 0x01, 0x00, 0x00,		/* 0:none	  1:bold  2:none 3:none */
+	0x00, 0x01, 0x00, 0x00,		/* 0:none      1:bold  2:none 3:none */
 	0x02, 0x04, 0x00, 0x08,		/* 4:underline 5:blink 6:none 7:reverse */
 };
 
@@ -82,9 +88,9 @@ u32 bit_mask[] = {
 };
 
 enum term_mode {
-	MODE_ORIGIN = 0x01,				/* origin mode: DECOM */
-	MODE_CURSOR = 0x02,				/* cursor visible: DECTECM */
-	MODE_AMRIGHT = 0x04,			/* auto wrap: DECAWM */
+	MODE_ORIGIN = 0x01,			/* origin mode: DECOM */
+	MODE_CURSOR = 0x02,			/* cursor visible: DECTECM */
+	MODE_AMRIGHT = 0x04,		/* auto wrap: DECAWM */
 };
 
 enum esc_state {
@@ -99,17 +105,28 @@ enum width_flag {
 	WIDE,
 };
 
+struct info_t {
+	const char *func;
+	const char *file;
+	int line;
+};
+
+struct tty_state {
+	int fd;
+	bool visible;
+	bool redraw_flag;
+	bool loop_flag;
+};
+
 struct pair { int x, y; };
-
 struct margin { int top, bottom; };
-
 struct color_t { u32 r, g, b; };
-
 struct color_pair { int fg, bg; };
 
 struct framebuffer {
-	u8 *fp;						/* pointer of framebuffer(read only), assume bits per pixel == 32 */
+	u8 *fp;						/* pointer of framebuffer(read only) */
 	u8 *wall;					/* buffer for wallpaper */
+	u8 *buf;					/* copy of framebuffer */
 	int fd;						/* file descriptor of framebuffer */
 	pair res;					/* resolution (x, y) */
 	long screen_size;			/* screen data size (byte) */
@@ -117,6 +134,7 @@ struct framebuffer {
 	int bpp;					/* "bytes" per pixel */
 	u32 color_palette[COLORS];
 	cmap_t *cmap, *cmap_org;
+	int tty;
 };
 
 struct cell {
@@ -142,6 +160,10 @@ struct glyph_t {
 	u32 *bitmap;
 };
 
+struct font_t {
+	glyph_t *gp;
+	bool is_alias;
+};
 
 struct state {					/* for save/restore state */
 	int mode;
@@ -165,14 +187,14 @@ struct terminal {
 	pair cursor;				/* cursor pos (x, y) */
 	bool *line_dirty;			/* dirty flag */
 	bool *tabstop;				/* tabstop flag */
-	int mode;					/* for set/reset mode */
+	u32 mode;					/* for set/reset mode */
 	bool wrap;					/* whether auto wrap occured or not */
 	state save_state;			/* for restore */
 	color_pair color;			/* color (fg, bg) */
 	u8 attribute;				/* bold, underscore, etc... */
 	escape esc;					/* store escape sequence */
 	uchar ucs;					/* store UTF-8 sequence */
-	glyph_t *fonts[UCS2_CHARS];
+	font_t fonts[UCS2_CHARS];
 };
 
 #include "conf.h"				/* user configuration */
