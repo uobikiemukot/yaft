@@ -39,7 +39,7 @@ int set_cell(terminal *term, int y, int x, u16 code)
 		swap_color(&nc.color);
 
 	nc.attribute = term->attribute;
-	nc.wide = (gp->size.x > term->cell_size.x) ? WIDE : HALF;
+	nc.wide = (gp->width > term->cell_width) ? WIDE : HALF;
 
 	*cp = nc;
 	term->line_dirty[y] = true;
@@ -154,7 +154,7 @@ void addch(terminal *term, u32 code)
 
 	gp = term->fonts[code].gp;				/* folding */
 	if ((term->wrap && term->cursor.x == term->cols - 1)
-		|| (gp->size.x > term->cell_size.x && term->cursor.x == term->cols - 1)) {
+		|| (gp->width > term->cell_width && term->cursor.x == term->cols - 1)) {
 		set_cursor(term, term->cursor.y, 0);
 		move_cursor(term, 1, 0);
 	}
@@ -212,9 +212,17 @@ void reset_ucs(terminal *term)
 
 void reset_state(terminal *term)
 {
-	term->save_state.cursor.x = term->save_state.cursor.y = 0;
-	term->save_state.attribute = RESET;
-	term->save_state.mode = RESET;
+	term->state.cursor.x = term->state.cursor.y = 0;
+	term->state.attribute = RESET;
+	term->state.mode = RESET;
+}
+
+void redraw(terminal *term)
+{
+	int i;
+
+	for (i = 0; i < term->lines; i++)
+		term->line_dirty[i] = true;
 }
 
 void reset(terminal *term)
@@ -251,14 +259,6 @@ void reset(terminal *term)
 	reset_ucs(term);
 }
 
-void redraw(terminal *term)
-{
-	int i;
-
-	for (i = 0; i < term->lines; i++)
-		term->line_dirty[i] = true;
-}
-
 void term_init(terminal *term, pair res)
 {
 	glyph_t *gp;
@@ -266,15 +266,15 @@ void term_init(terminal *term, pair res)
 	load_fonts(term->fonts, font_path, glyph_alias);
 
 	gp = term->fonts[DEFAULT_CHAR].gp;
-	term->cell_size.x = gp->size.x;
-	term->cell_size.y = gp->size.y;
+	term->cell_width = gp->width;
+	term->cell_height = gp->height;
 
 	term->width = res.x;
 	term->height = res.y;
 	term->offset.x = term->offset.y = 0;
 
-	term->cols = term->width / term->cell_size.x;
-	term->lines = term->height / term->cell_size.y;
+	term->cols = term->width / term->cell_width;
+	term->lines = term->height / term->cell_height;
 
 	if (DEBUG)
 		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",

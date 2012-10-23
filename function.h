@@ -47,17 +47,17 @@ void enter_esc(terminal *term, void *arg)
 /* function for escape sequence */
 void save_state(terminal *term, void *arg)
 {
-	term->save_state.cursor = term->cursor;
-	term->save_state.attribute = term->attribute;
-	term->save_state.mode = term->mode & MODE_ORIGIN;
+	term->state.cursor = term->cursor;
+	term->state.attribute = term->attribute;
+	term->state.mode = term->mode & MODE_ORIGIN;
 }
 
 void restore_state(terminal *term, void *arg)
 {
-	term->cursor = term->save_state.cursor;
-	term->attribute = term->save_state.attribute;
+	term->cursor = term->state.cursor;
+	term->attribute = term->state.attribute;
 
-	if (term->save_state.mode & MODE_ORIGIN)
+	if (term->state.mode & MODE_ORIGIN)
 		term->mode |= MODE_ORIGIN;
 	else
 		term->mode &= ~MODE_ORIGIN;

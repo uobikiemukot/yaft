@@ -24,13 +24,13 @@ void load_glyph(font_t *fonts, char *path)
 			state = 1;
 			break;
 		case 1:
-			sscanf(buf, "%d %d", &gp->size.x, &gp->size.y);
-			gp->bitmap = (u32 *) emalloc(gp->size.y * sizeof(u32));
+			sscanf(buf, "%hhu %hhu", &gp->width, &gp->height);
+			gp->bitmap = (u32 *) emalloc(gp->height * sizeof(u32));
 			state = 2;
 			break;
 		case 2:
 			gp->bitmap[count++] = strtol(buf, &endp, 16);
-			if (count >= gp->size.y) {
+			if (count >= gp->height) {
 				fonts[code].gp = gp;
 				fonts[code].is_alias = false;
 				state = count = 0;
@@ -82,9 +82,9 @@ void load_fonts(font_t *fonts, char **font_path, char *alias)
 		load_alias(fonts, alias);
 
 	gp = fonts[DEFAULT_CHAR].gp;
-	if (gp == NULL || gp->size.x == 0 || gp->size.y == 0) {
+	if (gp == NULL || gp->width == 0 || gp->height == 0) {
 		fprintf(stderr, "DEFAULT_CHAR(U+%.2X) not found or invalid cell size x:%d y:%d\n",
-				DEFAULT_CHAR, gp->size.x, gp->size.y);
+				DEFAULT_CHAR, gp->width, gp->height);
 		exit(EXIT_FAILURE);
 	}
 }

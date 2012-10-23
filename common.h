@@ -2,6 +2,7 @@
 #define _XOPEN_SOURCE 600
 #include <ctype.h>
 #include <errno.h>
+#include <execinfo.h>
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <linux/vt.h>
@@ -32,7 +33,7 @@ typedef struct vt_mode vt_mode;
 
 typedef struct framebuffer framebuffer;
 typedef struct terminal terminal;
-typedef struct escape escape;
+typedef struct esc_t esc_t;
 typedef struct cell cell;
 typedef struct glyph_t glyph_t;
 typedef struct font_t font_t;
@@ -40,11 +41,10 @@ typedef struct pair pair;
 typedef struct margin margin;
 typedef struct color_t color_t;
 typedef struct color_pair color_pair;
-typedef struct uchar uchar;
-typedef struct state state;
+typedef struct ucs_t ucs_t;
+typedef struct state_t state_t;
 typedef struct parm_t parm_t;
 typedef struct tty_state tty_state;
-typedef struct info_t info_t;
 
 enum char_code {
 	BEL = 0x07, BS = 0x08, HT = 0x09,
@@ -56,7 +56,8 @@ enum char_code {
 enum {
 	/* misc */
 	BITS_PER_BYTE = 8,
-	BUFSIZE = 512,				/* read, esc, various buffer size */
+	BUFSIZE = 1024,				/* read, esc, various buffer size */
+	SELECT_TIMEOUT = 20000,		/* used by select() */
 	ESC_PARAMS = 16,			/* max parameters of csi/osc sequence */
 	COLORS = 256,				/* num of color */
 	UCS2_CHARS = 0x10000,		/* number of UCS2 glyph */
@@ -105,12 +106,6 @@ enum width_flag {
 	WIDE,
 };
 
-struct info_t {
-	const char *func;
-	const char *file;
-	int line;
-};
-
 struct tty_state {
 	int fd;
 	bool visible;
@@ -121,7 +116,12 @@ struct tty_state {
 struct pair { int x, y; };
 struct margin { int top, bottom; };
 struct color_t { u32 r, g, b; };
-struct color_pair { int fg, bg; };
+struct color_pair { u8 fg, bg; };
+
+struct parm_t {					/* for parse_arg() */
+	int argc;
+	char *argv[ESC_PARAMS];
+};
 
 struct framebuffer {
 	u8 *fp;						/* pointer of framebuffer(read only) */
@@ -134,7 +134,6 @@ struct framebuffer {
 	int bpp;					/* "bytes" per pixel */
 	u32 color_palette[COLORS];
 	cmap_t *cmap, *cmap_org;
-	int tty;
 };
 
 struct cell {
@@ -144,19 +143,19 @@ struct cell {
 	int wide;					/* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
 };
 
-struct escape {
+struct esc_t {
 	u8 buf[BUFSIZE];
 	u8 *bp;
 	int state;					/* esc state */
 };
 
-struct uchar {
-	u32 code;					/* UCS4: but only print UCS2 (< 0xFFFF) */
+struct ucs_t {
+	u32 code;					/* UCS4: but only print UCS2 (<= U+FFFF) */
 	int length, count;
 };
 
 struct glyph_t {
-	pair size;
+	u8 width, height;
 	u32 *bitmap;
 };
 
@@ -165,15 +164,10 @@ struct font_t {
 	bool is_alias;
 };
 
-struct state {					/* for save/restore state */
+struct state_t {				/* for save, restore state */
 	int mode;
 	pair cursor;
 	u8 attribute;
-};
-
-struct parm_t {
-	int argc;
-	char *argv[ESC_PARAMS];
 };
 
 struct terminal {
@@ -182,19 +176,19 @@ struct terminal {
 	int width, height;			/* terminal size (pixel) */
 	int cols, lines;			/* terminal size (cell) */
 	cell *cells;				/* pointer of each cell: cells[cols + lines * num_of_cols] */
-	pair cell_size;				/* default glyph size */
+	u8 cell_width, cell_height;	/* default glyph size */
 	margin scroll;				/* scroll margin */
 	pair cursor;				/* cursor pos (x, y) */
-	bool *line_dirty;			/* dirty flag */
+	bool *line_dirty;				/* dirty flag */
 	bool *tabstop;				/* tabstop flag */
-	u32 mode;					/* for set/reset mode */
+	int mode;					/* for set/reset mode */
 	bool wrap;					/* whether auto wrap occured or not */
-	state save_state;			/* for restore */
+	state_t state;				/* for restore */
 	color_pair color;			/* color (fg, bg) */
 	u8 attribute;				/* bold, underscore, etc... */
-	escape esc;					/* store escape sequence */
-	uchar ucs;					/* store UTF-8 sequence */
-	font_t fonts[UCS2_CHARS];
+	esc_t esc;					/* store escape sequence */
+	ucs_t ucs;					/* store UTF-8 sequence */
+	font_t fonts[UCS2_CHARS];	/* glyph data */
 };
 
 #include "conf.h"				/* user configuration */

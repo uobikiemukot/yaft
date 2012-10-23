@@ -15,11 +15,10 @@ tty_state tty = {
 
 void handler(int signo)
 {
-	signal(SIGUSR1, handler);
-
 	if (signo == SIGCHLD)
 		tty.loop_flag = false;
 	else if (signo == SIGUSR1) {
+		signal(SIGUSR1, handler);
 		if (tty.visible) {
 			tty.visible = false;
 			ioctl(tty.fd, VT_RELDISP, 1);
@@ -38,14 +37,14 @@ void tty_init(tty_state *tty)
 	tty->fd = eopen("/dev/tty", O_RDWR);
 	signal(SIGCHLD, handler);
 	signal(SIGUSR1, handler);
-	eioctl(tty->fd, VT_SETMODE, &(vt_mode){VT_PROCESS, 0, SIGUSR1, SIGUSR1, 0});
+	eioctl(tty->fd, VT_SETMODE, &(vt_mode){.mode = VT_PROCESS, .relsig = SIGUSR1, .acqsig = SIGUSR1});
 	eioctl(tty->fd, KDSETMODE, (void *) KD_GRAPHICS);
 }
 
 void tty_die(tty_state *tty) {
 	signal(SIGCHLD, SIG_DFL);
 	signal(SIGUSR1, SIG_DFL);
-	eioctl(tty->fd, VT_SETMODE, &(vt_mode){VT_AUTO, 0, 0, 0,});
+	eioctl(tty->fd, VT_SETMODE, &(vt_mode){.mode = VT_AUTO, .relsig = 0, .acqsig = 0});
 	eioctl(tty->fd, KDSETMODE, (void *) KD_TEXT);
 	close(tty->fd);
 }
@@ -56,7 +55,7 @@ void check_fds(fd_set *fds, timeval *tv, int stdin, int master)
 	FD_SET(stdin, fds);
 	FD_SET(master, fds);
 	tv->tv_sec = 0;
-	tv->tv_usec = SELECT_TIMEOUT; /* defined in conf.h */
+	tv->tv_usec = SELECT_TIMEOUT;
 	eselect(master + 1, fds, tv);
 }
 
@@ -79,8 +78,8 @@ int main()
 {
 	ssize_t size;
 	fd_set fds;
-	termios save_tm;
 	timeval tv;
+	termios save_tm;
 	u8 buf[BUFSIZE];
 	framebuffer fb;
 	terminal term;
@@ -96,14 +95,18 @@ int main()
 
 	/* main loop */
 	while (tty.loop_flag) {
-		check_fds(&fds, &tv, STDIN_FILENO, term.fd);
+		if (tty.redraw_flag) {
+			redraw(&term);
+			refresh(&fb, &term);
+			tty.redraw_flag = false;
+		}
 
+		check_fds(&fds, &tv, STDIN_FILENO, term.fd);
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
 			size = read(STDIN_FILENO, buf, BUFSIZE);
 			if (size > 0)
 				ewrite(term.fd, buf, size);
 		}
-
 		if (FD_ISSET(term.fd, &fds)) {
 			size = read(term.fd, buf, BUFSIZE);
 			if (size > 0) {
@@ -115,12 +118,6 @@ int main()
 				refresh(&fb, &term);
 			}
 		}
-
-		if (tty.redraw_flag) {
-			redraw(&term);
-			refresh(&fb, &term);
-			tty.redraw_flag = false;
-		}
 	}
 	fflush(stdout);
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &save_tm);
@@ -128,6 +125,4 @@ int main()
 	term_die(&term);
 	fb_die(&fb);
 	tty_die(&tty);
-
-	return 0;
 }

@@ -160,7 +160,7 @@ void set_bitmap(framebuffer *fb, terminal *term, int y, int x, int offset, u8 *s
 		return;
 
 	gp = term->fonts[cp->code].gp;
-	shift = ((gp->size.x + BITS_PER_BYTE - 1) / BITS_PER_BYTE) * BITS_PER_BYTE;
+	shift = ((gp->width + BITS_PER_BYTE - 1) / BITS_PER_BYTE) * BITS_PER_BYTE;
 	color = cp->color;
 
 	if ((term->mode & MODE_CURSOR && y == term->cursor.y) /* cursor */
@@ -169,16 +169,16 @@ void set_bitmap(framebuffer *fb, terminal *term, int y, int x, int offset, u8 *s
 		color.bg = CURSOR_COLOR;
 	}
 
-	if ((offset == (term->cell_size.y - 1)) /* underline */
+	if ((offset == (term->cell_height - 1)) /* underline */
 		&& (cp->attribute & attr_mask[UNDERLINE]))
 		color.bg = color.fg;
 	
-	for (i = 0; i < gp->size.x; i++) {
+	for (i = 0; i < gp->width; i++) {
 		if (gp->bitmap[offset] & (0x01 << (shift - i - 1)))
 			pixel = fb->color_palette[color.fg];
 		else if (fb->wall && color.bg == DEFAULT_BG) /* wallpaper */
-			memcpy(&pixel, fb->wall + (i + x * term->cell_size.x + term->offset.x) * fb->bpp
-				+ (offset + y * term->cell_size.y + term->offset.y) * fb->line_len, fb->bpp);
+			memcpy(&pixel, fb->wall + (i + x * term->cell_width + term->offset.x) * fb->bpp
+				+ (offset + y * term->cell_height + term->offset.y) * fb->line_len, fb->bpp);
 		else
 			pixel = fb->color_palette[color.bg];
 		memcpy(src + i * fb->bpp, &pixel, fb->bpp);
@@ -190,21 +190,18 @@ void draw_line(framebuffer *fb, terminal *term, int y)
 	int offset, x, size, pos;
 	u8 *src, *dst;
 
-	pos = term->offset.x * fb->bpp
-		+ (term->offset.y + y * term->cell_size.y) * fb->line_len;
+	pos = term->offset.x * fb->bpp + (term->offset.y + y * term->cell_height) * fb->line_len;
 	size = term->width * fb->bpp;
 
-	for (offset = 0; offset < term->cell_size.y; offset++) {
+	for (offset = 0; offset < term->cell_height; offset++) {
 		for (x = 0; x < term->cols; x++)
 			set_bitmap(fb, term, y, x, offset,
-				fb->buf + pos + x * term->cell_size.x * fb->bpp + offset * fb->line_len);
-					
-		dst = fb->fp + pos + offset * fb->line_len;
+				fb->buf + pos + x * term->cell_width * fb->bpp + offset * fb->line_len);
 		src = fb->buf + pos + offset * fb->line_len;
+		dst = fb->fp + pos + offset * fb->line_len;
 		memcpy(dst, src, size);
 	}
-	term->line_dirty[y] =
-		(term->mode & MODE_CURSOR && y == term->cursor.y) ? true: false;
+	term->line_dirty[y] = (term->mode & MODE_CURSOR && term->cursor.y == y) ? true: false;
 }
 
 void refresh(framebuffer *fb, terminal *term)
