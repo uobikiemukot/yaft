@@ -1,6 +1,11 @@
 /* See LICENSE for licence details. */
 void fatal(char *str)
 {
+	void *buffer[BUFSIZE];
+	int size;
+
+	size = backtrace(buffer, sizeof(buffer) / sizeof(buffer[0]));
+	backtrace_symbols_fd(buffer, size, STDERR_FILENO);
 	perror(str);
 	exit(EXIT_FAILURE);
 }
@@ -67,6 +72,7 @@ void emunmap(void *ptr, size_t len)
 void *emalloc(size_t size)
 {
 	void *p;
+
 	if ((p = calloc(1, size)) == NULL)
 		fatal("malloc");
 	return p;
@@ -82,13 +88,9 @@ void eforkpty(int *master, int lines, int cols)
 {
 	int slave;
 	pid_t pid;
-	winsize size;
 
-	size.ws_col = cols;
-	size.ws_row = lines;
-	size.ws_xpixel = size.ws_ypixel = 0;
-
-	if (openpty(master, &slave, NULL, NULL, &size) < 0)
+	if (openpty(master, &slave, NULL, NULL,
+		&(winsize){.ws_col = cols, .ws_row = lines}) < 0)
 		fatal("openpty");
 
 	pid = fork();

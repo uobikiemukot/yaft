@@ -4,7 +4,7 @@ yet another framebuffer terminal
 ![screenshot](http://www.nak.ics.keio.ac.jp/~haru/yaft/img/yaft-screenshot.png)
 
 ## download
--	[yaft-0.1.8](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-0.1.8.tar.gz)
+-	[yaft-0.1.9](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-0.1.9.tar.gz)
 
 ## feature
 +	recognizes basic escape sequences (most of vt102 and linux console)
@@ -35,7 +35,6 @@ the value is an index of color_list[] in color.h
 
 +	DEBUG = false,  
 +	TABSTOP = 8,  
-+	SELECT_TIMEOUT = 20000,  
 
 ## install
 

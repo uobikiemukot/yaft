@@ -31,5 +31,4 @@ enum {
 enum {
 	DEBUG = false,
 	TABSTOP = 8,
-	SELECT_TIMEOUT = 20000,
 };
