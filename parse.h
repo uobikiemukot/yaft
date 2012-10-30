@@ -1,5 +1,5 @@
 /* See LICENSE for licence details. */
-void (*ctrl_func[CTRL_CHARS])(terminal * term, void *arg) = {
+void (*ctrl_func[CTRL_CHARS])(struct terminal * term, void *arg) = {
 	[BS] = bs,
 	[HT] = tab,
 	[LF] = nl,
@@ -9,7 +9,7 @@ void (*ctrl_func[CTRL_CHARS])(terminal * term, void *arg) = {
 	[ESC] = enter_esc,
 };
 
-void (*esc_func[ESC_CHARS])(terminal * term, void *arg) = {
+void (*esc_func[ESC_CHARS])(struct terminal * term, void *arg) = {
 	['7'] = save_state,
 	['8'] = restore_state,
 	['D'] = nl,
@@ -22,7 +22,7 @@ void (*esc_func[ESC_CHARS])(terminal * term, void *arg) = {
 	['c'] = ris,
 };
 
-void (*csi_func[ESC_CHARS])(terminal * term, void *arg) = {
+void (*csi_func[ESC_CHARS])(struct terminal * term, void *arg) = {
 	['@'] = insert_blank,
 	['A'] = curs_up,
 	['B'] = curs_down,
@@ -54,7 +54,7 @@ void (*csi_func[ESC_CHARS])(terminal * term, void *arg) = {
 	['`'] = curs_col,
 };
 
-void control_character(terminal *term, u8 ch)
+void control_character(struct terminal *term, uint8_t ch)
 {
 	const char *ctrl_char[] = {
 		"NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
@@ -70,7 +70,7 @@ void control_character(terminal *term, u8 ch)
 		ctrl_func[ch](term, NULL);
 }
 
-void esc_sequence(terminal *term, u8 ch)
+void esc_sequence(struct terminal *term, uint8_t ch)
 {
 	if (DEBUG)
 		fprintf(stderr, "esc: ESC %s\n", term->esc.buf);
@@ -82,9 +82,9 @@ void esc_sequence(terminal *term, u8 ch)
 		reset_esc(term);
 }
 
-void csi_sequence(terminal *term, u8 ch)
+void csi_sequence(struct terminal *term, uint8_t ch)
 {
-	parm_t parm;
+	struct parm_t parm;
 
 	if (DEBUG)
 		fprintf(stderr, "csi: CSI %s\n", term->esc.buf);
@@ -99,7 +99,7 @@ void csi_sequence(terminal *term, u8 ch)
 	reset_esc(term);
 }
 
-void osc_sequence(terminal *term, u8 ch)
+void osc_sequence(struct terminal *term, uint8_t ch)
 {
 	if (DEBUG)
 		fprintf(stderr, "osc: OSC %s\n", term->esc.buf);
@@ -107,7 +107,7 @@ void osc_sequence(terminal *term, u8 ch)
 	reset_esc(term);
 }
 
-void utf8_character(terminal *term, u8 ch)
+void utf8_character(struct terminal *term, uint8_t ch)
 {
 	if (0xC2 <= ch && ch <= 0xDF) {
 		term->ucs.length = 1;
@@ -153,9 +153,9 @@ void utf8_character(terminal *term, u8 ch)
 	}
 }
 
-void parse(terminal *term, u8 *buf, int size)
+void parse(struct terminal *term, uint8_t *buf, int size)
 {
-	u8 ch;
+	uint8_t ch;
 	int i;
 	/*
 		CTRL CHARS      : 0x00 ~ 0x1F

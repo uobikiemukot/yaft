@@ -60,9 +60,19 @@
 		15/16/24/32bpp True Color(Direct Colorにもたぶん対応)
 		8bpp Pseudo Color
 
-2012-10-18 haru
+2012-10-17 haru
 	* version 0.1.8
-	* 仮想コンソールの切り替え時にyaftの停止・再描画を行う用にした (yaft.c)
-	* 壁紙を表示するときの環境変数の設定の仕方がちょっと変わった
-	* 他にもたぶん色々
+	* いくつかのoptionを追加 (yaft.c)
+		例) $ export YAFT="wall w=640 h=384 x=32 y=32"; yaft
+			wall: display wallpaper
+			w=N: set terminal width (pixel)
+			h=N: set terminal height (pixel)
+			x=N: set x offset
+			y=N: set y offset
 
+2012-10-18 haru
+	* version 0.1.9
+	* 仮想コンソールの切り替え時にyaftの停止・再描画を行う用にした (yaft.c)
+	* 壁紙を表示するときの環境変数の設定の仕方がちょっと変わった (yaft.c)
+	* 壁紙以外のoptionを廃止した
+	* 他にもたぶん色々

@@ -1,5 +1,5 @@
 /* See LICENSE for licence details. */
-void init_cell(cell *cp)
+void init_cell(struct cell *cp)
 {
 	cp->code = DEFAULT_CHAR;
 	cp->color.fg = DEFAULT_FG;
@@ -8,7 +8,7 @@ void init_cell(cell *cp)
 	cp->wide = HALF;
 }
 
-void copy_cell(cell *dst, cell *src)
+void copy_cell(struct cell *dst, struct cell *src)
 {
 	*dst = *src;
 
@@ -18,10 +18,10 @@ void copy_cell(cell *dst, cell *src)
 	}
 }
 
-int set_cell(terminal *term, int y, int x, u16 code)
+int set_cell(struct terminal *term, int y, int x, uint16_t code)
 {
-	cell nc, *cp;
-	glyph_t *gp;
+	struct cell nc, *cp;
+	struct glyph_t *gp;
 
 	cp = &term->cells[x + y * term->cols];
 	gp = term->fonts[code].gp;
@@ -54,10 +54,10 @@ int set_cell(terminal *term, int y, int x, u16 code)
 	return HALF;
 }
 
-void scroll(terminal *term, int from, int to, int offset)
+void scroll(struct terminal *term, int from, int to, int offset)
 {
 	int i, j, size, abs_offset;
-	cell *dst, *src;
+	struct cell *dst, *src;
 
 	if (offset == 0 || from >= to)
 		return;
@@ -69,7 +69,7 @@ void scroll(terminal *term, int from, int to, int offset)
 		term->line_dirty[i] = true;
 
 	abs_offset = abs(offset);
-	size = sizeof(cell) * ((to - from + 1) - abs_offset) * term->cols;
+	size = sizeof(struct cell) * ((to - from + 1) - abs_offset) * term->cols;
 
 	dst = term->cells + from * term->cols;
 	src = term->cells + (from + abs_offset) * term->cols;
@@ -89,7 +89,7 @@ void scroll(terminal *term, int from, int to, int offset)
 }
 
 /* relative movement: cause scrolling */
-void move_cursor(terminal *term, int y_offset, int x_offset)
+void move_cursor(struct terminal *term, int y_offset, int x_offset)
 {
 	int x, y, top, bottom;
 
@@ -123,7 +123,7 @@ void move_cursor(terminal *term, int y_offset, int x_offset)
 }
 
 /* absolute movement: never scroll */
-void set_cursor(terminal *term, int y, int x)
+void set_cursor(struct terminal *term, int y, int x)
 {
 	int top, bottom;
 
@@ -144,15 +144,15 @@ void set_cursor(terminal *term, int y, int x)
 	term->cursor.y = y;
 }
 
-void addch(terminal *term, u32 code)
+void addch(struct terminal *term, uint32_t code)
 {
-	glyph_t *gp;
+	struct glyph_t *gp;
 
 	if (code >= UCS2_CHARS				/* not print over UCS2 (>= 0x10000) */
-		|| term->fonts[code].gp == NULL)	/* glyph not found */
+		|| term->fonts[code].gp == NULL)/* glyph not found */
 		return;
 
-	gp = term->fonts[code].gp;				/* folding */
+	gp = term->fonts[code].gp;			/* folding */
 	if ((term->wrap && term->cursor.x == term->cols - 1)
 		|| (gp->width > term->cell_width && term->cursor.x == term->cols - 1)) {
 		set_cursor(term, term->cursor.y, 0);
@@ -164,7 +164,7 @@ void addch(terminal *term, u32 code)
 		set_cell(term, term->cursor.y, term->cursor.x, code));
 }
 
-void reset_esc(terminal *term)
+void reset_esc(struct terminal *term)
 {
 	if (DEBUG)
 		fprintf(stderr, "*esc reset*\n");
@@ -173,7 +173,7 @@ void reset_esc(terminal *term)
 	term->esc.state = RESET;
 }
 
-bool push_esc(terminal *term, u8 ch)
+bool push_esc(struct terminal *term, uint8_t ch)
 {
 	if (term->esc.bp == &term->esc.buf[BUFSIZE - 1]) {	/* buffer limit */
 		reset_esc(term);
@@ -205,19 +205,19 @@ bool push_esc(terminal *term, u8 ch)
 	return false;
 }
 
-void reset_ucs(terminal *term)
+void reset_ucs(struct terminal *term)
 {
 	term->ucs.code = term->ucs.count = term->ucs.length = 0;
 }
 
-void reset_state(terminal *term)
+void reset_state(struct terminal *term)
 {
 	term->state.cursor.x = term->state.cursor.y = 0;
 	term->state.attribute = RESET;
 	term->state.mode = RESET;
 }
 
-void redraw(terminal *term)
+void redraw(struct terminal *term)
 {
 	int i;
 
@@ -225,7 +225,7 @@ void redraw(terminal *term)
 		term->line_dirty[i] = true;
 }
 
-void reset(terminal *term)
+void reset(struct terminal *term)
 {
 	int i, j;
 
@@ -259,9 +259,9 @@ void reset(terminal *term)
 	reset_ucs(term);
 }
 
-void term_init(terminal *term, pair res)
+void term_init(struct terminal *term, struct pair res)
 {
-	glyph_t *gp;
+	struct glyph_t *gp;
 
 	load_fonts(term->fonts, font_path, glyph_alias);
 
@@ -283,14 +283,14 @@ void term_init(terminal *term, pair res)
 	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
 	term->tabstop = (bool *) emalloc(sizeof(bool) * term->cols);
 
-	term->cells = (cell *)
-		emalloc(sizeof(cell) * term->cols * term->lines);
+	term->cells = (struct cell *)
+		emalloc(sizeof(struct cell) * term->cols * term->lines);
 	reset(term);
 
-	ewrite(STDIN_FILENO, (u8 *) "\033[?25l", 6);	/* cusor hidden */
+	ewrite(STDIN_FILENO, (uint8_t *) "\033[?25l", 6);	/* cusor hidden */
 }
 
-void term_die(terminal *term)
+void term_die(struct terminal *term)
 {
 	int i;
 
@@ -303,5 +303,5 @@ void term_die(terminal *term)
 	free(term->line_dirty);
 	free(term->cells);
 
-	ewrite(STDIN_FILENO, (u8 *) "\033[?25h", 6);	/* cursor visible */
+	ewrite(STDIN_FILENO, (uint8_t *) "\033[?25h", 6);	/* cursor visible */
 }

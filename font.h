@@ -1,11 +1,11 @@
 /* See LICENSE for licence details. */
-void load_glyph(font_t *fonts, char *path)
+void load_glyph(struct font_t *fonts, char *path)
 {
 	int count = 0, state = 0;
 	char buf[BUFSIZE], *endp;
 	FILE *fp;
-	u16 code = DEFAULT_CHAR;
-	glyph_t *gp = NULL;
+	uint16_t code = DEFAULT_CHAR;
+	struct glyph_t *gp = NULL;
 
 	fp = efopen(path, "r");
 
@@ -20,12 +20,12 @@ void load_glyph(font_t *fonts, char *path)
 				free(fonts[code].gp->bitmap);
 				free(fonts[code].gp);
 			}
-			gp = (glyph_t *) emalloc(sizeof(glyph_t));
+			gp = (struct glyph_t *) emalloc(sizeof(struct glyph_t));
 			state = 1;
 			break;
 		case 1:
 			sscanf(buf, "%hhu %hhu", &gp->width, &gp->height);
-			gp->bitmap = (u32 *) emalloc(gp->height * sizeof(u32));
+			gp->bitmap = (uint32_t *) emalloc(gp->height * sizeof(uint32_t));
 			state = 2;
 			break;
 		case 2:
@@ -44,7 +44,7 @@ void load_glyph(font_t *fonts, char *path)
 	efclose(fp);
 }
 
-void load_alias(font_t *fonts, char *alias)
+void load_alias(struct font_t *fonts, char *alias)
 {
 	unsigned int dst, src;
 	char buf[BUFSIZE];
@@ -65,10 +65,10 @@ void load_alias(font_t *fonts, char *alias)
 	efclose(fp);
 }
 
-void load_fonts(font_t *fonts, char **font_path, char *alias)
+void load_fonts(struct font_t *fonts, char **font_path, char *alias)
 {
 	int i;
-	glyph_t *gp;
+	struct glyph_t *gp;
 
 	for (i = 0; i < UCS2_CHARS; i++) {
 		fonts[i].gp = NULL;

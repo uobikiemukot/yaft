@@ -1,11 +1,13 @@
 /* See LICENSE for licence details. */
 void fatal(char *str)
 {
+	/* for DEBUG
 	void *buffer[BUFSIZE];
 	int size;
 
 	size = backtrace(buffer, sizeof(buffer) / sizeof(buffer[0]));
 	backtrace_symbols_fd(buffer, size, STDERR_FILENO);
+	*/
 	perror(str);
 	exit(EXIT_FAILURE);
 }
@@ -56,9 +58,9 @@ void eioctl(int fd, int req, void *arg)
 
 void *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
 {
-	u32 *fp;
+	uint32_t *fp;
 
-	if ((fp = (u32 *) mmap(0, len, prot, flag, fd, offset)) == MAP_FAILED)
+	if ((fp = (uint32_t *) mmap(0, len, prot, flag, fd, offset)) == MAP_FAILED)
 		fatal("mmap");
 	return fp;
 }
@@ -90,7 +92,7 @@ void eforkpty(int *master, int lines, int cols)
 	pid_t pid;
 
 	if (openpty(master, &slave, NULL, NULL,
-		&(winsize){.ws_col = cols, .ws_row = lines}) < 0)
+		&(struct winsize){.ws_col = cols, .ws_row = lines}) < 0)
 		fatal("openpty");
 
 	pid = fork();
@@ -111,7 +113,7 @@ void eforkpty(int *master, int lines, int cols)
 		close(slave);
 }
 
-void eselect(int max_fd, fd_set *fds, timeval *tv)
+void eselect(int max_fd, fd_set *fds, struct timeval *tv)
 {
 	if (select(max_fd, fds, NULL, NULL, tv) < 0) {
 		if (errno == EINTR)
@@ -121,16 +123,16 @@ void eselect(int max_fd, fd_set *fds, timeval *tv)
 	}
 }
 
-void ewrite(int fd, u8 *buf, int size)
+void ewrite(int fd, uint8_t *buf, int size)
 {
 	if (write(fd, buf, size) < 0)
 		fatal("write");
 }
 
 /* non system call function */
-u32 bit_reverse(u32 v, int bits)
+uint32_t bit_reverse(uint32_t v, int bits)
 {
-	u32 r = v;
+	uint32_t r = v;
 	int s = bits - 1;
 
 	for (v >>= 1; v; v >>= 1) {
@@ -142,7 +144,7 @@ u32 bit_reverse(u32 v, int bits)
 	return r <<= s;
 }
 
-void swap_color(color_pair *cp)
+void swap_color(struct color_pair *cp)
 {
 	int tmp;
 
@@ -151,7 +153,7 @@ void swap_color(color_pair *cp)
 	cp->bg = tmp;
 }
 
-void reset_parm(parm_t *pt)
+void reset_parm(struct parm_t *pt)
 {
 	int i;
 
@@ -160,10 +162,10 @@ void reset_parm(parm_t *pt)
 		pt->argv[i] = NULL;
 }
 
-void parse_arg(u8 *buf, parm_t *pt, int delim, int (is_valid)(int c))
+void parse_arg(uint8_t *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
 {
 	int length;
-	u8 *cp;
+	uint8_t *cp;
 
 	length = strlen((char *) buf);
 	cp = buf;
