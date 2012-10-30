@@ -7,7 +7,7 @@
 #include "function.h"
 #include "parse.h"
 
-tty_state tty = {
+struct tty_state tty = {
 	.visible = true,
 	.redraw_flag = false,
 	.loop_flag = true,
@@ -32,24 +32,26 @@ void handler(int signo)
 	}
 }
 
-void tty_init(tty_state *tty)
+void tty_init(struct tty_state *tty)
 {
 	tty->fd = eopen("/dev/tty", O_RDWR);
 	signal(SIGCHLD, handler);
 	signal(SIGUSR1, handler);
-	eioctl(tty->fd, VT_SETMODE, &(vt_mode){.mode = VT_PROCESS, .relsig = SIGUSR1, .acqsig = SIGUSR1});
+	eioctl(tty->fd, VT_SETMODE,
+		 &(struct vt_mode) {.mode = VT_PROCESS, .relsig = SIGUSR1, .acqsig = SIGUSR1});
 	eioctl(tty->fd, KDSETMODE, (void *) KD_GRAPHICS);
 }
 
-void tty_die(tty_state *tty) {
+void tty_die(struct tty_state *tty) {
 	signal(SIGCHLD, SIG_DFL);
 	signal(SIGUSR1, SIG_DFL);
-	eioctl(tty->fd, VT_SETMODE, &(vt_mode){.mode = VT_AUTO, .relsig = 0, .acqsig = 0});
+	eioctl(tty->fd, VT_SETMODE,
+		&(struct vt_mode){.mode = VT_AUTO, .relsig = 0, .acqsig = 0});
 	eioctl(tty->fd, KDSETMODE, (void *) KD_TEXT);
 	close(tty->fd);
 }
 
-void check_fds(fd_set *fds, timeval *tv, int stdin, int master)
+void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 {
 	FD_ZERO(fds);
 	FD_SET(stdin, fds);
@@ -59,9 +61,9 @@ void check_fds(fd_set *fds, timeval *tv, int stdin, int master)
 	eselect(master + 1, fds, tv);
 }
 
-void set_rawmode(int fd, termios *save_tm)
+void set_rawmode(int fd, struct termios *save_tm)
 {
-	termios tm;
+	struct termios tm;
 
 	tcgetattr(fd, save_tm);
 	tm = *save_tm;
@@ -76,13 +78,13 @@ void set_rawmode(int fd, termios *save_tm)
 
 int main()
 {
+	uint8_t buf[BUFSIZE];
 	ssize_t size;
 	fd_set fds;
-	timeval tv;
-	termios save_tm;
-	u8 buf[BUFSIZE];
-	framebuffer fb;
-	terminal term;
+	struct timeval tv;
+	struct termios save_tm;
+	struct framebuffer fb;
+	struct terminal term;
 
 	/* init */
 	tty_init(&tty);

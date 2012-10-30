@@ -1,30 +1,30 @@
 /* See LICENSE for licence details. */
-u8 *load_wallpaper(framebuffer *fb)
+uint8_t *load_wallpaper(struct framebuffer *fb)
 {
-	u8 *ptr;
+	uint8_t *ptr;
 
-	ptr = (u8 *) emalloc(fb->screen_size);
+	ptr = (uint8_t *) emalloc(fb->screen_size);
 	memcpy(ptr, fb->fp, fb->screen_size);
 
 	return ptr;
 }
 
-cmap_t *cmap_create(vinfo_t *vinfo)
+struct fb_cmap *cmap_create(struct fb_var_screeninfo *vinfo)
 {
-	cmap_t *cmap;
+	struct fb_cmap *cmap;
 
-	cmap = (cmap_t *) emalloc(sizeof(cmap_t));
+	cmap = (struct fb_cmap *) emalloc(sizeof(struct fb_cmap));
 	cmap->start = 0;
 	cmap->len = COLORS;
-	cmap->red = (u16 *) emalloc(sizeof(u16) * COLORS);
-	cmap->green = (u16 *) emalloc(sizeof(u16) * COLORS);
-	cmap->blue = (u16 *) emalloc(sizeof(u16) * COLORS);
+	cmap->red = (uint16_t *) emalloc(sizeof(uint16_t) * COLORS);
+	cmap->green = (uint16_t *) emalloc(sizeof(uint16_t) * COLORS);
+	cmap->blue = (uint16_t *) emalloc(sizeof(uint16_t) * COLORS);
 	cmap->transp = NULL;
 
 	return cmap;
 }
 
-void cmap_die(cmap_t *cmap)
+void cmap_die(struct fb_cmap *cmap)
 {
 	if (cmap) {
 		free(cmap->red);
@@ -35,10 +35,10 @@ void cmap_die(cmap_t *cmap)
 	}
 }
 
-void cmap_init(framebuffer *fb, vinfo_t *vinfo)
+void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
 {
 	int i;
-	u16 r, g, b;
+	uint16_t r, g, b;
 
 	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org) < 0) {
 		cmap_die(fb->cmap_org);
@@ -60,9 +60,9 @@ void cmap_init(framebuffer *fb, vinfo_t *vinfo)
 	eioctl(fb->fd, FBIOPUTCMAP, fb->cmap);
 }
 
-u32 get_color(vinfo_t *vinfo, int i)
+uint32_t get_color(struct fb_var_screeninfo *vinfo, int i)
 {
-	u32 r, g, b;
+	uint32_t r, g, b;
 
 	if (vinfo->bits_per_pixel == 8)
 		return i;
@@ -83,12 +83,12 @@ u32 get_color(vinfo_t *vinfo, int i)
 		+ (b << vinfo->blue.offset);
 }
 
-void fb_init(framebuffer *fb)
+void fb_init(struct framebuffer *fb)
 {
 	int i;
 	char *path, *env;
-	finfo_t finfo;
-	vinfo_t vinfo;
+	struct fb_fix_screeninfo finfo;
+	struct fb_var_screeninfo vinfo;
 
 	if ((path = getenv("FRAMEBUFFER")) != NULL)
 		fb->fd = eopen(path, O_RDWR);
@@ -125,16 +125,16 @@ void fb_init(framebuffer *fb)
 	for (i = 0; i < COLORS; i++) /* init color palette */
 		fb->color_palette[i] = get_color(&vinfo, i);
 
-	fb->fp = (u8 *) emmap(0, fb->screen_size,
+	fb->fp = (uint8_t *) emmap(0, fb->screen_size,
 		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
 
-	fb->buf = (u8 *) emalloc(fb->screen_size);
+	fb->buf = (uint8_t *) emalloc(fb->screen_size);
 
 	fb->wall = ((env = getenv("YAFT")) != NULL && strncmp(env, "wall", 4) == 0 && fb->bpp > 1) ?
 		load_wallpaper(fb): NULL;
 }
 
-void fb_die(framebuffer *fb)
+void fb_die(struct framebuffer *fb)
 {
 	cmap_die(fb->cmap);
 	if (fb->cmap_org) {
@@ -147,13 +147,13 @@ void fb_die(framebuffer *fb)
 	eclose(fb->fd);
 }
 
-void set_bitmap(framebuffer *fb, terminal *term, int y, int x, int offset, u8 *src)
+void set_bitmap(struct framebuffer *fb, struct terminal *term, int y, int x, int offset, uint8_t *src)
 {
 	int i, shift;
-	u32 pixel;
-	color_pair color;
-	cell *cp;
-	glyph_t *gp;
+	uint32_t pixel;
+	struct color_pair color;
+	struct cell *cp;
+	struct glyph_t *gp;
 
 	cp = &term->cells[x + y * term->cols];
 	if (cp->wide == NEXT_TO_WIDE)
@@ -185,10 +185,10 @@ void set_bitmap(framebuffer *fb, terminal *term, int y, int x, int offset, u8 *s
 	}
 }
 
-void draw_line(framebuffer *fb, terminal *term, int y)
+void draw_line(struct framebuffer *fb, struct terminal *term, int y)
 {
 	int offset, x, size, pos;
-	u8 *src, *dst;
+	uint8_t *src, *dst;
 
 	pos = term->offset.x * fb->bpp + (term->offset.y + y * term->cell_height) * fb->line_len;
 	size = term->width * fb->bpp;
@@ -204,7 +204,7 @@ void draw_line(framebuffer *fb, terminal *term, int y)
 	term->line_dirty[y] = (term->mode & MODE_CURSOR && term->cursor.y == y) ? true: false;
 }
 
-void refresh(framebuffer *fb, terminal *term)
+void refresh(struct framebuffer *fb, struct terminal *term)
 {
 	int y;
 

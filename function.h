@@ -1,6 +1,6 @@
 /* See LICENSE for licence details. */
 /* misc */
-int sum(parm_t *pt)
+int sum(struct parm_t *pt)
 {
 	int i, sum = 0;
 
@@ -11,12 +11,12 @@ int sum(parm_t *pt)
 }
 
 /* function for control character */
-void bs(terminal *term, void *arg)
+void bs(struct terminal *term, void *arg)
 {
 	move_cursor(term, 0, -1);
 }
 
-void tab(terminal *term, void *arg)
+void tab(struct terminal *term, void *arg)
 {
 	int i;
 
@@ -29,30 +29,30 @@ void tab(terminal *term, void *arg)
 	set_cursor(term, term->cursor.y, term->cols - 1);
 }
 
-void nl(terminal *term, void *arg)
+void nl(struct terminal *term, void *arg)
 {
 	move_cursor(term, 1, 0);
 }
 
-void cr(terminal *term, void *arg)
+void cr(struct terminal *term, void *arg)
 {
 	set_cursor(term, term->cursor.y, 0);
 }
 
-void enter_esc(terminal *term, void *arg)
+void enter_esc(struct terminal *term, void *arg)
 {
 	term->esc.state = STATE_ESC;
 }
 
 /* function for escape sequence */
-void save_state(terminal *term, void *arg)
+void save_state(struct terminal *term, void *arg)
 {
 	term->state.cursor = term->cursor;
 	term->state.attribute = term->attribute;
 	term->state.mode = term->mode & MODE_ORIGIN;
 }
 
-void restore_state(terminal *term, void *arg)
+void restore_state(struct terminal *term, void *arg)
 {
 	term->cursor = term->state.cursor;
 	term->attribute = term->state.attribute;
@@ -63,47 +63,47 @@ void restore_state(terminal *term, void *arg)
 		term->mode &= ~MODE_ORIGIN;
 }
 
-void crnl(terminal *term, void *arg)
+void crnl(struct terminal *term, void *arg)
 {
 	cr(term, NULL);
 	nl(term, NULL);
 }
 
-void set_tabstop(terminal *term, void *arg)
+void set_tabstop(struct terminal *term, void *arg)
 {
 	term->tabstop[term->cursor.x] = true;
 }
 
-void reverse_nl(terminal *term, void *arg)
+void reverse_nl(struct terminal *term, void *arg)
 {
 	move_cursor(term, -1, 0);
 }
 
-void identify(terminal *term, void *arg)
+void identify(struct terminal *term, void *arg)
 {
-	ewrite(term->fd, (u8 *) "\033[?6c", 5); /* "I am a VT102" */
+	ewrite(term->fd, (uint8_t *) "\033[?6c", 5); /* "I am a VT102" */
 }
 
-void enter_csi(terminal *term, void *arg)
+void enter_csi(struct terminal *term, void *arg)
 {
 	term->esc.state = STATE_CSI;
 }
 
-void enter_osc(terminal *term, void *arg)
+void enter_osc(struct terminal *term, void *arg)
 {
 	term->esc.state = STATE_OSC;
 }
 
-void ris(terminal *term, void *arg)
+void ris(struct terminal *term, void *arg)
 {
 	reset(term);
 }
 
 /* function for csi sequence */
-void insert_blank(terminal *term, void *arg)
+void insert_blank(struct terminal *term, void *arg)
 {
-	int i, num = sum((parm_t *) arg);
-	cell *cp, erase;
+	int i, num = sum((struct parm_t *) arg);
+	struct cell *cp, erase;
 
 	if (num <= 0)
 		num = 1;
@@ -124,59 +124,59 @@ void insert_blank(terminal *term, void *arg)
 	}
 }
 
-void curs_up(terminal *term, void *arg)
+void curs_up(struct terminal *term, void *arg)
 {
-	int num = sum((parm_t *) arg);
+	int num = sum((struct parm_t *) arg);
 
 	num = (num <= 0) ? 1 : num;
 	move_cursor(term, -num, 0);
 }
 
-void curs_down(terminal *term, void *arg)
+void curs_down(struct terminal *term, void *arg)
 {
-	int num = sum((parm_t *) arg);
+	int num = sum((struct parm_t *) arg);
 
 	num = (num <= 0) ? 1 : num;
 	move_cursor(term, num, 0);
 }
 
-void curs_forward(terminal *term, void *arg)
+void curs_forward(struct terminal *term, void *arg)
 {
-	int num = sum((parm_t *) arg);
+	int num = sum((struct parm_t *) arg);
 
 	num = (num <= 0) ? 1 : num;
 	move_cursor(term, 0, num);
 }
 
-void curs_back(terminal *term, void *arg)
+void curs_back(struct terminal *term, void *arg)
 {
-	int num = sum((parm_t *) arg);
+	int num = sum((struct parm_t *) arg);
 
 	num = (num <= 0) ? 1 : num;
 	move_cursor(term, 0, -num);
 }
 
-void curs_nl(terminal *term, void *arg)
+void curs_nl(struct terminal *term, void *arg)
 {
-	int num = sum((parm_t *) arg);
+	int num = sum((struct parm_t *) arg);
 
 	num = (num <= 0) ? 1 : num;
 	move_cursor(term, num, 0);
 	cr(term, NULL);
 }
 
-void curs_pl(terminal *term, void *arg)
+void curs_pl(struct terminal *term, void *arg)
 {
-	int num = sum((parm_t *) arg);
+	int num = sum((struct parm_t *) arg);
 
 	num = (num <= 0) ? 1 : num;
 	move_cursor(term, -num, 0);
 	cr(term, NULL);
 }
 
-void curs_col(terminal *term, void *arg)
+void curs_col(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int num = sum(pt), argc = pt->argc;
 	char **argv = pt->argv;
 
@@ -188,9 +188,9 @@ void curs_col(terminal *term, void *arg)
 	set_cursor(term, term->cursor.y, num);
 }
 
-void curs_pos(terminal *term, void *arg)
+void curs_pos(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int argc = pt->argc, line, col;
 	char **argv = pt->argv;
 
@@ -207,9 +207,9 @@ void curs_pos(terminal *term, void *arg)
 	set_cursor(term, line, col);
 }
 
-void erase_display(terminal *term, void *arg)
+void erase_display(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int i, j, argc = pt->argc, mode;
 	char **argv = pt->argv;
 
@@ -239,9 +239,9 @@ void erase_display(terminal *term, void *arg)
 	}
 }
 
-void erase_line(terminal *term, void *arg)
+void erase_line(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int i, argc = pt->argc, mode;
 	char **argv = pt->argv;
 
@@ -264,9 +264,9 @@ void erase_line(terminal *term, void *arg)
 	}
 }
 
-void insert_line(terminal *term, void *arg)
+void insert_line(struct terminal *term, void *arg)
 {
-	int num = sum((parm_t *) arg);
+	int num = sum((struct parm_t *) arg);
 
 	if (term->mode & MODE_ORIGIN) {
 		if (term->cursor.y < term->scroll.top
@@ -278,9 +278,9 @@ void insert_line(terminal *term, void *arg)
 	scroll(term, term->cursor.y, term->scroll.bottom, -num);
 }
 
-void delete_line(terminal *term, void *arg)
+void delete_line(struct terminal *term, void *arg)
 {
-	int num = sum((parm_t *) arg);
+	int num = sum((struct parm_t *) arg);
 
 	if (term->mode & MODE_ORIGIN) {
 		if (term->cursor.y < term->scroll.top
@@ -292,10 +292,10 @@ void delete_line(terminal *term, void *arg)
 	scroll(term, term->cursor.y, term->scroll.bottom, num);
 }
 
-void delete_char(terminal *term, void *arg)
+void delete_char(struct terminal *term, void *arg)
 {
-	int i, num = sum((parm_t *) arg);
-	cell *cp, erase;
+	int i, num = sum((struct parm_t *) arg);
+	struct cell *cp, erase;
 
 	num = (num <= 0) ? 1 : num;
 
@@ -315,9 +315,9 @@ void delete_char(terminal *term, void *arg)
 	}
 }
 
-void erase_char(terminal *term, void *arg)
+void erase_char(struct terminal *term, void *arg)
 {
-	int i, num = sum((parm_t *) arg);
+	int i, num = sum((struct parm_t *) arg);
 
 	if (num <= 0)
 		num = 1;
@@ -328,9 +328,9 @@ void erase_char(terminal *term, void *arg)
 		set_cell(term, term->cursor.y, i, DEFAULT_CHAR);
 }
 
-void curs_line(terminal *term, void *arg)
+void curs_line(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int num, argc = pt->argc;
 	char **argv = pt->argv;
 
@@ -342,9 +342,9 @@ void curs_line(terminal *term, void *arg)
 	set_cursor(term, num, term->cursor.x);
 }
 
-void set_attr(terminal *term, void *arg)
+void set_attr(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int i, argc = pt->argc, num;
 	char **argv = pt->argv;
 
@@ -394,29 +394,29 @@ void set_attr(terminal *term, void *arg)
 	}
 }
 
-void status_report(terminal *term, void *arg)
+void status_report(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int i, num, argc = pt->argc;
 	char **argv = pt->argv, buf[BUFSIZE];
 
 	for (i = 0; i < argc; i++) {
 		num = atoi(argv[i]);
 		if (num == 5)			/* terminal response: ready */
-			ewrite(term->fd, (u8 *) "\033[0n", 4);
+			ewrite(term->fd, (uint8_t *) "\033[0n", 4);
 		else if (num == 6) {	/* cursor position report */
 			snprintf(buf, BUFSIZE, "\033[%d;%dR",
 				term->cursor.y + 1, term->cursor.x + 1);
-			ewrite(term->fd, (u8 *) buf, strlen(buf));
+			ewrite(term->fd, (uint8_t *) buf, strlen(buf));
 		}
 		else if (num == 15)	/* terminal response: printer not connected */
-			ewrite(term->fd, (u8 *) "\033[?13n", 6);
+			ewrite(term->fd, (uint8_t *) "\033[?13n", 6);
 	}
 }
 
-void set_mode(terminal *term, void *arg)
+void set_mode(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int i, argc = pt->argc, mode;
 	char **argv = pt->argv;
 
@@ -437,9 +437,9 @@ void set_mode(terminal *term, void *arg)
 
 }
 
-void reset_mode(terminal *term, void *arg)
+void reset_mode(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int i, argc = pt->argc, mode;
 	char **argv = pt->argv;
 
@@ -462,9 +462,9 @@ void reset_mode(terminal *term, void *arg)
 
 }
 
-void set_margin(terminal *term, void *arg)
+void set_margin(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int argc = pt->argc, top, bottom;
 	char **argv = pt->argv;
 
@@ -474,7 +474,7 @@ void set_margin(terminal *term, void *arg)
 	top = atoi(argv[0]) - 1;
 	bottom = atoi(argv[1]) - 1;
 
-	if (top >= bottom)			/* top margin must be less than bottom margin */
+	if (top >= bottom)
 		return;
 
 	top = (top < 0) ? 0 : (top >= term->lines) ? term->lines - 1 : top;
@@ -485,12 +485,12 @@ void set_margin(terminal *term, void *arg)
 	term->scroll.top = top;
 	term->scroll.bottom = bottom;
 
-	set_cursor(term, 0, 0);		/* move cursor to home */
+	set_cursor(term, 0, 0);	/* move cursor to home */
 }
 
-void clear_tabstop(terminal *term, void *arg)
+void clear_tabstop(struct terminal *term, void *arg)
 {
-	parm_t *pt = (parm_t *) arg;
+	struct parm_t *pt = (struct parm_t *) arg;
 	int i, j, argc = pt->argc, num;
 	char **argv = pt->argv;
 
