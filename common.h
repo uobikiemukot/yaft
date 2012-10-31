@@ -7,7 +7,6 @@
 #include <linux/fb.h>
 #include <linux/vt.h>
 #include <linux/kd.h>
-#include <pty.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
