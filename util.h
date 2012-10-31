@@ -86,14 +86,37 @@ void eexecl(char *path)
 		fatal("execl");
 }
 
+int eposix_openpt(int flags)
+{
+	int fd;
+
+	if ((fd = posix_openpt(O_RDWR)) < 0)
+		fatal("posix_openpt");
+	return fd;	
+}
+
+void egrantpt(int fd)
+{
+	if (grantpt(fd) < 0)
+		fatal("grantpt");
+}
+
+void eunlockpt(int fd)
+{
+	if (unlockpt(fd) < 0)
+		fatal("unlockpt");
+}
+
 void eforkpty(int *master, int lines, int cols)
 {
 	int slave;
 	pid_t pid;
 
-	if (openpty(master, &slave, NULL, NULL,
-		&(struct winsize){.ws_col = cols, .ws_row = lines}) < 0)
-		fatal("openpty");
+	*master = eposix_openpt(O_RDWR);
+	egrantpt(*master);
+	eunlockpt(*master);
+	eioctl(*master, TIOCSWINSZ, &(struct winsize){.ws_col = cols, .ws_row = lines});
+	slave = eopen(ptsname(*master), O_RDWR);
 
 	pid = fork();
 	if (pid < 0)
