@@ -18,6 +18,15 @@ void copy_cell(struct cell *dst, struct cell *src)
 	}
 }
 
+void swap_color(struct color_pair *cp)
+{
+	int tmp;
+
+	tmp = cp->fg;
+	cp->fg = cp->bg;
+	cp->bg = tmp;
+}
+
 int set_cell(struct terminal *term, int y, int x, uint16_t code)
 {
 	struct cell nc, *cp;
@@ -28,11 +37,9 @@ int set_cell(struct terminal *term, int y, int x, uint16_t code)
 
 	nc.code = code;
 
-	nc.color.fg = (term->attribute & attr_mask[BOLD]
-		&& 0 <= term->color.fg && term->color.fg <= 7) ?
+	nc.color.fg = (term->attribute & attr_mask[BOLD] && term->color.fg <= 7) ?
 		term->color.fg + BRIGHT_INC: term->color.fg;
-	nc.color.bg = (term->attribute & attr_mask[BLINK]
-		&& 0 <= term->color.bg && term->color.bg <= 7) ?
+	nc.color.bg = (term->attribute & attr_mask[BLINK] && term->color.bg <= 7) ?
 		term->color.bg + BRIGHT_INC: term->color.bg;
 
 	if (term->attribute & attr_mask[REVERSE])

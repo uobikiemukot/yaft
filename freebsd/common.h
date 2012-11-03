@@ -178,4 +178,4 @@ struct terminal {
 };
 
 #include "conf.h"		/* user configuration */
-#include "color.h"		/* 256color definition */
+#include "../color.h"		/* 256color definition */
