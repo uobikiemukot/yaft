@@ -2,7 +2,7 @@
 #define _XOPEN_SOURCE 600
 #include <ctype.h>
 #include <errno.h>
-#include <execinfo.h>
+/* #include <execinfo.h> for DEBUG */
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <linux/vt.h>
@@ -107,7 +107,7 @@ struct framebuffer {
 	int fd;					/* file descriptor of framebuffer */
 	struct pair res;		/* resolution (x, y) */
 	long screen_size;		/* screen data size (byte) */
-	int line_len;			/* line length (byte) */
+	int line_length;		/* line length (byte) */
 	int bpp;				/* BYTES per pixel */
 	uint32_t color_palette[COLORS];
 	struct fb_cmap *cmap, *cmap_org;

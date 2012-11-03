@@ -1,11 +1,11 @@
 /* See LICENSE for licence details. */
 #include "common.h"
-#include "util.h"
+#include "../util.h"
 #include "framebuffer.h"
-#include "font.h"
-#include "terminal.h"
-#include "function.h"
-#include "parse.h"
+#include "../font.h"
+#include "../terminal.h"
+#include "../function.h"
+#include "../parse.h"
 
 struct tty_state tty = {
 	.visible = true,

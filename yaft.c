@@ -37,17 +37,19 @@ void tty_init(struct tty_state *tty)
 	tty->fd = eopen("/dev/tty", O_RDWR);
 	signal(SIGCHLD, handler);
 	signal(SIGUSR1, handler);
-	eioctl(tty->fd, VT_SETMODE,
-		 &(struct vt_mode) {.mode = VT_PROCESS, .relsig = SIGUSR1, .acqsig = SIGUSR1});
-	eioctl(tty->fd, KDSETMODE, (void *) KD_GRAPHICS);
+	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS, .relsig = SIGUSR1, .acqsig = SIGUSR1}) < 0)
+		 fatal("ioctl: VT_SETMODE");
+	if (ioctl(tty->fd, KDSETMODE, KD_GRAPHICS) < 0)
+		 fatal("ioctl: KDSETMODE");
 }
 
 void tty_die(struct tty_state *tty) {
 	signal(SIGCHLD, SIG_DFL);
 	signal(SIGUSR1, SIG_DFL);
-	eioctl(tty->fd, VT_SETMODE,
-		&(struct vt_mode){.mode = VT_AUTO, .relsig = 0, .acqsig = 0});
-	eioctl(tty->fd, KDSETMODE, (void *) KD_TEXT);
+	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO, .relsig = 0, .acqsig = 0}) < 0)
+		 fatal("ioctl: VT_SETMODE");
+	if (ioctl(tty->fd, KDSETMODE, KD_TEXT) < 0)
+		 fatal("ioctl: KDSETMODE");
 	close(tty->fd);
 }
 

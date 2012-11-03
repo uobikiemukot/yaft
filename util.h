@@ -50,12 +50,6 @@ void efclose(FILE *fp)
 		fatal("fclose");
 }
 
-void eioctl(int fd, int req, void *arg)
-{
-	if (ioctl(fd, req, arg) < 0)
-		fatal("ioctl");
-}
-
 void *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
 {
 	uint32_t *fp;
@@ -115,7 +109,8 @@ void eforkpty(int *master, int lines, int cols)
 	*master = eposix_openpt(O_RDWR);
 	egrantpt(*master);
 	eunlockpt(*master);
-	eioctl(*master, TIOCSWINSZ, &(struct winsize){.ws_col = cols, .ws_row = lines});
+	if (ioctl(*master, TIOCSWINSZ, &(struct winsize){.ws_col = cols, .ws_row = lines}) < 0)
+		fatal("ioctl: TIOCSWINSZ\n");
 	slave = eopen(ptsname(*master), O_RDWR);
 
 	pid = fork();
@@ -126,7 +121,8 @@ void eforkpty(int *master, int lines, int cols)
 		dup2(slave, STDOUT_FILENO);
 		dup2(slave, STDERR_FILENO);
 		setsid();
-		eioctl(slave, TIOCSCTTY, NULL);
+		if (ioctl(slave, TIOCSCTTY, NULL) < 0)
+			fatal("ioctl: TIOCSCTTY");
 		close(slave);
 		close(*master);
 		putenv(term_name);
@@ -150,68 +146,4 @@ void ewrite(int fd, uint8_t *buf, int size)
 {
 	if (write(fd, buf, size) < 0)
 		fatal("write");
-}
-
-/* non system call function */
-uint32_t bit_reverse(uint32_t v, int bits)
-{
-	uint32_t r = v;
-	int s = bits - 1;
-
-	for (v >>= 1; v; v >>= 1) {
-		r <<= 1;
-		r |= v & 1;
-		s--;
-	}
-
-	return r <<= s;
-}
-
-void swap_color(struct color_pair *cp)
-{
-	int tmp;
-
-	tmp = cp->fg;
-	cp->fg = cp->bg;
-	cp->bg = tmp;
-}
-
-void reset_parm(struct parm_t *pt)
-{
-	int i;
-
-	pt->argc = 0;
-	for (i = 0; i < ESC_PARAMS; i++)
-		pt->argv[i] = NULL;
-}
-
-void parse_arg(uint8_t *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
-{
-	int length;
-	uint8_t *cp;
-
-	length = strlen((char *) buf);
-	cp = buf;
-
-	while (cp < &buf[length - 1]) {
-		if (*cp == delim)
-			*cp = '\0';
-		cp++;
-	}
-
-	cp = buf;
-  start:
-	if (pt->argc < ESC_PARAMS && is_valid(*cp)) {
-		pt->argv[pt->argc] = (char *) cp;
-		pt->argc++;
-	}
-
-	while (is_valid(*cp))
-		cp++;
-
-	while (!is_valid(*cp) && cp < &buf[length - 1])
-		cp++;
-
-	if (cp < &buf[length - 1])
-		goto start;
 }

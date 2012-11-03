@@ -54,6 +54,46 @@ void (*csi_func[ESC_CHARS])(struct terminal * term, void *arg) = {
 	['`'] = curs_col,
 };
 
+void reset_parm(struct parm_t *pt)
+{
+	int i;
+
+	pt->argc = 0;
+	for (i = 0; i < ESC_PARAMS; i++)
+		pt->argv[i] = NULL;
+}
+
+void parse_arg(uint8_t *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
+{
+	int length;
+	uint8_t *cp;
+
+	length = strlen((char *) buf);
+	cp = buf;
+
+	while (cp < &buf[length - 1]) {
+		if (*cp == delim)
+			*cp = '\0';
+		cp++;
+	}
+
+	cp = buf;
+  start:
+	if (pt->argc < ESC_PARAMS && is_valid(*cp)) {
+		pt->argv[pt->argc] = (char *) cp;
+		pt->argc++;
+	}
+
+	while (is_valid(*cp))
+		cp++;
+
+	while (!is_valid(*cp) && cp < &buf[length - 1])
+		cp++;
+
+	if (cp < &buf[length - 1])
+		goto start;
+}
+
 void control_character(struct terminal *term, uint8_t ch)
 {
 	const char *ctrl_char[] = {

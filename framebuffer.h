@@ -35,20 +35,43 @@ void cmap_die(struct fb_cmap *cmap)
 	}
 }
 
+void get_rgb(int i, struct color_t *color)
+{
+	color->r = (color_list[i] >> 16) & bit_mask[8];
+	color->g = (color_list[i] >> 8) & bit_mask[8];
+	color->b = (color_list[i] >> 0) & bit_mask[8];
+}
+
+uint32_t bit_reverse(uint32_t val, int bits)
+{
+	uint32_t ret = val;
+	int shift = bits - 1;
+
+	for (val >>= 1; val; val >>= 1) {
+		ret <<= 1;
+		ret |= val & 1;
+		shift--;
+	}
+
+	return ret <<= shift;
+}
+
 void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
 {
 	int i;
 	uint16_t r, g, b;
+	struct color_t color;
 
-	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org) < 0) {
+	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org) < 0) { /* not fatal */
 		cmap_die(fb->cmap_org);
 		fb->cmap_org = NULL;
 	}
 
 	for (i = 0; i < COLORS; i++) {
-		r = (color_list[i].r << BITS_PER_BYTE) | color_list[i].r;
-		g = (color_list[i].g << BITS_PER_BYTE) | color_list[i].g;
-		b = (color_list[i].b << BITS_PER_BYTE) | color_list[i].b;
+		get_rgb(i, &color);
+		r = (color.r << BITS_PER_BYTE) | color.r;
+		g = (color.g << BITS_PER_BYTE) | color.g;
+		b = (color.b << BITS_PER_BYTE) | color.b;
 
 		*(fb->cmap->red + i) = (vinfo->red.msb_right) ?
 			bit_reverse(r, 16) & bit_mask[16]: r;
@@ -57,19 +80,23 @@ void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
 		*(fb->cmap->blue + i) = (vinfo->blue.msb_right) ?
 			bit_reverse(b, 16) & bit_mask[16]: b;
 	}
-	eioctl(fb->fd, FBIOPUTCMAP, fb->cmap);
+
+	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
+		fatal("ioctl: FBIOPUTCMAP");
 }
 
 uint32_t get_color(struct fb_var_screeninfo *vinfo, int i)
 {
 	uint32_t r, g, b;
+	struct color_t color;
 
 	if (vinfo->bits_per_pixel == 8)
 		return i;
 
-	r = color_list[i].r >> (BITS_PER_BYTE - vinfo->red.length);
-	g = color_list[i].g >> (BITS_PER_BYTE - vinfo->green.length);
-	b = color_list[i].b >> (BITS_PER_BYTE - vinfo->blue.length);
+	get_rgb(i, &color);
+	r = color.r >> (BITS_PER_BYTE - vinfo->red.length);
+	g = color.g >> (BITS_PER_BYTE - vinfo->green.length);
+	b = color.b >> (BITS_PER_BYTE - vinfo->blue.length);
 
 	if (vinfo->red.msb_right)
 		r = bit_reverse(r, vinfo->red.length) & bit_mask[vinfo->red.length];
@@ -95,13 +122,16 @@ void fb_init(struct framebuffer *fb)
 	else
 		fb->fd = eopen(fb_path, O_RDWR);
 
-	eioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo);
-	eioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo);
+	if (ioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo) < 0)
+		fatal("ioctl: FBIOGET_FSCREENINFO");
+
+	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo) < 0)
+		fatal("ioctl: FBIOGET_VSCREENINFO");
 
 	fb->res.x = vinfo.xres;
 	fb->res.y = vinfo.yres;
 	fb->screen_size = finfo.smem_len;
-	fb->line_len = finfo.line_length;
+	fb->line_length = finfo.line_length;
 
 	if ((finfo.visual == FB_VISUAL_TRUECOLOR || finfo.visual == FB_VISUAL_DIRECTCOLOR)
 		&& (vinfo.bits_per_pixel == 15 || vinfo.bits_per_pixel == 16
@@ -138,7 +168,7 @@ void fb_die(struct framebuffer *fb)
 {
 	cmap_die(fb->cmap);
 	if (fb->cmap_org) {
-		eioctl(fb->fd, FBIOPUTCMAP, fb->cmap_org);
+		ioctl(fb->fd, FBIOPUTCMAP, fb->cmap_org); /* not fatal */
 		cmap_die(fb->cmap_org);
 	}
 	free(fb->wall);
@@ -178,7 +208,7 @@ void set_bitmap(struct framebuffer *fb, struct terminal *term, int y, int x, int
 			pixel = fb->color_palette[color.fg];
 		else if (fb->wall && color.bg == DEFAULT_BG) /* wallpaper */
 			memcpy(&pixel, fb->wall + (i + x * term->cell_width + term->offset.x) * fb->bpp
-				+ (offset + y * term->cell_height + term->offset.y) * fb->line_len, fb->bpp);
+				+ (offset + y * term->cell_height + term->offset.y) * fb->line_length, fb->bpp);
 		else
 			pixel = fb->color_palette[color.bg];
 		memcpy(src + i * fb->bpp, &pixel, fb->bpp);
@@ -190,15 +220,15 @@ void draw_line(struct framebuffer *fb, struct terminal *term, int y)
 	int offset, x, size, pos;
 	uint8_t *src, *dst;
 
-	pos = term->offset.x * fb->bpp + (term->offset.y + y * term->cell_height) * fb->line_len;
+	pos = term->offset.x * fb->bpp + (term->offset.y + y * term->cell_height) * fb->line_length;
 	size = term->width * fb->bpp;
 
 	for (offset = 0; offset < term->cell_height; offset++) {
 		for (x = 0; x < term->cols; x++)
 			set_bitmap(fb, term, y, x, offset,
-				fb->buf + pos + x * term->cell_width * fb->bpp + offset * fb->line_len);
-		src = fb->buf + pos + offset * fb->line_len;
-		dst = fb->fp + pos + offset * fb->line_len;
+				fb->buf + pos + x * term->cell_width * fb->bpp + offset * fb->line_length);
+		src = fb->buf + pos + offset * fb->line_length;
+		dst = fb->fp + pos + offset * fb->line_length;
 		memcpy(dst, src, size);
 	}
 	term->line_dirty[y] = (term->mode & MODE_CURSOR && term->cursor.y == y) ? true: false;
