@@ -1,0 +1,369 @@
+--- ../common.h	2012-11-03 17:51:21.215077109 +0900
++++ common.h	2012-11-04 00:26:03.062701106 +0900
+@@ -4,9 +4,6 @@
+ #include <errno.h>
+ /* #include <execinfo.h> for DEBUG */
+ #include <fcntl.h>
+-#include <linux/fb.h>
+-#include <linux/vt.h>
+-#include <linux/kd.h>
+ #include <signal.h>
+ #include <stdbool.h>
+ #include <stdint.h>
+@@ -19,6 +16,16 @@
+ #include <termios.h>
+ #include <unistd.h>
+ 
++typedef unsigned char u_char;
++typedef unsigned short u_short;
++typedef unsigned int u_int;
++typedef unsigned long u_long;
++
++#include <machine/param.h>
++#include <sys/consio.h>
++#include <sys/fbio.h>
++#include <sys/types.h>
++
+ enum char_code {
+ 	BEL = 0x07, BS = 0x08, HT = 0x09,
+ 	LF = 0x0A, VT = 0x0B, FF = 0x0C,
+@@ -85,6 +92,7 @@
+ 
+ struct tty_state {
+ 	int fd;
++	int active;
+ 	bool visible;
+ 	bool redraw_flag;
+ 	bool loop_flag;
+@@ -110,7 +118,8 @@
+ 	int line_length;		/* line length (byte) */
+ 	int bpp;				/* BYTES per pixel */
+ 	uint32_t color_palette[COLORS];
+-	struct fb_cmap *cmap, *cmap_org;
++	video_color_palette_t *cmap, *cmap_org;
++	int video_mode;
+ };
+ 
+ struct cell {
+--- ../framebuffer.h	2012-11-03 17:47:36.965939642 +0900
++++ framebuffer.h	2012-11-04 00:28:24.095537364 +0900
+@@ -9,28 +9,28 @@
+ 	return ptr;
+ }
+ 
+-struct fb_cmap *cmap_create(struct fb_var_screeninfo *vinfo)
++video_color_palette_t *cmap_create(video_info_t *video_info)
+ {
+-	struct fb_cmap *cmap;
++	video_color_palette_t *cmap;
+ 
+-	cmap = (struct fb_cmap *) emalloc(sizeof(struct fb_cmap));
+-	cmap->start = 0;
+-	cmap->len = COLORS;
+-	cmap->red = (uint16_t *) emalloc(sizeof(uint16_t) * COLORS);
+-	cmap->green = (uint16_t *) emalloc(sizeof(uint16_t) * COLORS);
+-	cmap->blue = (uint16_t *) emalloc(sizeof(uint16_t) * COLORS);
+-	cmap->transp = NULL;
++	cmap = (video_color_palette_t *) emalloc(sizeof(video_color_palette_t));
++	cmap->index = 0;
++	cmap->count = COLORS;
++	cmap->red = (u_char *) emalloc(sizeof(u_char) * COLORS);
++	cmap->green = (u_char *) emalloc(sizeof(u_char) * COLORS);
++	cmap->blue = (u_char *) emalloc(sizeof(u_char) * COLORS);
++	cmap->transparent = NULL;
+ 
+ 	return cmap;
+ }
+ 
+-void cmap_die(struct fb_cmap *cmap)
++void cmap_die(video_color_palette_t *cmap)
+ {
+ 	if (cmap) {
+ 		free(cmap->red);
+ 		free(cmap->green);
+ 		free(cmap->blue);
+-		free(cmap->transp);
++		free(cmap->transparent);
+ 		free(cmap);
+ 	}
+ }
+@@ -56,10 +56,9 @@
+ 	return ret <<= shift;
+ }
+ 
+-void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
++void cmap_init(struct framebuffer *fb, video_info_t *video_info)
+ {
+ 	int i;
+-	uint16_t r, g, b;
+ 	struct color_t color;
+ 
+ 	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org) < 0) { /* not fatal */
+@@ -68,104 +67,108 @@
+ 	}
+ 
+ 	for (i = 0; i < COLORS; i++) {
+-		get_rgb(i, &color);
+-		r = (color.r << BITS_PER_BYTE) | color.r;
+-		g = (color.g << BITS_PER_BYTE) | color.g;
+-		b = (color.b << BITS_PER_BYTE) | color.b;
+-
+-		*(fb->cmap->red + i) = (vinfo->red.msb_right) ?
+-			bit_reverse(r, 16) & bit_mask[16]: r;
+-		*(fb->cmap->green + i) = (vinfo->green.msb_right) ?
+-			bit_reverse(g, 16) & bit_mask[16]: g;
+-		*(fb->cmap->blue + i) = (vinfo->blue.msb_right) ?
+-			bit_reverse(b, 16) & bit_mask[16]: b;
++			/* where is endian info? */
++			get_rgb(i, &color);
++			*(fb->cmap->red + i) = color.r;
++			*(fb->cmap->green + i) = color.g;
++			*(fb->cmap->blue + i) = color.b;
+ 	}
+ 
+ 	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
+-		fatal("ioctl: FBIOPUTCMAP");
++			fatal("ioctl: FBIOPUTCMAP");
+ }
+ 
+-uint32_t get_color(struct fb_var_screeninfo *vinfo, int i)
++uint32_t get_color(video_info_t *video_info, int i)
+ {
+ 	uint32_t r, g, b;
+ 	struct color_t color;
+ 
+-	if (vinfo->bits_per_pixel == 8)
+-		return i;
++	if (video_info->vi_depth == 8)
++			return i;
+ 
++	/* where is endian info? */
+ 	get_rgb(i, &color);
+-	r = color.r >> (BITS_PER_BYTE - vinfo->red.length);
+-	g = color.g >> (BITS_PER_BYTE - vinfo->green.length);
+-	b = color.b >> (BITS_PER_BYTE - vinfo->blue.length);
+-
+-	if (vinfo->red.msb_right)
+-		r = bit_reverse(r, vinfo->red.length) & bit_mask[vinfo->red.length];
+-	if (vinfo->green.msb_right)
+-		g = bit_reverse(g, vinfo->green.length) & bit_mask[vinfo->green.length];
+-	if (vinfo->blue.msb_right)
+-		b = bit_reverse(b, vinfo->blue.length) & bit_mask[vinfo->blue.length];
+-
+-	return (r << vinfo->red.offset)
+-		+ (g << vinfo->green.offset)
+-		+ (b << vinfo->blue.offset);
++	r = color.r >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[0]);
++	g = color.g >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[1]);
++	b = color.b >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[2]);
++
++	return (r << video_info->vi_pixel_fields[0])
++			+ (g << video_info->vi_pixel_fields[1])
++			+ (b << video_info->vi_pixel_fields[2]);
+ }
+ 
+ void fb_init(struct framebuffer *fb)
+ {
+-	int i;
+ 	char *path, *env;
+-	struct fb_fix_screeninfo finfo;
+-	struct fb_var_screeninfo vinfo;
++	int i;
++	video_info_t video_info;
++	video_adapter_info_t video_adapter_info;
+ 
+ 	if ((path = getenv("FRAMEBUFFER")) != NULL)
+ 		fb->fd = eopen(path, O_RDWR);
+ 	else
+ 		fb->fd = eopen(fb_path, O_RDWR);
+ 
+-	if (ioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo) < 0)
+-		fatal("ioctl: FBIOGET_FSCREENINFO");
++	if (ioctl(fb->fd, FBIO_GETMODE, &fb->video_mode) < 0)
++		fatal("ioctl: FBIO_GETMODE");
++
++	memset(&video_info, 0, sizeof(video_info_t));
++	video_info = (video_info_t)
++		{.vi_width = WIDTH, .vi_height = HEIGHT, .vi_depth = DEPTH};
++	if (ioctl(fb->fd, FBIO_FINDMODE, &video_info) < 0)
++		fatal("ioctl: FBIO_FINDMODE");
++
++	if (fb->video_mode != video_info.vi_mode) {
++		if (ioctl(fb->fd, FBIO_SETMODE, &video_info.vi_mode) < 0)
++			fatal("ioctl: FBIO_SETMODE");
++	}
++
++	if (ioctl(fb->fd, FBIO_MODEINFO, &video_info) < 0)
++		fatal("ioctl: FBIO_MODEINFO");
+ 
+-	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo) < 0)
+-		fatal("ioctl: FBIOGET_VSCREENINFO");
++	if (ioctl(fb->fd, FBIO_ADPINFO, &video_adapter_info) < 0)
++		fatal("ioctl: FBIO_ADPINFO");
+ 
+-	fb->res.x = vinfo.xres;
+-	fb->res.y = vinfo.yres;
+-	fb->screen_size = finfo.smem_len;
+-	fb->line_length = finfo.line_length;
+-
+-	if ((finfo.visual == FB_VISUAL_TRUECOLOR || finfo.visual == FB_VISUAL_DIRECTCOLOR)
+-		&& (vinfo.bits_per_pixel == 15 || vinfo.bits_per_pixel == 16
+-		|| vinfo.bits_per_pixel == 24 || vinfo.bits_per_pixel == 32)) {
++	fb->res.x = video_info.vi_width;
++	fb->res.y = video_info.vi_height;
++
++	fb->screen_size = video_adapter_info.va_window_size;
++	fb->line_length = video_adapter_info.va_line_width;
++
++	if (DEBUG)
++		fprintf(stderr, "res:(%d, %d) screen_size:%ld line_length:%d\n",
++			fb->res.x, fb->res.y, fb->screen_size, fb->line_length);
++
++	if ((video_info.vi_mem_model == V_INFO_MM_PACKED || video_info.vi_mem_model == V_INFO_MM_DIRECT)
++		&& (video_info.vi_depth == 15 || video_info.vi_depth == 16
++		|| video_info.vi_depth == 24 || video_info.vi_depth == 32)) {
+ 		fb->cmap = fb->cmap_org = NULL;
+-		fb->bpp = (vinfo.bits_per_pixel + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
++		fb->bpp = (video_info.vi_depth + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
+ 	}
+-	else if (finfo.visual == FB_VISUAL_PSEUDOCOLOR
+-		&& vinfo.bits_per_pixel == 8) {
+-		fb->cmap = cmap_create(&vinfo);
+-		fb->cmap_org = cmap_create(&vinfo);
+-		cmap_init(fb, &vinfo);
++	else if ((video_adapter_info.va_flags & V_ADP_PALETTE) &&
++		video_info.vi_mem_model == V_INFO_MM_PACKED && video_info.vi_depth == 8) {
++		fb->cmap = cmap_create(&video_info);
++		fb->cmap_org = cmap_create(&video_info);
++		cmap_init(fb, &video_info);
+ 		fb->bpp = 1;
+ 	}
+ 	else {
+-		/* non packed pixel, mono color, grayscale: not implimented */
+-		fprintf(stderr, "unsupported framebuffer type:%d\n", finfo.type);
++		fprintf(stderr, "unsupported framebuffer vi_mem_model:%d\n", video_info.vi_mem_model);
+ 		exit(EXIT_FAILURE);
+ 	}
+ 
+-	for (i = 0; i < COLORS; i++) /* init color palette */
+-		fb->color_palette[i] = get_color(&vinfo, i);
+-
+-	fb->fp = (uint8_t *) emmap(0, fb->screen_size,
+-		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
++	for (i = 0; i < COLORS; i++)
++		fb->color_palette[i] = get_color(&video_info, i);
+ 
++	fb->fp = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
+ 	fb->buf = (uint8_t *) emalloc(fb->screen_size);
+-
+ 	fb->wall = ((env = getenv("YAFT")) != NULL && strncmp(env, "wall", 4) == 0 && fb->bpp > 1) ?
+ 		load_wallpaper(fb): NULL;
+ }
+ 
+ void fb_die(struct framebuffer *fb)
+ {
++	ioctl(fb->fd, FBIO_SETMODE, &fb->video_mode);
+ 	cmap_die(fb->cmap);
+ 	if (fb->cmap_org) {
+ 		ioctl(fb->fd, FBIOPUTCMAP, fb->cmap_org); /* not fatal */
+--- ../yaft.c	2012-11-03 17:49:53.708747135 +0900
++++ yaft.c	2012-11-04 00:24:07.143109209 +0900
+@@ -18,37 +18,77 @@
+ 	if (signo == SIGCHLD)
+ 		tty.loop_flag = false;
+ 	else if (signo == SIGUSR1) {
+-		signal(SIGUSR1, handler);
+ 		if (tty.visible) {
+ 			tty.visible = false;
+-			ioctl(tty.fd, VT_RELDISP, 1);
+-			pause();
++			ioctl(STDIN_FILENO, VT_RELDISP, 1);
++			//pause();
+ 		}
+ 		else {
+ 			tty.visible = true;
+ 			tty.redraw_flag = true;
+-			ioctl(tty.fd, VT_RELDISP, VT_ACKACQ);
++			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
++			ioctl(STDIN_FILENO, VT_WAITACTIVE, tty.active);
+ 		}
+ 	}
+ }
+ 
+ void tty_init(struct tty_state *tty)
+ {
++	struct vt_mode vtmode;
++	struct sigaction sig1, sig2;
++
+ 	tty->fd = eopen("/dev/tty", O_RDWR);
+-	signal(SIGCHLD, handler);
+-	signal(SIGUSR1, handler);
+-	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS, .relsig = SIGUSR1, .acqsig = SIGUSR1}) < 0)
++
++	memset(&sig1, 0, sizeof(struct sigaction));
++	sig1.sa_handler = handler;
++	sig1.sa_flags = SA_RESTART;
++	sigaction(SIGCHLD, &sig1, NULL);
++
++	memset(&sig2, 0, sizeof(struct sigaction));
++	sig2.sa_handler = handler;
++	sig2.sa_flags = SA_RESTART;
++	sigaction(SIGUSR1, &sig2, NULL);
++
++	ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
++	ioctl(STDIN_FILENO, VT_GETACTIVE, &tty->active);
++
++	memset(&vtmode, 0, sizeof(struct vt_mode));
++	vtmode.mode = VT_PROCESS;
++	vtmode.waitv = 0;
++	vtmode.relsig = SIGUSR1;
++	vtmode.acqsig = SIGUSR1;
++	vtmode.frsig = SIGUSR1;
++
++	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtmode) < 0)
+ 		 fatal("ioctl: VT_SETMODE");
+-	if (ioctl(tty->fd, KDSETMODE, KD_GRAPHICS) < 0)
++	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
+ 		 fatal("ioctl: KDSETMODE");
+ }
+ 
+ void tty_die(struct tty_state *tty) {
+-	signal(SIGCHLD, SIG_DFL);
+-	signal(SIGUSR1, SIG_DFL);
+-	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO, .relsig = 0, .acqsig = 0}) < 0)
++	struct vt_mode vtmode;
++	struct sigaction sig1, sig2;
++
++	memset(&sig1, 0, sizeof(struct sigaction));
++	sig1.sa_handler = SIG_DFL;
++	sigaction(SIGCHLD, &sig1, NULL);
++
++	memset(&sig2, 0, sizeof(struct sigaction));
++	sig2.sa_handler = SIG_DFL;
++	sigaction(SIGCHLD, &sig2, NULL);
++
++	ioctl(STDIN_FILENO, VT_RELDISP, 1);
++
++	memset(&vtmode, 0, sizeof(struct vt_mode));
++	vtmode.mode = VT_AUTO;
++	vtmode.waitv = 0;
++	vtmode.relsig = 0;
++	vtmode.acqsig = 0;
++	vtmode.frsig = 0;
++
++	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtmode) < 0)
+ 		 fatal("ioctl: VT_SETMODE");
+-	if (ioctl(tty->fd, KDSETMODE, KD_TEXT) < 0)
++	if (ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT) < 0)
+ 		 fatal("ioctl: KDSETMODE");
+ 	close(tty->fd);
+ }
+@@ -100,6 +140,8 @@
+ 	/* main loop */
+ 	while (tty.loop_flag) {
+ 		if (tty.redraw_flag) {
++			if (fb.bpp == 1)
++				ioctl(fb.fd, FBIOPUTCMAP, fb.cmap);
+ 			redraw(&term);
+ 			refresh(&fb, &term);
+ 			tty.redraw_flag = false;
