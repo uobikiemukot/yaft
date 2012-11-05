@@ -67,15 +67,15 @@ void cmap_init(struct framebuffer *fb, video_info_t *video_info)
 	}
 
 	for (i = 0; i < COLORS; i++) {
-			/* where is endian info? */
-			get_rgb(i, &color);
-			*(fb->cmap->red + i) = color.r;
-			*(fb->cmap->green + i) = color.g;
-			*(fb->cmap->blue + i) = color.b;
+		/* where is endian info? */
+		get_rgb(i, &color);
+		*(fb->cmap->red + i) = color.r;
+		*(fb->cmap->green + i) = color.g;
+		*(fb->cmap->blue + i) = color.b;
 	}
 
 	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
-			fatal("ioctl: FBIOPUTCMAP");
+		fatal("ioctl: FBIOPUTCMAP");
 }
 
 uint32_t get_color(video_info_t *video_info, int i)
@@ -84,7 +84,7 @@ uint32_t get_color(video_info_t *video_info, int i)
 	struct color_t color;
 
 	if (video_info->vi_depth == 8)
-			return i;
+		return i;
 
 	/* where is endian info? */
 	get_rgb(i, &color);
@@ -93,14 +93,14 @@ uint32_t get_color(video_info_t *video_info, int i)
 	b = color.b >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[2]);
 
 	return (r << video_info->vi_pixel_fields[0])
-			+ (g << video_info->vi_pixel_fields[1])
-			+ (b << video_info->vi_pixel_fields[2]);
+		+ (g << video_info->vi_pixel_fields[1])
+		+ (b << video_info->vi_pixel_fields[2]);
 }
 
 void fb_init(struct framebuffer *fb)
 {
+	int i, video_mode;
 	char *path, *env;
-	int i;
 	video_info_t video_info;
 	video_adapter_info_t video_adapter_info;
 
@@ -109,20 +109,15 @@ void fb_init(struct framebuffer *fb)
 	else
 		fb->fd = eopen(fb_path, O_RDWR);
 
-	if (ioctl(fb->fd, FBIO_GETMODE, &fb->video_mode) < 0)
+	if (ioctl(fb->fd, FBIO_GETMODE, &video_mode) < 0)
 		fatal("ioctl: FBIO_GETMODE");
 
-	memset(&video_info, 0, sizeof(video_info_t));
-	video_info = (video_info_t)
-		{.vi_width = WIDTH, .vi_height = HEIGHT, .vi_depth = DEPTH};
-	if (ioctl(fb->fd, FBIO_FINDMODE, &video_info) < 0)
-		fatal("ioctl: FBIO_FINDMODE");
-
-	if (fb->video_mode != video_info.vi_mode) {
-		if (ioctl(fb->fd, FBIO_SETMODE, &video_info.vi_mode) < 0)
-			fatal("ioctl: FBIO_SETMODE");
+	if (video_mode != MODE) {
+		fprintf(stderr, "video mode unmatch: current mode:%d request mode:%d\n", video_mode, MODE);
+		exit(EXIT_FAILURE);
 	}
 
+	video_info.vi_mode = video_mode;
 	if (ioctl(fb->fd, FBIO_MODEINFO, &video_info) < 0)
 		fatal("ioctl: FBIO_MODEINFO");
 
@@ -134,10 +129,6 @@ void fb_init(struct framebuffer *fb)
 
 	fb->screen_size = video_adapter_info.va_window_size;
 	fb->line_length = video_adapter_info.va_line_width;
-
-	if (DEBUG)
-		fprintf(stderr, "res:(%d, %d) screen_size:%ld line_length:%d\n",
-			fb->res.x, fb->res.y, fb->screen_size, fb->line_length);
 
 	if ((video_info.vi_mem_model == V_INFO_MM_PACKED || video_info.vi_mem_model == V_INFO_MM_DIRECT)
 		&& (video_info.vi_depth == 15 || video_info.vi_depth == 16
@@ -153,11 +144,12 @@ void fb_init(struct framebuffer *fb)
 		fb->bpp = 1;
 	}
 	else {
+		/* non packed pixel, mono color, grayscale: not implimented */
 		fprintf(stderr, "unsupported framebuffer vi_mem_model:%d\n", video_info.vi_mem_model);
 		exit(EXIT_FAILURE);
 	}
 
-	for (i = 0; i < COLORS; i++)
+	for (i = 0; i < COLORS; i++) /* init color palette */
 		fb->color_palette[i] = get_color(&video_info, i);
 
 	fb->fp = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
@@ -168,7 +160,6 @@ void fb_init(struct framebuffer *fb)
 
 void fb_die(struct framebuffer *fb)
 {
-	ioctl(fb->fd, FBIO_SETMODE, &fb->video_mode);
 	cmap_die(fb->cmap);
 	if (fb->cmap_org) {
 		ioctl(fb->fd, FBIOPUTCMAP, fb->cmap_org); /* not fatal */

@@ -1,52 +1,5 @@
---- ../common.h	2012-11-03 17:51:21.215077109 +0900
-+++ common.h	2012-11-04 00:26:03.062701106 +0900
-@@ -4,9 +4,6 @@
- #include <errno.h>
- /* #include <execinfo.h> for DEBUG */
- #include <fcntl.h>
--#include <linux/fb.h>
--#include <linux/vt.h>
--#include <linux/kd.h>
- #include <signal.h>
- #include <stdbool.h>
- #include <stdint.h>
-@@ -19,6 +16,16 @@
- #include <termios.h>
- #include <unistd.h>
- 
-+typedef unsigned char u_char;
-+typedef unsigned short u_short;
-+typedef unsigned int u_int;
-+typedef unsigned long u_long;
-+
-+#include <machine/param.h>
-+#include <sys/consio.h>
-+#include <sys/fbio.h>
-+#include <sys/types.h>
-+
- enum char_code {
- 	BEL = 0x07, BS = 0x08, HT = 0x09,
- 	LF = 0x0A, VT = 0x0B, FF = 0x0C,
-@@ -85,6 +92,7 @@
- 
- struct tty_state {
- 	int fd;
-+	int active;
- 	bool visible;
- 	bool redraw_flag;
- 	bool loop_flag;
-@@ -110,7 +118,8 @@
- 	int line_length;		/* line length (byte) */
- 	int bpp;				/* BYTES per pixel */
- 	uint32_t color_palette[COLORS];
--	struct fb_cmap *cmap, *cmap_org;
-+	video_color_palette_t *cmap, *cmap_org;
-+	int video_mode;
- };
- 
- struct cell {
---- ../framebuffer.h	2012-11-03 17:47:36.965939642 +0900
-+++ framebuffer.h	2012-11-04 00:28:24.095537364 +0900
+--- ../framebuffer.h	2012-11-04 14:56:40.113064974 +0900
++++ framebuffer.h	2012-11-05 12:03:30.411511888 +0900
 @@ -9,28 +9,28 @@
  	return ptr;
  }
@@ -99,11 +52,12 @@
  	struct color_t color;
  
  	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org) < 0) { /* not fatal */
-@@ -68,104 +67,108 @@
+@@ -68,92 +67,90 @@
  	}
  
  	for (i = 0; i < COLORS; i++) {
--		get_rgb(i, &color);
++		/* where is endian info? */
+ 		get_rgb(i, &color);
 -		r = (color.r << BITS_PER_BYTE) | color.r;
 -		g = (color.g << BITS_PER_BYTE) | color.g;
 -		b = (color.b << BITS_PER_BYTE) | color.b;
@@ -114,16 +68,13 @@
 -			bit_reverse(g, 16) & bit_mask[16]: g;
 -		*(fb->cmap->blue + i) = (vinfo->blue.msb_right) ?
 -			bit_reverse(b, 16) & bit_mask[16]: b;
-+			/* where is endian info? */
-+			get_rgb(i, &color);
-+			*(fb->cmap->red + i) = color.r;
-+			*(fb->cmap->green + i) = color.g;
-+			*(fb->cmap->blue + i) = color.b;
++		*(fb->cmap->red + i) = color.r;
++		*(fb->cmap->green + i) = color.g;
++		*(fb->cmap->blue + i) = color.b;
  	}
  
  	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
--		fatal("ioctl: FBIOPUTCMAP");
-+			fatal("ioctl: FBIOPUTCMAP");
+ 		fatal("ioctl: FBIOPUTCMAP");
  }
  
 -uint32_t get_color(struct fb_var_screeninfo *vinfo, int i)
@@ -133,9 +84,8 @@
  	struct color_t color;
  
 -	if (vinfo->bits_per_pixel == 8)
--		return i;
 +	if (video_info->vi_depth == 8)
-+			return i;
+ 		return i;
  
 +	/* where is endian info? */
  	get_rgb(i, &color);
@@ -158,17 +108,17 @@
 +	b = color.b >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[2]);
 +
 +	return (r << video_info->vi_pixel_fields[0])
-+			+ (g << video_info->vi_pixel_fields[1])
-+			+ (b << video_info->vi_pixel_fields[2]);
++		+ (g << video_info->vi_pixel_fields[1])
++		+ (b << video_info->vi_pixel_fields[2]);
  }
  
  void fb_init(struct framebuffer *fb)
  {
 -	int i;
++	int i, video_mode;
  	char *path, *env;
 -	struct fb_fix_screeninfo finfo;
 -	struct fb_var_screeninfo vinfo;
-+	int i;
 +	video_info_t video_info;
 +	video_adapter_info_t video_adapter_info;
  
@@ -179,27 +129,15 @@
  
 -	if (ioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo) < 0)
 -		fatal("ioctl: FBIOGET_FSCREENINFO");
-+	if (ioctl(fb->fd, FBIO_GETMODE, &fb->video_mode) < 0)
++	if (ioctl(fb->fd, FBIO_GETMODE, &video_mode) < 0)
 +		fatal("ioctl: FBIO_GETMODE");
-+
-+	memset(&video_info, 0, sizeof(video_info_t));
-+	video_info = (video_info_t)
-+		{.vi_width = WIDTH, .vi_height = HEIGHT, .vi_depth = DEPTH};
-+	if (ioctl(fb->fd, FBIO_FINDMODE, &video_info) < 0)
-+		fatal("ioctl: FBIO_FINDMODE");
-+
-+	if (fb->video_mode != video_info.vi_mode) {
-+		if (ioctl(fb->fd, FBIO_SETMODE, &video_info.vi_mode) < 0)
-+			fatal("ioctl: FBIO_SETMODE");
-+	}
-+
-+	if (ioctl(fb->fd, FBIO_MODEINFO, &video_info) < 0)
-+		fatal("ioctl: FBIO_MODEINFO");
  
 -	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo) < 0)
 -		fatal("ioctl: FBIOGET_VSCREENINFO");
-+	if (ioctl(fb->fd, FBIO_ADPINFO, &video_adapter_info) < 0)
-+		fatal("ioctl: FBIO_ADPINFO");
++	if (video_mode != MODE) {
++		fprintf(stderr, "video mode unmatch: current mode:%d request mode:%d\n", video_mode, MODE);
++		exit(EXIT_FAILURE);
++	}
  
 -	fb->res.x = vinfo.xres;
 -	fb->res.y = vinfo.yres;
@@ -209,15 +147,18 @@
 -	if ((finfo.visual == FB_VISUAL_TRUECOLOR || finfo.visual == FB_VISUAL_DIRECTCOLOR)
 -		&& (vinfo.bits_per_pixel == 15 || vinfo.bits_per_pixel == 16
 -		|| vinfo.bits_per_pixel == 24 || vinfo.bits_per_pixel == 32)) {
++	video_info.vi_mode = video_mode;
++	if (ioctl(fb->fd, FBIO_MODEINFO, &video_info) < 0)
++		fatal("ioctl: FBIO_MODEINFO");
++
++	if (ioctl(fb->fd, FBIO_ADPINFO, &video_adapter_info) < 0)
++		fatal("ioctl: FBIO_ADPINFO");
++
 +	fb->res.x = video_info.vi_width;
 +	fb->res.y = video_info.vi_height;
 +
 +	fb->screen_size = video_adapter_info.va_window_size;
 +	fb->line_length = video_adapter_info.va_line_width;
-+
-+	if (DEBUG)
-+		fprintf(stderr, "res:(%d, %d) screen_size:%ld line_length:%d\n",
-+			fb->res.x, fb->res.y, fb->screen_size, fb->line_length);
 +
 +	if ((video_info.vi_mem_model == V_INFO_MM_PACKED || video_info.vi_mem_model == V_INFO_MM_DIRECT)
 +		&& (video_info.vi_depth == 15 || video_info.vi_depth == 16
@@ -239,126 +180,138 @@
  		fb->bpp = 1;
  	}
  	else {
--		/* non packed pixel, mono color, grayscale: not implimented */
+ 		/* non packed pixel, mono color, grayscale: not implimented */
 -		fprintf(stderr, "unsupported framebuffer type:%d\n", finfo.type);
 +		fprintf(stderr, "unsupported framebuffer vi_mem_model:%d\n", video_info.vi_mem_model);
  		exit(EXIT_FAILURE);
  	}
  
--	for (i = 0; i < COLORS; i++) /* init color palette */
+ 	for (i = 0; i < COLORS; i++) /* init color palette */
 -		fb->color_palette[i] = get_color(&vinfo, i);
--
--	fb->fp = (uint8_t *) emmap(0, fb->screen_size,
--		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
-+	for (i = 0; i < COLORS; i++)
 +		fb->color_palette[i] = get_color(&video_info, i);
  
-+	fb->fp = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
+ 	fb->fp = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
  	fb->buf = (uint8_t *) emalloc(fb->screen_size);
--
- 	fb->wall = ((env = getenv("YAFT")) != NULL && strncmp(env, "wall", 4) == 0 && fb->bpp > 1) ?
- 		load_wallpaper(fb): NULL;
- }
+--- ../common.h	2012-11-04 21:29:50.000000000 +0900
++++ common.h	2012-11-05 11:59:49.812296524 +0900
+@@ -4,9 +4,6 @@
+ #include <errno.h>
+ /* #include <execinfo.h> for DEBUG */
+ #include <fcntl.h>
+-#include <linux/fb.h>
+-#include <linux/vt.h>
+-#include <linux/kd.h>
+ #include <signal.h>
+ #include <stdbool.h>
+ #include <stdint.h>
+@@ -19,6 +16,17 @@
+ #include <termios.h>
+ #include <unistd.h>
  
- void fb_die(struct framebuffer *fb)
- {
-+	ioctl(fb->fd, FBIO_SETMODE, &fb->video_mode);
- 	cmap_die(fb->cmap);
- 	if (fb->cmap_org) {
- 		ioctl(fb->fd, FBIOPUTCMAP, fb->cmap_org); /* not fatal */
---- ../yaft.c	2012-11-03 17:49:53.708747135 +0900
-+++ yaft.c	2012-11-04 00:24:07.143109209 +0900
-@@ -18,37 +18,77 @@
- 	if (signo == SIGCHLD)
- 		tty.loop_flag = false;
- 	else if (signo == SIGUSR1) {
--		signal(SIGUSR1, handler);
- 		if (tty.visible) {
- 			tty.visible = false;
--			ioctl(tty.fd, VT_RELDISP, 1);
--			pause();
-+			ioctl(STDIN_FILENO, VT_RELDISP, 1);
-+			//pause();
- 		}
- 		else {
- 			tty.visible = true;
- 			tty.redraw_flag = true;
--			ioctl(tty.fd, VT_RELDISP, VT_ACKACQ);
-+			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
-+			ioctl(STDIN_FILENO, VT_WAITACTIVE, tty.active);
- 		}
- 	}
- }
++typedef unsigned char u_char;
++typedef unsigned short u_short;
++typedef unsigned int u_int;
++typedef unsigned long u_long;
++
++#include <machine/param.h>
++#include <sys/consio.h>
++#include <sys/fbio.h>
++#include <sys/kbio.h>
++#include <sys/types.h>
++
+ enum char_code {
+ 	BEL = 0x07, BS = 0x08, HT = 0x09,
+ 	LF = 0x0A, VT = 0x0B, FF = 0x0C,
+@@ -85,6 +93,7 @@
  
+ struct tty_state {
+ 	int fd;
++	int kb_delay, kb_repeat;
+ 	bool visible;
+ 	bool redraw_flag;
+ 	bool loop_flag;
+@@ -105,7 +114,7 @@
+ 	int line_length;		/* line length (byte) */
+ 	int bpp;				/* BYTES per pixel */
+ 	uint32_t color_palette[COLORS];
+-	struct fb_cmap *cmap, *cmap_org;
++	video_color_palette_t *cmap, *cmap_org;
+ };
+ 
+ struct cell {
+@@ -169,4 +178,4 @@
+ };
+ 
+ #include "conf.h"		/* user configuration */
+-#include "color.h"		/* 256color definition */
++#include "../color.h"	/* 256color definition */
+--- ../yaft.c	2012-11-05 11:48:33.408034379 +0900
++++ yaft.c	2012-11-05 12:06:55.284116128 +0900
+@@ -1,11 +1,11 @@
+ /* See LICENSE for licence details. */
+ #include "common.h"
+-#include "util.h"
++#include "../util.h"
+ #include "framebuffer.h"
+-#include "font.h"
+-#include "terminal.h"
+-#include "function.h"
+-#include "parse.h"
++#include "../font.h"
++#include "../terminal.h"
++#include "../function.h"
++#include "../parse.h"
+ 
+ struct tty_state tty = {
+ 	.visible = true,
+@@ -38,6 +38,7 @@
  void tty_init(struct tty_state *tty)
  {
-+	struct vt_mode vtmode;
-+	struct sigaction sig1, sig2;
-+
+ 	struct sigaction sigact;
++	keyboard_repeat_t keyboard_repeat;
+ 
  	tty->fd = eopen("/dev/tty", O_RDWR);
--	signal(SIGCHLD, handler);
--	signal(SIGUSR1, handler);
--	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS, .relsig = SIGUSR1, .acqsig = SIGUSR1}) < 0)
+ 
+@@ -52,11 +53,22 @@
+ 		fatal("ioctl: VT_SETMODE");
+ 	if (ioctl(tty->fd, KDSETMODE, KD_GRAPHICS) < 0)
+ 		fatal("ioctl: KDSETMODE");
 +
-+	memset(&sig1, 0, sizeof(struct sigaction));
-+	sig1.sa_handler = handler;
-+	sig1.sa_flags = SA_RESTART;
-+	sigaction(SIGCHLD, &sig1, NULL);
++	if (ioctl(tty->fd, KDGETREPEAT, &keyboard_repeat) < 0)
++		fatal("ioctl: KDSETREPEAT");
++	tty->kb_delay = keyboard_repeat.kb_repeat[0];
++	tty->kb_repeat = keyboard_repeat.kb_repeat[1];
 +
-+	memset(&sig2, 0, sizeof(struct sigaction));
-+	sig2.sa_handler = handler;
-+	sig2.sa_flags = SA_RESTART;
-+	sigaction(SIGUSR1, &sig2, NULL);
-+
-+	ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
-+	ioctl(STDIN_FILENO, VT_GETACTIVE, &tty->active);
-+
-+	memset(&vtmode, 0, sizeof(struct vt_mode));
-+	vtmode.mode = VT_PROCESS;
-+	vtmode.waitv = 0;
-+	vtmode.relsig = SIGUSR1;
-+	vtmode.acqsig = SIGUSR1;
-+	vtmode.frsig = SIGUSR1;
-+
-+	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtmode) < 0)
- 		 fatal("ioctl: VT_SETMODE");
--	if (ioctl(tty->fd, KDSETMODE, KD_GRAPHICS) < 0)
-+	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
- 		 fatal("ioctl: KDSETMODE");
++	keyboard_repeat.kb_repeat[0] = KB_DELAY;
++	keyboard_repeat.kb_repeat[1] = KB_REPEAT;
++	if (ioctl(tty->fd, KDSETREPEAT, &keyboard_repeat) < 0)
++		fatal("ioctl: KDSETREPEAT");
  }
  
- void tty_die(struct tty_state *tty) {
--	signal(SIGCHLD, SIG_DFL);
--	signal(SIGUSR1, SIG_DFL);
--	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO, .relsig = 0, .acqsig = 0}) < 0)
-+	struct vt_mode vtmode;
-+	struct sigaction sig1, sig2;
-+
-+	memset(&sig1, 0, sizeof(struct sigaction));
-+	sig1.sa_handler = SIG_DFL;
-+	sigaction(SIGCHLD, &sig1, NULL);
-+
-+	memset(&sig2, 0, sizeof(struct sigaction));
-+	sig2.sa_handler = SIG_DFL;
-+	sigaction(SIGCHLD, &sig2, NULL);
-+
-+	ioctl(STDIN_FILENO, VT_RELDISP, 1);
-+
-+	memset(&vtmode, 0, sizeof(struct vt_mode));
-+	vtmode.mode = VT_AUTO;
-+	vtmode.waitv = 0;
-+	vtmode.relsig = 0;
-+	vtmode.acqsig = 0;
-+	vtmode.frsig = 0;
-+
-+	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtmode) < 0)
- 		 fatal("ioctl: VT_SETMODE");
+ void tty_die(struct tty_state *tty)
+ {
+ 	struct sigaction sigact;
++	keyboard_repeat_t keyboard_repeat;
+ 
+ 	memset(&sigact, 0, sizeof(struct sigaction));
+ 	sigact.sa_handler = SIG_DFL;
+@@ -66,9 +78,14 @@
+ 	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO,
+ 		.waitv = 0, .relsig = 0, .acqsig = 0, .frsig = 0}) < 0)
+ 		fatal("ioctl: VT_SETMODE");
 -	if (ioctl(tty->fd, KDSETMODE, KD_TEXT) < 0)
-+	if (ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT) < 0)
- 		 fatal("ioctl: KDSETMODE");
++	if (ioctl(tty->fd, KDSETMODE, KD_PIXEL) < 0)
+ 		fatal("ioctl: KDSETMODE");
+ 
++	keyboard_repeat.kb_repeat[0] = tty->kb_delay;
++	keyboard_repeat.kb_repeat[1] = tty->kb_repeat;
++	if (ioctl(tty->fd, KDSETREPEAT, &keyboard_repeat) < 0)
++		fatal("ioctl: KDSETREPEAT");
++
  	close(tty->fd);
  }
-@@ -100,6 +140,8 @@
+ 
+@@ -119,6 +136,8 @@
  	/* main loop */
  	while (tty.loop_flag) {
  		if (tty.redraw_flag) {

@@ -24,6 +24,7 @@ typedef unsigned long u_long;
 #include <machine/param.h>
 #include <sys/consio.h>
 #include <sys/fbio.h>
+#include <sys/kbio.h>
 #include <sys/types.h>
 
 enum char_code {
@@ -92,7 +93,7 @@ enum width_flag {
 
 struct tty_state {
 	int fd;
-	int active;
+	int kb_delay, kb_repeat;
 	bool visible;
 	bool redraw_flag;
 	bool loop_flag;
@@ -102,11 +103,6 @@ struct pair { int x, y; };
 struct margin { int top, bottom; };
 struct color_t { uint32_t r, g, b; };
 struct color_pair { uint8_t fg, bg; };
-
-struct parm_t {				/* for parse_arg() */
-	int argc;
-	char *argv[ESC_PARAMS];
-};
 
 struct framebuffer {
 	uint8_t *fp;			/* pointer of framebuffer(read only) */
@@ -119,7 +115,6 @@ struct framebuffer {
 	int bpp;				/* BYTES per pixel */
 	uint32_t color_palette[COLORS];
 	video_color_palette_t *cmap, *cmap_org;
-	int video_mode;
 };
 
 struct cell {
@@ -127,6 +122,11 @@ struct cell {
 	struct color_pair color;/* color (fg, bg) */
 	uint8_t attribute;		/* bold, underscore, etc... */
 	int wide;				/* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
+};
+
+struct parm_t {				/* for parse_arg() */
+	int argc;
+	char *argv[ESC_PARAMS];
 };
 
 struct esc_t {
@@ -178,4 +178,4 @@ struct terminal {
 };
 
 #include "conf.h"		/* user configuration */
-#include "../color.h"		/* 256color definition */
+#include "../color.h"	/* 256color definition */
