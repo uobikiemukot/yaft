@@ -29,9 +29,11 @@ enum {
 
 /* misc */
 enum {
-	WIDTH = 1024,
-	HEIGHT = 768,
-	DEPTH = 16,
 	DEBUG = false,
 	TABSTOP = 8,
+	/* must be the same setting as current video mode*/
+	MODE = 279,
+	/* keyboard setting */
+	KB_DELAY = 250,
+	KB_REPEAT = 30,
 };

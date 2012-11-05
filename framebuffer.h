@@ -155,11 +155,8 @@ void fb_init(struct framebuffer *fb)
 	for (i = 0; i < COLORS; i++) /* init color palette */
 		fb->color_palette[i] = get_color(&vinfo, i);
 
-	fb->fp = (uint8_t *) emmap(0, fb->screen_size,
-		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
-
+	fb->fp = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
 	fb->buf = (uint8_t *) emalloc(fb->screen_size);
-
 	fb->wall = ((env = getenv("YAFT")) != NULL && strncmp(env, "wall", 4) == 0 && fb->bpp > 1) ?
 		load_wallpaper(fb): NULL;
 }

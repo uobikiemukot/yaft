@@ -25,12 +25,8 @@ int eopen(char *path, int flag)
 
 void eclose(int fd)
 {
-	if (close(fd) < 0) {
-		if (errno == EINTR)
-			eclose(fd);
-		else
-			fatal("close");
-	}
+	if (close(fd) < 0)
+		fatal("close");
 }
 
 FILE *efopen(char *path, char *mode)
@@ -146,4 +142,10 @@ void ewrite(int fd, uint8_t *buf, int size)
 {
 	if (write(fd, buf, size) < 0)
 		fatal("write");
+}
+
+void esigaction(int signo, struct sigaction *act, struct sigaction *oact)
+{
+	if (sigaction(signo, act, oact) < 0)
+		fatal("sigaction");
 }

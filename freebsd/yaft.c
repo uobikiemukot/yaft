@@ -15,81 +15,77 @@ struct tty_state tty = {
 
 void handler(int signo)
 {
+	sigset_t sigset;
+
 	if (signo == SIGCHLD)
 		tty.loop_flag = false;
 	else if (signo == SIGUSR1) {
 		if (tty.visible) {
 			tty.visible = false;
-			ioctl(STDIN_FILENO, VT_RELDISP, 1);
-			//pause();
+			ioctl(tty.fd, VT_RELDISP, 1);
+			sigfillset(&sigset);
+			sigdelset(&sigset, SIGUSR1);
+			sigsuspend(&sigset);
 		}
 		else {
 			tty.visible = true;
 			tty.redraw_flag = true;
-			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
-			ioctl(STDIN_FILENO, VT_WAITACTIVE, tty.active);
+			ioctl(tty.fd, VT_RELDISP, VT_ACKACQ);
 		}
 	}
 }
 
 void tty_init(struct tty_state *tty)
 {
-	struct vt_mode vtmode;
-	struct sigaction sig1, sig2;
+	struct sigaction sigact;
+	keyboard_repeat_t keyboard_repeat;
 
 	tty->fd = eopen("/dev/tty", O_RDWR);
 
-	memset(&sig1, 0, sizeof(struct sigaction));
-	sig1.sa_handler = handler;
-	sig1.sa_flags = SA_RESTART;
-	sigaction(SIGCHLD, &sig1, NULL);
+	memset(&sigact, 0, sizeof(struct sigaction));
+	sigact.sa_handler = handler;
+	sigact.sa_flags = SA_RESTART;
+	esigaction(SIGCHLD, &sigact, NULL);
+	esigaction(SIGUSR1, &sigact, NULL);
 
-	memset(&sig2, 0, sizeof(struct sigaction));
-	sig2.sa_handler = handler;
-	sig2.sa_flags = SA_RESTART;
-	sigaction(SIGUSR1, &sig2, NULL);
+	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS,
+		.waitv = 0, .relsig = SIGUSR1, .acqsig = SIGUSR1, .frsig = SIGUSR1}) < 0)
+		fatal("ioctl: VT_SETMODE");
+	if (ioctl(tty->fd, KDSETMODE, KD_GRAPHICS) < 0)
+		fatal("ioctl: KDSETMODE");
 
-	ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
-	ioctl(STDIN_FILENO, VT_GETACTIVE, &tty->active);
+	if (ioctl(tty->fd, KDGETREPEAT, &keyboard_repeat) < 0)
+		fatal("ioctl: KDSETREPEAT");
+	tty->kb_delay = keyboard_repeat.kb_repeat[0];
+	tty->kb_repeat = keyboard_repeat.kb_repeat[1];
 
-	memset(&vtmode, 0, sizeof(struct vt_mode));
-	vtmode.mode = VT_PROCESS;
-	vtmode.waitv = 0;
-	vtmode.relsig = SIGUSR1;
-	vtmode.acqsig = SIGUSR1;
-	vtmode.frsig = SIGUSR1;
-
-	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtmode) < 0)
-		 fatal("ioctl: VT_SETMODE");
-	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
-		 fatal("ioctl: KDSETMODE");
+	keyboard_repeat.kb_repeat[0] = KB_DELAY;
+	keyboard_repeat.kb_repeat[1] = KB_REPEAT;
+	if (ioctl(tty->fd, KDSETREPEAT, &keyboard_repeat) < 0)
+		fatal("ioctl: KDSETREPEAT");
 }
 
-void tty_die(struct tty_state *tty) {
-	struct vt_mode vtmode;
-	struct sigaction sig1, sig2;
+void tty_die(struct tty_state *tty)
+{
+	struct sigaction sigact;
+	keyboard_repeat_t keyboard_repeat;
 
-	memset(&sig1, 0, sizeof(struct sigaction));
-	sig1.sa_handler = SIG_DFL;
-	sigaction(SIGCHLD, &sig1, NULL);
+	memset(&sigact, 0, sizeof(struct sigaction));
+	sigact.sa_handler = SIG_DFL;
+	esigaction(SIGCHLD, &sigact, NULL);
+	esigaction(SIGUSR1, &sigact, NULL);
 
-	memset(&sig2, 0, sizeof(struct sigaction));
-	sig2.sa_handler = SIG_DFL;
-	sigaction(SIGCHLD, &sig2, NULL);
+	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO,
+		.waitv = 0, .relsig = 0, .acqsig = 0, .frsig = 0}) < 0)
+		fatal("ioctl: VT_SETMODE");
+	if (ioctl(tty->fd, KDSETMODE, KD_PIXEL) < 0)
+		fatal("ioctl: KDSETMODE");
 
-	ioctl(STDIN_FILENO, VT_RELDISP, 1);
+	keyboard_repeat.kb_repeat[0] = tty->kb_delay;
+	keyboard_repeat.kb_repeat[1] = tty->kb_repeat;
+	if (ioctl(tty->fd, KDSETREPEAT, &keyboard_repeat) < 0)
+		fatal("ioctl: KDSETREPEAT");
 
-	memset(&vtmode, 0, sizeof(struct vt_mode));
-	vtmode.mode = VT_AUTO;
-	vtmode.waitv = 0;
-	vtmode.relsig = 0;
-	vtmode.acqsig = 0;
-	vtmode.frsig = 0;
-
-	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtmode) < 0)
-		 fatal("ioctl: VT_SETMODE");
-	if (ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT) < 0)
-		 fatal("ioctl: KDSETMODE");
 	close(tty->fd);
 }
 
@@ -129,9 +125,9 @@ int main()
 	struct terminal term;
 
 	/* init */
-	tty_init(&tty);
 	fb_init(&fb);
 	term_init(&term, fb.res);
+	tty_init(&tty);
 
 	/* fork */
 	eforkpty(&term.fd, term.lines, term.cols);
@@ -168,7 +164,7 @@ int main()
 	fflush(stdout);
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &save_tm);
 
+	tty_die(&tty);
 	term_die(&term);
 	fb_die(&fb);
-	tty_die(&tty);
 }

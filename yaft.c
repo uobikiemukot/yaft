@@ -15,14 +15,17 @@ struct tty_state tty = {
 
 void handler(int signo)
 {
+	sigset_t sigset;
+
 	if (signo == SIGCHLD)
 		tty.loop_flag = false;
 	else if (signo == SIGUSR1) {
-		signal(SIGUSR1, handler);
 		if (tty.visible) {
 			tty.visible = false;
 			ioctl(tty.fd, VT_RELDISP, 1);
-			pause();
+			sigfillset(&sigset);
+			sigdelset(&sigset, SIGUSR1);
+			sigsuspend(&sigset);
 		}
 		else {
 			tty.visible = true;
@@ -34,22 +37,38 @@ void handler(int signo)
 
 void tty_init(struct tty_state *tty)
 {
+	struct sigaction sigact;
+
 	tty->fd = eopen("/dev/tty", O_RDWR);
-	signal(SIGCHLD, handler);
-	signal(SIGUSR1, handler);
-	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS, .relsig = SIGUSR1, .acqsig = SIGUSR1}) < 0)
-		 fatal("ioctl: VT_SETMODE");
+
+	memset(&sigact, 0, sizeof(struct sigaction));
+	sigact.sa_handler = handler;
+	sigact.sa_flags = SA_RESTART;
+	esigaction(SIGCHLD, &sigact, NULL);
+	esigaction(SIGUSR1, &sigact, NULL);
+
+	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS,
+		.waitv = 0, .relsig = SIGUSR1, .acqsig = SIGUSR1, .frsig = SIGUSR1}) < 0)
+		fatal("ioctl: VT_SETMODE");
 	if (ioctl(tty->fd, KDSETMODE, KD_GRAPHICS) < 0)
-		 fatal("ioctl: KDSETMODE");
+		fatal("ioctl: KDSETMODE");
 }
 
-void tty_die(struct tty_state *tty) {
-	signal(SIGCHLD, SIG_DFL);
-	signal(SIGUSR1, SIG_DFL);
-	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO, .relsig = 0, .acqsig = 0}) < 0)
-		 fatal("ioctl: VT_SETMODE");
+void tty_die(struct tty_state *tty)
+{
+	struct sigaction sigact;
+
+	memset(&sigact, 0, sizeof(struct sigaction));
+	sigact.sa_handler = SIG_DFL;
+	esigaction(SIGCHLD, &sigact, NULL);
+	esigaction(SIGUSR1, &sigact, NULL);
+
+	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO,
+		.waitv = 0, .relsig = 0, .acqsig = 0, .frsig = 0}) < 0)
+		fatal("ioctl: VT_SETMODE");
 	if (ioctl(tty->fd, KDSETMODE, KD_TEXT) < 0)
-		 fatal("ioctl: KDSETMODE");
+		fatal("ioctl: KDSETMODE");
+
 	close(tty->fd);
 }
 
@@ -89,9 +108,9 @@ int main()
 	struct terminal term;
 
 	/* init */
-	tty_init(&tty);
 	fb_init(&fb);
 	term_init(&term, fb.res);
+	tty_init(&tty);
 
 	/* fork */
 	eforkpty(&term.fd, term.lines, term.cols);
@@ -126,7 +145,7 @@ int main()
 	fflush(stdout);
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &save_tm);
 
+	tty_die(&tty);
 	term_die(&term);
 	fb_die(&fb);
-	tty_die(&tty);
 }

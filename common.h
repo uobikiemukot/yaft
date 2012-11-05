@@ -95,11 +95,6 @@ struct margin { int top, bottom; };
 struct color_t { uint32_t r, g, b; };
 struct color_pair { uint8_t fg, bg; };
 
-struct parm_t {				/* for parse_arg() */
-	int argc;
-	char *argv[ESC_PARAMS];
-};
-
 struct framebuffer {
 	uint8_t *fp;			/* pointer of framebuffer(read only) */
 	uint8_t *wall;			/* buffer for wallpaper */
@@ -118,6 +113,11 @@ struct cell {
 	struct color_pair color;/* color (fg, bg) */
 	uint8_t attribute;		/* bold, underscore, etc... */
 	int wide;				/* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
+};
+
+struct parm_t {				/* for parse_arg() */
+	int argc;
+	char *argv[ESC_PARAMS];
 };
 
 struct esc_t {
