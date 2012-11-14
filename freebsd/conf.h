@@ -12,7 +12,7 @@ char *font_path[] = {
 char *glyph_alias = "/usr/share/yaft/alias/ambiguous-half.alias";
 
 /* framubuffer device */
-char *fb_path = "/dev/ttyv0";
+char *fb_path = "/dev/tty";
 
 /* shell */
 char *shell_cmd = "/bin/bash";
@@ -31,7 +31,7 @@ enum {
 enum {
 	DEBUG = false,
 	TABSTOP = 8,
-	/* must be the same setting as current video mode*/
+	/* must be the same setting as current video mode */
 	MODE = 279,
 	/* keyboard setting */
 	KB_DELAY = 250,
