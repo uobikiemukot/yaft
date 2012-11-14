@@ -18,6 +18,8 @@
 #include <sys/select.h>
 #include <termios.h>
 #include <unistd.h>
+#include <locale.h>
+#include <wchar.h>
 
 enum char_code {
 	BEL = 0x07, BS = 0x08, HT = 0x09,
@@ -27,7 +29,6 @@ enum char_code {
 };
 
 enum {
-	/* misc */
 	BITS_PER_BYTE = 8,
 	BUFSIZE = 1024,			/* read, esc, various buffer size */
 	SELECT_TIMEOUT = 20000,	/* used by select() */
@@ -36,6 +37,7 @@ enum {
 	UCS2_CHARS = 0x10000,	/* number of UCS2 glyph */
 	CTRL_CHARS = 0x20,		/* number of ctrl_func */
 	ESC_CHARS = 0x80,		/* number of esc_func */
+	OSC_CHARS = 9999,		/* number of osc_func */
 	DEFAULT_CHAR = SPACE,	/* used for erase char, cell_size */
 	RESET = 0x00,			/* reset for char_attr, term_mode, esc_state */
 	BRIGHT_INC = 8,			/* value used for brightening color */
@@ -84,7 +86,7 @@ enum width_flag {
 };
 
 struct tty_state {
-	int fd;
+	struct termios *save_tm;
 	bool visible;
 	bool redraw_flag;
 	bool loop_flag;
@@ -136,11 +138,6 @@ struct glyph_t {
 	uint32_t *bitmap;
 };
 
-struct font_t {
-	struct glyph_t *gp;
-	bool is_alias;
-};
-
 struct state_t {			/* for save, restore state */
 	int mode;
 	struct pair cursor;
@@ -153,7 +150,6 @@ struct terminal {
 	int width, height;				/* terminal size (pixel) */
 	int cols, lines;				/* terminal size (cell) */
 	struct cell *cells;				/* pointer to each cell: cells[cols + lines * num_of_cols] */
-	uint8_t cell_width, cell_height;/* default glyph size */
 	struct margin scroll;			/* scroll margin */
 	struct pair cursor;				/* cursor pos (x, y) */
 	bool *line_dirty;				/* dirty flag */
@@ -165,7 +161,6 @@ struct terminal {
 	uint8_t attribute;				/* bold, underscore, etc... */
 	struct esc_t esc;				/* store escape sequence */
 	struct ucs_t ucs;				/* store UTF-8 sequence */
-	struct font_t fonts[UCS2_CHARS];/* glyph data */
 };
 
 #include "conf.h"		/* user configuration */
