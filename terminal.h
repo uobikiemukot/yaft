@@ -30,10 +30,10 @@ void swap_color(struct color_pair *cp)
 int set_cell(struct terminal *term, int y, int x, uint16_t code)
 {
 	struct cell nc, *cp;
-	struct glyph_t *gp;
+	const struct static_glyph_t *gp;
 
 	cp = &term->cells[x + y * term->cols];
-	gp = term->fonts[code].gp;
+	gp = &fonts[code];
 
 	nc.code = code;
 
@@ -46,7 +46,7 @@ int set_cell(struct terminal *term, int y, int x, uint16_t code)
 		swap_color(&nc.color);
 
 	nc.attribute = term->attribute;
-	nc.wide = (gp->width > term->cell_width) ? WIDE : HALF;
+	nc.wide = gp->width;
 
 	*cp = nc;
 	term->line_dirty[y] = true;
@@ -153,15 +153,21 @@ void set_cursor(struct terminal *term, int y, int x)
 
 void addch(struct terminal *term, uint32_t code)
 {
-	struct glyph_t *gp;
+	int width;
+	const struct static_glyph_t *gp;
 
+	width = wcwidth(code);
 	if (code >= UCS2_CHARS				/* not print over UCS2 (>= 0x10000) */
-		|| term->fonts[code].gp == NULL)/* glyph not found */
+		|| width == 0)		/* zero width */
 		return;
 
-	gp = term->fonts[code].gp;			/* folding */
-	if ((term->wrap && term->cursor.x == term->cols - 1)
-		|| (gp->width > term->cell_width && term->cursor.x == term->cols - 1)) {
+	if (fonts[code].width == 0)
+		gp = (width == 1) ? &fonts[SUBSTITUTE_HALF]: &fonts[SUBSTITUTE_WIDE];
+	else
+		gp = &fonts[code];			
+
+	if ((term->wrap && term->cursor.x == term->cols - 1) /* folding */
+		|| (gp->width == WIDE && term->cursor.x == term->cols - 1)) {
 		set_cursor(term, term->cursor.y, 0);
 		move_cursor(term, 1, 0);
 	}
@@ -217,13 +223,6 @@ void reset_ucs(struct terminal *term)
 	term->ucs.code = term->ucs.count = term->ucs.length = 0;
 }
 
-void reset_state(struct terminal *term)
-{
-	term->state.cursor.x = term->state.cursor.y = 0;
-	term->state.attribute = RESET;
-	term->state.mode = RESET;
-}
-
 void redraw(struct terminal *term)
 {
 	int i;
@@ -261,27 +260,18 @@ void reset(struct terminal *term)
 		term->line_dirty[i] = true;
 	}
 
-	reset_state(term);
 	reset_esc(term);
 	reset_ucs(term);
 }
 
 void term_init(struct terminal *term, struct pair res)
 {
-	struct glyph_t *gp;
-
-	load_fonts(term->fonts, font_path, glyph_alias);
-
-	gp = term->fonts[DEFAULT_CHAR].gp;
-	term->cell_width = gp->width;
-	term->cell_height = gp->height;
-
 	term->width = res.x;
 	term->height = res.y;
 	term->offset.x = term->offset.y = 0;
 
-	term->cols = term->width / term->cell_width;
-	term->lines = term->height / term->cell_height;
+	term->cols = term->width / cell_width;
+	term->lines = term->height / cell_height;
 
 	if (DEBUG)
 		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",
@@ -293,22 +283,10 @@ void term_init(struct terminal *term, struct pair res)
 	term->cells = (struct cell *)
 		emalloc(sizeof(struct cell) * term->cols * term->lines);
 	reset(term);
-
-	ewrite(STDIN_FILENO, (uint8_t *) "\033[?25l", 6);	/* cusor hidden */
 }
 
 void term_die(struct terminal *term)
 {
-	int i;
-
-	for (i = 0; i < UCS2_CHARS; i++) {
-		if (!term->fonts[i].is_alias) {
-			free(term->fonts[i].gp->bitmap);
-			free(term->fonts[i].gp);
-		}
-	}
 	free(term->line_dirty);
 	free(term->cells);
-
-	ewrite(STDIN_FILENO, (uint8_t *) "\033[?25h", 6);	/* cursor visible */
 }

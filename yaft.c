@@ -1,13 +1,14 @@
 /* See LICENSE for licence details. */
 #include "common.h"
+#include "glyph.h"
 #include "util.h"
 #include "framebuffer.h"
-#include "font.h"
 #include "terminal.h"
 #include "function.h"
 #include "parse.h"
 
 struct tty_state tty = {
+	.save_tm = NULL,
 	.visible = true,
 	.redraw_flag = false,
 	.loop_flag = true,
@@ -22,7 +23,7 @@ void handler(int signo)
 	else if (signo == SIGUSR1) {
 		if (tty.visible) {
 			tty.visible = false;
-			ioctl(tty.fd, VT_RELDISP, 1);
+			ioctl(STDIN_FILENO, VT_RELDISP, 1);
 			sigfillset(&sigset);
 			sigdelset(&sigset, SIGUSR1);
 			sigsuspend(&sigset);
@@ -30,16 +31,30 @@ void handler(int signo)
 		else {
 			tty.visible = true;
 			tty.redraw_flag = true;
-			ioctl(tty.fd, VT_RELDISP, VT_ACKACQ);
+			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
 		}
 	}
 }
 
-void tty_init(struct tty_state *tty)
+void set_rawmode(int fd, struct termios *save_tm)
 {
-	struct sigaction sigact;
+	struct termios tm;
 
-	tty->fd = eopen("/dev/tty", O_RDWR);
+	etcgetattr(fd, save_tm);
+	tm = *save_tm;
+	tm.c_iflag = tm.c_oflag = RESET;
+	tm.c_cflag &= ~CSIZE;
+	tm.c_cflag |= CS8;
+	tm.c_lflag &= ~(ECHO | ISIG | ICANON);
+	tm.c_cc[VMIN] = 1;			/* min data size (byte) */
+	tm.c_cc[VTIME] = 0;			/* time out */
+	etcsetattr(fd, TCSAFLUSH, &tm);
+}
+
+void tty_init()
+{
+	extern struct tty_state tty; /* global var */
+	struct sigaction sigact;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = handler;
@@ -47,29 +62,35 @@ void tty_init(struct tty_state *tty)
 	esigaction(SIGCHLD, &sigact, NULL);
 	esigaction(SIGUSR1, &sigact, NULL);
 
-	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS,
+	if (ioctl(STDIN_FILENO, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS,
 		.waitv = 0, .relsig = SIGUSR1, .acqsig = SIGUSR1, .frsig = SIGUSR1}) < 0)
 		fatal("ioctl: VT_SETMODE");
-	if (ioctl(tty->fd, KDSETMODE, KD_GRAPHICS) < 0)
+	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
 		fatal("ioctl: KDSETMODE");
+
+	tty.save_tm = (struct termios *) emalloc(sizeof(struct termios));
+	set_rawmode(STDIN_FILENO, tty.save_tm);
+	ewrite(STDIN_FILENO, "\033[?25l", 6); /* set cusor invisible */
 }
 
-void tty_die(struct tty_state *tty)
+void tty_die()
 {
+ 	/* no error handling */
+	extern struct tty_state tty; /* global var */
 	struct sigaction sigact;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = SIG_DFL;
-	esigaction(SIGCHLD, &sigact, NULL);
-	esigaction(SIGUSR1, &sigact, NULL);
+	sigaction(SIGCHLD, &sigact, NULL);
+	sigaction(SIGUSR1, &sigact, NULL);
 
-	if (ioctl(tty->fd, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO,
-		.waitv = 0, .relsig = 0, .acqsig = 0, .frsig = 0}) < 0)
-		fatal("ioctl: VT_SETMODE");
-	if (ioctl(tty->fd, KDSETMODE, KD_TEXT) < 0)
-		fatal("ioctl: KDSETMODE");
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, tty.save_tm);
+	ioctl(STDIN_FILENO, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO,
+		.waitv = 0, .relsig = 0, .acqsig = 0, .frsig = 0});
+	ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT);
+	ewrite(STDIN_FILENO, "\033[?25h", 6); /* set cursor visible */
 
-	close(tty->fd);
+	fflush(stdout);
 }
 
 void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
@@ -82,39 +103,26 @@ void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 	eselect(master + 1, fds, tv);
 }
 
-void set_rawmode(int fd, struct termios *save_tm)
-{
-	struct termios tm;
-
-	tcgetattr(fd, save_tm);
-	tm = *save_tm;
-	tm.c_iflag = tm.c_oflag = RESET;
-	tm.c_cflag &= ~CSIZE;
-	tm.c_cflag |= CS8;
-	tm.c_lflag &= ~(ECHO | ISIG | ICANON);
-	tm.c_cc[VMIN] = 1;			/* min data size (byte) */
-	tm.c_cc[VTIME] = 0;			/* time out */
-	tcsetattr(fd, TCSAFLUSH, &tm);
-}
-
 int main()
 {
 	uint8_t buf[BUFSIZE];
 	ssize_t size;
 	fd_set fds;
 	struct timeval tv;
-	struct termios save_tm;
 	struct framebuffer fb;
 	struct terminal term;
 
 	/* init */
+	setlocale(LC_ALL, "");
+	if (atexit(tty_die) != 0)
+		fatal("atexit");
+
 	fb_init(&fb);
 	term_init(&term, fb.res);
 	tty_init(&tty);
 
-	/* fork */
+	/* fork and exec shell */
 	eforkpty(&term.fd, term.lines, term.cols);
-	set_rawmode(STDIN_FILENO, &save_tm);
 
 	/* main loop */
 	while (tty.loop_flag) {
@@ -142,10 +150,10 @@ int main()
 			}
 		}
 	}
-	fflush(stdout);
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &save_tm);
 
-	tty_die(&tty);
+	/* die */
 	term_die(&term);
 	fb_die(&fb);
+
+	return EXIT_SUCCESS;
 }

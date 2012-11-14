@@ -81,7 +81,7 @@ void reverse_nl(struct terminal *term, void *arg)
 
 void identify(struct terminal *term, void *arg)
 {
-	ewrite(term->fd, (uint8_t *) "\033[?6c", 5); /* "I am a VT102" */
+	ewrite(term->fd, "\033[?6c", 5); /* "I am a VT102" */
 }
 
 void enter_csi(struct terminal *term, void *arg)
@@ -403,14 +403,14 @@ void status_report(struct terminal *term, void *arg)
 	for (i = 0; i < argc; i++) {
 		num = atoi(argv[i]);
 		if (num == 5)			/* terminal response: ready */
-			ewrite(term->fd, (uint8_t *) "\033[0n", 4);
+			ewrite(term->fd, "\033[0n", 4);
 		else if (num == 6) {	/* cursor position report */
 			snprintf(buf, BUFSIZE, "\033[%d;%dR",
 				term->cursor.y + 1, term->cursor.x + 1);
-			ewrite(term->fd, (uint8_t *) buf, strlen(buf));
+			ewrite(term->fd, buf, strlen(buf));
 		}
 		else if (num == 15)	/* terminal response: printer not connected */
-			ewrite(term->fd, (uint8_t *) "\033[?13n", 6);
+			ewrite(term->fd, "\033[?13n", 6);
 	}
 }
 
@@ -512,3 +512,50 @@ void clear_tabstop(struct terminal *term, void *arg)
 
 /* function for osc sequence */
 /* not implemented */
+
+void print_width_list(struct terminal *term, int width)
+{
+	int i, w, left, right;
+	char buf[BUFSIZE];
+
+	left = right = -1;
+	for (i = 0; i < UCS2_CHARS; i++) {
+		w = wcwidth(i);
+
+		if (w != width) {
+			if (right != -1) {
+				snprintf(buf, BUFSIZE, ";%d:%d:%d", width, left, right);
+				ewrite(term->fd, buf, strlen(buf));
+			}
+			else if (left != -1) {
+				snprintf(buf, BUFSIZE, ";%d:%d:%d", width, left, left);
+				ewrite(term->fd, buf, strlen(buf));
+			}
+			
+			left = right = -1;
+			continue;
+		}
+
+		if (left == -1)
+			left = i;
+		else
+			right = i;
+	}
+}
+
+void glyph_width_report(struct terminal *term, void *arg)
+{
+	/*
+		OSC 8900 ; ? ST
+			glyph width report
+		OSC 8900 ; width ; from ; to ... ST
+			answer
+	*/
+	if (*(term->esc.bp - 1) == '?') {
+		ewrite(term->fd, "\033]8900;%G;0", 11);
+		print_width_list(term, 0);
+		print_width_list(term, 1);
+		print_width_list(term, 2);
+		ewrite(term->fd, "\007", 1);
+	}
+}

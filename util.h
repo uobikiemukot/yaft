@@ -138,7 +138,7 @@ void eselect(int max_fd, fd_set *fds, struct timeval *tv)
 	}
 }
 
-void ewrite(int fd, uint8_t *buf, int size)
+void ewrite(int fd, void *buf, int size)
 {
 	if (write(fd, buf, size) < 0)
 		fatal("write");
@@ -148,4 +148,16 @@ void esigaction(int signo, struct sigaction *act, struct sigaction *oact)
 {
 	if (sigaction(signo, act, oact) < 0)
 		fatal("sigaction");
+}
+
+void etcgetattr(int fd, struct termios *tm)
+{
+	if (tcgetattr(fd, tm) < 0)
+		fatal("tcgetattr");
+}
+
+void etcsetattr(int fd, int action, struct termios *tm)
+{
+	if (tcsetattr(fd, action, tm) < 0)
+		fatal("tcgetattr");
 }

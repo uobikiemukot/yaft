@@ -54,6 +54,10 @@ void (*csi_func[ESC_CHARS])(struct terminal * term, void *arg) = {
 	['`'] = curs_col,
 };
 
+void (*osc_func[OSC_CHARS])(struct terminal * term, void *arg) = {
+	[8900] = glyph_width_report,
+};
+
 void reset_parm(struct parm_t *pt)
 {
 	int i;
@@ -141,8 +145,20 @@ void csi_sequence(struct terminal *term, uint8_t ch)
 
 void osc_sequence(struct terminal *term, uint8_t ch)
 {
+	int num;
+	struct parm_t parm;
+
 	if (DEBUG)
 		fprintf(stderr, "osc: OSC %s\n", term->esc.buf);
+
+	reset_parm(&parm);
+	parse_arg(term->esc.buf, &parm, ';', isdigit);
+
+	if (parm.argc >= 1) {
+		num = atoi(parm.argv[0]);
+		if (osc_func[num])
+			osc_func[num](term, &parm);
+	}
 
 	reset_esc(term);
 }
