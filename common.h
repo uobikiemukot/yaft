@@ -90,6 +90,7 @@ struct tty_state {
 	bool visible;
 	bool redraw_flag;
 	bool loop_flag;
+	bool setmode;
 };
 
 struct pair { int x, y; };

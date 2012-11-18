@@ -1,6 +1,7 @@
+SHELL = /bin/bash
 CC = gcc
 CFLAGS += -std=c99 -pedantic -Wall
-LDFLAGS += -lutil
+LDFLAGS +=
 
 HDR = *.h
 DST = yaft
@@ -10,25 +11,24 @@ PREFIX = $(DESTDIR)/usr
 
 all: $(DST)
 
+$(DST): mkfont
+
+mkfont: tools/mkfont.c tools/font.h tools/bdf.h common.h util.h
+	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
+
 $(DST): $(SRC) $(HDR)
+	./mkfont table/alias fonts/{milkjf_8x16r.bdf,milkjf_8x16.bdf,milkjf_k16.bdf} > glyph.h
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 install:
 	mkdir -p $(PREFIX)/share/terminfo
-	tic -o $(PREFIX)/share/terminfo terminfo/yaft.src
+	tic -o $(PREFIX)/share/terminfo info/yaft.src
 	install -Dm755 {./,$(PREFIX)/bin/}yaft
 	install -Dm755 {./,$(PREFIX)/bin/}yaft_wall
-	install -Dm644 {./fonts/,$(PREFIX)/share/yaft/fonts/}milkjf-iso8859.yaft
-	install -Dm644 {./fonts/,$(PREFIX)/share/yaft/fonts/}milkjf-jis0201.yaft
-	install -Dm644 {./fonts/,$(PREFIX)/share/yaft/fonts/}milkjf-jis0208.yaft
-	install -Dm644 {./fonts/,$(PREFIX)/share/yaft/fonts/}ambiguous-half.yaft
-	install -Dm644 {./fonts/,$(PREFIX)/share/yaft/alias/}ambiguous-wide.alias
-	install -Dm644 {./fonts/,$(PREFIX)/share/yaft/alias/}ambiguous-half.alias
 
 uninstall:
-	rm -rf $PREFIX/bin/yaft
-	rm -rf $PREFIX/bin/yaft_wall
-	rm -rf $PREFIX/share/yaft
+	rm -rf $(PREFIX)/bin/yaft
+	rm -rf $(PREFIX)/bin/yaft_wall
 
 clean:
-	rm -f $(DST)
+	rm -f $(DST) mkfont glyph.h

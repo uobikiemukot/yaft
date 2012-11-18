@@ -12,6 +12,7 @@ struct tty_state tty = {
 	.visible = true,
 	.redraw_flag = false,
 	.loop_flag = true,
+	.setmode = false,
 };
 
 void handler(int signo)
@@ -63,12 +64,17 @@ void tty_init()
 	esigaction(SIGUSR1, &sigact, NULL);
 
 	if (ioctl(STDIN_FILENO, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS,
-		.waitv = 0, .relsig = SIGUSR1, .acqsig = SIGUSR1, .frsig = SIGUSR1}) < 0)
-		fatal("ioctl: VT_SETMODE");
-	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
-		fatal("ioctl: KDSETMODE");
-
+		.waitv = 0, .relsig = SIGUSR1, .acqsig = SIGUSR1, .frsig = SIGUSR1}) < 0) {
+		fprintf(stderr, "ioctl: VT_SETMODE failed\n");
+		exit(EXIT_FAILURE);
+	}
+	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0) {
+		fprintf(stderr, "ioctl: KDSETMODE failed\n");
+		exit(EXIT_FAILURE);
+	}
 	tty.save_tm = (struct termios *) emalloc(sizeof(struct termios));
+	tty.setmode = true;
+
 	set_rawmode(STDIN_FILENO, tty.save_tm);
 	ewrite(STDIN_FILENO, "\033[?25l", 6); /* set cusor invisible */
 }
@@ -84,12 +90,14 @@ void tty_die()
 	sigaction(SIGCHLD, &sigact, NULL);
 	sigaction(SIGUSR1, &sigact, NULL);
 
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, tty.save_tm);
-	ioctl(STDIN_FILENO, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO,
-		.waitv = 0, .relsig = 0, .acqsig = 0, .frsig = 0});
-	ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT);
-	ewrite(STDIN_FILENO, "\033[?25h", 6); /* set cursor visible */
+	if (tty.setmode) {
+		tcsetattr(STDIN_FILENO, TCSAFLUSH, tty.save_tm);
+		ioctl(STDIN_FILENO, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO,
+			.waitv = 0, .relsig = 0, .acqsig = 0, .frsig = 0});
+		ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT);
+	}
 
+	ewrite(STDIN_FILENO, "\033[?25h", 6); /* set cursor visible */
 	fflush(stdout);
 }
 
@@ -114,8 +122,10 @@ int main()
 
 	/* init */
 	setlocale(LC_ALL, "");
-	if (atexit(tty_die) != 0)
-		fatal("atexit");
+	if (atexit(tty_die) != 0) {
+		fprintf(stderr, "atexit failed\n");
+		exit(EXIT_FAILURE);
+	}
 
 	fb_init(&fb);
 	term_init(&term, fb.res);

@@ -66,7 +66,7 @@ void *emalloc(size_t size)
 	void *p;
 
 	if ((p = calloc(1, size)) == NULL)
-		fatal("malloc");
+		fatal("calloc");
 	return p;
 }
 
@@ -105,8 +105,7 @@ void eforkpty(int *master, int lines, int cols)
 	*master = eposix_openpt(O_RDWR);
 	egrantpt(*master);
 	eunlockpt(*master);
-	if (ioctl(*master, TIOCSWINSZ, &(struct winsize){.ws_col = cols, .ws_row = lines}) < 0)
-		fatal("ioctl: TIOCSWINSZ\n");
+	ioctl(*master, TIOCSWINSZ, &(struct winsize){.ws_col = cols, .ws_row = lines});
 	slave = eopen(ptsname(*master), O_RDWR);
 
 	pid = fork();
@@ -117,8 +116,7 @@ void eforkpty(int *master, int lines, int cols)
 		dup2(slave, STDOUT_FILENO);
 		dup2(slave, STDERR_FILENO);
 		setsid();
-		if (ioctl(slave, TIOCSCTTY, NULL) < 0)
-			fatal("ioctl: TIOCSCTTY");
+		ioctl(slave, TIOCSCTTY, NULL);
 		close(slave);
 		close(*master);
 		putenv(term_name);

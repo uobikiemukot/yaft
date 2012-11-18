@@ -81,8 +81,10 @@ void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
 			bit_reverse(b, 16) & bit_mask[16]: b;
 	}
 
-	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
-		fatal("ioctl: FBIOPUTCMAP");
+	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0) {
+		fprintf(stderr, "ioctl: FBIOPUTCMAP\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 uint32_t get_color(struct fb_var_screeninfo *vinfo, int i)
@@ -122,11 +124,15 @@ void fb_init(struct framebuffer *fb)
 	else
 		fb->fd = eopen(fb_path, O_RDWR);
 
-	if (ioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo) < 0)
-		fatal("ioctl: FBIOGET_FSCREENINFO");
+	if (ioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo) < 0) {
+		fprintf(stderr, "ioctl: FBIOGET_FSCREENINFO failed\n");
+		exit(EXIT_FAILURE);
+	}
 
-	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo) < 0)
-		fatal("ioctl: FBIOGET_VSCREENINFO");
+	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo) < 0) {
+		fprintf(stderr, "ioctl: FBIOGET_VSCREENINFO failed\n");
+		exit(EXIT_FAILURE);
+	}
 
 	fb->res.x = vinfo.xres;
 	fb->res.y = vinfo.yres;
