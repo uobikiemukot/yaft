@@ -76,3 +76,10 @@
 	* 壁紙を表示するときの環境変数の設定の仕方がちょっと変わった (yaft.c)
 	* 壁紙以外のoptionを廃止した
 	* 他にもたぶん色々
+
+2012-11-09 haru
+	* version 0.2.0
+	* 独自フォントを廃止してBDFを使うようにした
+		ex)
+			$ ./mkfont alias-file your/favorite/bdf > glyph.h
+			$ make yaft
