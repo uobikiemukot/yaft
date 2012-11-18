@@ -1,23 +1,17 @@
 /* See LICENSE for licence details. */
-void x_fatal(char *str)
-{
-	fprintf(stderr, "%s\n", str);
-	exit(EXIT_FAILURE);
-}
-
-void x_init(xwindow *xw)
+void x_init(struct xwindow *xw)
 {
 	XTextProperty title;
-	int width = 640, height= 384;
 
-	if ((xw->dsp = XOpenDisplay("")) == NULL)
-		x_fatal("can't open display");
+	if ((xw->dsp = XOpenDisplay(NULL)) == NULL) {
+		fprintf(stderr, "XOpenDisplay failed\n");
+		exit(EXIT_FAILURE);
+	}
 
 	xw->sc = DefaultScreen(xw->dsp);
 
 	xw->win = XCreateSimpleWindow(xw->dsp, DefaultRootWindow(xw->dsp),
-		0, 0, width, height,
-		0, color_palette[DEFAULT_FG], color_palette[DEFAULT_BG]);
+		0, 0, WIDTH, HEIGHT, 0, color_list[DEFAULT_FG], color_list[DEFAULT_BG]);
 
 	title.value = (unsigned char *) "yaft";
 	title.encoding = XA_STRING;
@@ -27,128 +21,89 @@ void x_init(xwindow *xw)
 
 	xw->gc = XCreateGC(xw->dsp, xw->win, 0, NULL);
 
-	xw->res.x = width;
-	xw->res.y = height;
+	xw->res.x = WIDTH;
+	xw->res.y = HEIGHT;
 
 	xw->buf = XCreatePixmap(xw->dsp, xw->win,
-		width, height,
-		XDefaultDepth(xw->dsp, xw->sc));
+		WIDTH, HEIGHT, XDefaultDepth(xw->dsp, xw->sc));
 	
-	XSelectInput(xw->dsp, xw->win,
-		KeyPressMask | StructureNotifyMask | ExposureMask);
+	XSelectInput(xw->dsp, xw->win, ExposureMask | KeyPressMask | StructureNotifyMask);
 
 	XMapWindow(xw->dsp, xw->win);
 }
 
-void x_die(xwindow *xw)
+void x_die(struct xwindow *xw)
 {
-	XFreeGC(xw->dsp, xw->gc); // SEGV!!
+	XFreeGC(xw->dsp, xw->gc);
 	XFreePixmap(xw->dsp, xw->buf);
 	XDestroyWindow(xw->dsp, xw->win);
 	XCloseDisplay(xw->dsp);
 }
 
-void set_bitmap(xwindow *xw, terminal *term, int y, int x, int offset)
+void set_bitmap(struct xwindow *xw, struct terminal *term, int y, int x, int offset)
 {
-	int i, shift;
-	color_pair color;
-	cell *cp;
-	glyph_t *gp;
+	int i, shift, glyph_width;
+	struct color_pair color;
+	struct cell *cp;
+	const struct static_glyph_t *gp;
 
 	cp = &term->cells[x + y * term->cols];
 	if (cp->wide == NEXT_TO_WIDE)
 		return;
 
-	gp = term->fonts[cp->code];
-	shift = bit2byte((double) gp->size.x / BITS_PER_BYTE) * BITS_PER_BYTE;
+	gp = &fonts[cp->code];
+	glyph_width = gp->width * cell_width;
+	shift = ((glyph_width + BITS_PER_BYTE - 1) / BITS_PER_BYTE) * BITS_PER_BYTE;
 	color = cp->color;
 
-	/* attribute */
-	if ((cp->attribute & attr_mask[UNDERLINE])
-		&& (offset == (term->cell_size.y - 1)))
+	if ((term->mode & MODE_CURSOR && y == term->cursor.y) /* cursor */
+		&& (x == term->cursor.x || (cp->wide == WIDE && (x + 1) == term->cursor.x))) {
+		color.fg = DEFAULT_BG;
+		color.bg = CURSOR_COLOR;
+	}
+
+	if ((offset == (cell_height - 1)) /* underline */
+		&& (cp->attribute & attr_mask[UNDERLINE]))
 		color.bg = color.fg;
 
-	for (i = 0; i < gp->size.x; i++) {
+	for (i = 0; i < glyph_width; i++) {
 		if (gp->bitmap[offset] & (0x01 << (shift - i - 1))) {
-			XSetForeground(xw->dsp, xw->gc, color_palette[color.fg]);
-			XDrawPoint(xw->dsp, xw->buf, xw->gc,
-				term->cell_size.x * x + i, term->cell_size.y * y + offset);
+			XSetForeground(xw->dsp, xw->gc, color_list[color.fg]);
+			XDrawPoint(xw->dsp, xw->buf, xw->gc, cell_width * x + i, cell_height * y + offset);
 		}
 		else if (color.bg != DEFAULT_BG) {
-			XSetForeground(xw->dsp, xw->gc, color_palette[color.bg]);
-			XDrawPoint(xw->dsp, xw->buf, xw->gc,
-				term->cell_size.x * x + i, term->cell_size.y * y + offset);
+			XSetForeground(xw->dsp, xw->gc, color_list[color.bg]);
+			XDrawPoint(xw->dsp, xw->buf, xw->gc, cell_width * x + i, cell_height * y + offset);
 		}
 	}
 }
 
-void draw_line(xwindow *xw, terminal *term, int line)
+void draw_line(struct xwindow *xw, struct terminal *term, int y)
 {
-	int i, j;
+	int offset, x;
 
-	XSetForeground(xw->dsp, xw->gc, color_palette[DEFAULT_BG]);
-	XFillRectangle(xw->dsp, xw->buf, xw->gc,
-		0, line * term->cell_size.y,
-		term->width, term->cell_size.y);
+	XSetForeground(xw->dsp, xw->gc, color_list[DEFAULT_BG]);
+	XFillRectangle(xw->dsp, xw->buf, xw->gc, 0, y * cell_height, term->width, cell_height);
 
-	for (i = 0; i < term->cell_size.y; i++) {
-		for (j = 0; j < term->cols; j++)
-			set_bitmap(xw, term, line, j, i);
+	for (offset = 0; offset < cell_height; offset++) {
+		for (x = 0; x < term->cols; x++)
+			set_bitmap(xw, term, y, x, offset);
 	}
-	term->line_dirty[line] = false;
+	term->line_dirty[y] = (term->mode & MODE_CURSOR && term->cursor.y == y) ? true: false;
 
-	XCopyArea(xw->dsp, xw->buf, xw->win, xw->gc,
-		0, line * term->cell_size.y,
-		term->width, term->cell_size.y,
-		0, line * term->cell_size.y);
+	XCopyArea(xw->dsp, xw->buf, xw->win, xw->gc, 0, y * cell_height,
+		term->width, cell_height, 0, y * cell_height);
 }
 
-void draw_curs(xwindow *xw, terminal *term)
+void refresh(struct xwindow *xw, struct terminal *term)
 {
-	int i, width;
-	color_pair store_color;
-	pair store_curs;
-	u8 store_attr;
-	cell *cp;
+	int y;
 
-	store_curs = term->cursor;
-	if (term->cells[term->cursor.x + term->cursor.y * term->cols].wide == NEXT_TO_WIDE)
-		term->cursor.x--;
+	if (term->mode & MODE_CURSOR)
+		term->line_dirty[term->cursor.y] = true;
 
-	cp = &term->cells[term->cursor.x + term->cursor.y * term->cols];
-	store_color = cp->color;
-	cp->color.fg = DEFAULT_BG;
-	cp->color.bg = CURSOR_COLOR;
-
-	store_attr = cp->attribute;
-	cp->attribute = RESET;
-
-	width = (cp->wide == WIDE) ? 
-		term->cell_size.x * 2: term->cell_size.x;
-
-	for (i = 0; i < term->cell_size.y; i++)
-		set_bitmap(xw, term, term->cursor.y, term->cursor.x, i);
-
-	XCopyArea(xw->dsp, xw->buf, xw->win, xw->gc,
-				term->cursor.x * term->cell_size.x, term->cursor.y * term->cell_size.y,
-				width, term->cell_size.y,
-				term->cursor.x * term->cell_size.x, term->cursor.y * term->cell_size.y);
-
-	cp->color = store_color;
-	cp->attribute = store_attr;
-	term->cursor = store_curs;
-	term->line_dirty[term->cursor.y] = true;
-}
-
-void refresh(xwindow *xw, terminal *term)
-{
-	int i;
-
-	for (i = 0; i < term->lines; i++) {
-		if (term->line_dirty[i])
-			draw_line(xw, term, i);
+	for (y = 0; y < term->lines; y++) {
+		if (term->line_dirty[y])
+			draw_line(xw, term, y);
 	}
-
-	if (term->mode & CURSOR)
-		draw_curs(xw, term);
 }
