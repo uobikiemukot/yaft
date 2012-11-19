@@ -3,7 +3,7 @@ CFLAGS = -std=c99 -pedantic -Os -march=native -pipe -Wall
 LDFLAGS =
 
 HDR = *.h
-DST = yaftx
+DST = yaft
 SRC = yaft.c
 
 all: $(DST)
