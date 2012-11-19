@@ -10,12 +10,19 @@ char *term_name = "TERM=yaft-256color";
 
 /* color: index number of color_palette[] in color.h */
 enum {
+	/*
+	*/
 	DEFAULT_FG = 7,
 	DEFAULT_BG = 0,
 	CURSOR_COLOR = 2,
+	/* solarized
+	DEFAULT_FG = 12,
+	DEFAULT_BG = 8,
+	CURSOR_COLOR = 2,
+	*/
 };
 
-/* terminal setting */
+/* misc */
 enum {
 	DEBUG = false,
 	TABSTOP = 8,

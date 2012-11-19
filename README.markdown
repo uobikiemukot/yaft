@@ -5,8 +5,9 @@
 yet another framebuffer terminal
 
 ## download
--	[yaft-0.2.0](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-0.2.0.tar.gz)
--	[yaft-freebsd-0.1.9](http://www.nak.ics.keio.ac.jp/~haru/yaft/release/yaft-freebsd-0.1.9.tar.gz)
+-	[yaft-0.2.0](./release/yaft-0.2.0.tar.gz) (Linux console)
+-	[yaft-x-0.2.0](./release/yaft-x-0.2.0.tar.gz) (X Window System)
+-	[yaft-freebsd-0.2.0](./release/yaft-freebsd-0.2.0.tar.gz) (FreeBSD console)
 
 ## features
 +	recognizes most of escape sequences of vt102 and linux console ([all sequences](escape.html))
@@ -16,7 +17,7 @@ yet another framebuffer terminal
 +	supports wallpaper
 
 ## recent changes
-for more detail, see [ChangeLog](./release/yaft-current/ChangeLog)
+for more detail, see [ChangeLog](./release/yaft-0.2.0/ChangeLog)
 
 ### version 0.1.9 (2012-10-18)
 

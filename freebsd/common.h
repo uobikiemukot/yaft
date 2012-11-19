@@ -4,6 +4,7 @@
 #include <errno.h>
 /* #include <execinfo.h> for DEBUG */
 #include <fcntl.h>
+#include <locale.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -15,6 +16,7 @@
 #include <sys/select.h>
 #include <termios.h>
 #include <unistd.h>
+#include <wchar.h>
 
 typedef unsigned char u_char;
 typedef unsigned short u_short;
@@ -35,7 +37,6 @@ enum char_code {
 };
 
 enum {
-	/* misc */
 	BITS_PER_BYTE = 8,
 	BUFSIZE = 1024,			/* read, esc, various buffer size */
 	SELECT_TIMEOUT = 20000,	/* used by select() */
@@ -92,11 +93,12 @@ enum width_flag {
 };
 
 struct tty_state {
-	int fd;
+	struct termios *save_tm;
 	int kb_delay, kb_repeat;
 	bool visible;
 	bool redraw_flag;
 	bool loop_flag;
+	bool setmode;
 };
 
 struct pair { int x, y; };
@@ -140,16 +142,6 @@ struct ucs_t {
 	int length, count;
 };
 
-struct glyph_t {
-	uint8_t width, height;
-	uint32_t *bitmap;
-};
-
-struct font_t {
-	struct glyph_t *gp;
-	bool is_alias;
-};
-
 struct state_t {			/* for save, restore state */
 	int mode;
 	struct pair cursor;
@@ -162,7 +154,6 @@ struct terminal {
 	int width, height;				/* terminal size (pixel) */
 	int cols, lines;				/* terminal size (cell) */
 	struct cell *cells;				/* pointer to each cell: cells[cols + lines * num_of_cols] */
-	uint8_t cell_width, cell_height;/* default glyph size */
 	struct margin scroll;			/* scroll margin */
 	struct pair cursor;				/* cursor pos (x, y) */
 	bool *line_dirty;				/* dirty flag */
@@ -174,7 +165,6 @@ struct terminal {
 	uint8_t attribute;				/* bold, underscore, etc... */
 	struct esc_t esc;				/* store escape sequence */
 	struct ucs_t ucs;				/* store UTF-8 sequence */
-	struct font_t fonts[UCS2_CHARS];/* glyph data */
 };
 
 #include "conf.h"		/* user configuration */
