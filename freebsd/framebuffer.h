@@ -74,8 +74,10 @@ void cmap_init(struct framebuffer *fb, video_info_t *video_info)
 		*(fb->cmap->blue + i) = color.b;
 	}
 
-	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
-		fatal("ioctl: FBIOPUTCMAP");
+	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0) {
+		fprintf(stderr, "ioctl: FBIOPUTCMAP\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 uint32_t get_color(video_info_t *video_info, int i)
@@ -109,8 +111,10 @@ void fb_init(struct framebuffer *fb)
 	else
 		fb->fd = eopen(fb_path, O_RDWR);
 
-	if (ioctl(fb->fd, FBIO_GETMODE, &video_mode) < 0)
-		fatal("ioctl: FBIO_GETMODE");
+	if (ioctl(fb->fd, FBIO_GETMODE, &video_mode) < 0) {
+		fprintf(stderr, "ioctl: FBIO_GETMODE\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (video_mode != MODE) {
 		fprintf(stderr, "video mode unmatch: current mode:%d request mode:%d\n", video_mode, MODE);
@@ -118,11 +122,15 @@ void fb_init(struct framebuffer *fb)
 	}
 
 	video_info.vi_mode = video_mode;
-	if (ioctl(fb->fd, FBIO_MODEINFO, &video_info) < 0)
-		fatal("ioctl: FBIO_MODEINFO");
+	if (ioctl(fb->fd, FBIO_MODEINFO, &video_info) < 0) {
+		fprintf(stderr, "ioctl: FBIO_MODEINFO\n");
+		exit(EXIT_FAILURE);
+	}
 
-	if (ioctl(fb->fd, FBIO_ADPINFO, &video_adapter_info) < 0)
-		fatal("ioctl: FBIO_ADPINFO");
+	if (ioctl(fb->fd, FBIO_ADPINFO, &video_adapter_info) < 0) {
+		fprintf(stderr, "ioctl: FBIO_ADPINFO\n");
+		exit(EXIT_FAILURE);
+	}
 
 	fb->res.x = video_info.vi_width;
 	fb->res.y = video_info.vi_height;
@@ -173,18 +181,19 @@ void fb_die(struct framebuffer *fb)
 
 void set_bitmap(struct framebuffer *fb, struct terminal *term, int y, int x, int offset, uint8_t *src)
 {
-	int i, shift;
+	int i, shift, glyph_width;
 	uint32_t pixel;
 	struct color_pair color;
 	struct cell *cp;
-	struct glyph_t *gp;
+	const struct static_glyph_t *gp;
 
 	cp = &term->cells[x + y * term->cols];
 	if (cp->wide == NEXT_TO_WIDE)
 		return;
 
-	gp = term->fonts[cp->code].gp;
-	shift = ((gp->width + BITS_PER_BYTE - 1) / BITS_PER_BYTE) * BITS_PER_BYTE;
+	gp = &fonts[cp->code];
+	glyph_width = gp->width * cell_width;
+	shift = ((glyph_width + BITS_PER_BYTE - 1) / BITS_PER_BYTE) * BITS_PER_BYTE;
 	color = cp->color;
 
 	if ((term->mode & MODE_CURSOR && y == term->cursor.y) /* cursor */
@@ -193,16 +202,16 @@ void set_bitmap(struct framebuffer *fb, struct terminal *term, int y, int x, int
 		color.bg = CURSOR_COLOR;
 	}
 
-	if ((offset == (term->cell_height - 1)) /* underline */
+	if ((offset == (cell_height - 1)) /* underline */
 		&& (cp->attribute & attr_mask[UNDERLINE]))
 		color.bg = color.fg;
 	
-	for (i = 0; i < gp->width; i++) {
+	for (i = 0; i < glyph_width; i++) {
 		if (gp->bitmap[offset] & (0x01 << (shift - i - 1)))
 			pixel = fb->color_palette[color.fg];
 		else if (fb->wall && color.bg == DEFAULT_BG) /* wallpaper */
-			memcpy(&pixel, fb->wall + (i + x * term->cell_width + term->offset.x) * fb->bpp
-				+ (offset + y * term->cell_height + term->offset.y) * fb->line_length, fb->bpp);
+			memcpy(&pixel, fb->wall + (i + x * cell_width + term->offset.x) * fb->bpp
+				+ (offset + y * cell_height + term->offset.y) * fb->line_length, fb->bpp);
 		else
 			pixel = fb->color_palette[color.bg];
 		memcpy(src + i * fb->bpp, &pixel, fb->bpp);
@@ -214,13 +223,13 @@ void draw_line(struct framebuffer *fb, struct terminal *term, int y)
 	int offset, x, size, pos;
 	uint8_t *src, *dst;
 
-	pos = term->offset.x * fb->bpp + (term->offset.y + y * term->cell_height) * fb->line_length;
+	pos = term->offset.x * fb->bpp + (term->offset.y + y * cell_height) * fb->line_length;
 	size = term->width * fb->bpp;
 
-	for (offset = 0; offset < term->cell_height; offset++) {
+	for (offset = 0; offset < cell_height; offset++) {
 		for (x = 0; x < term->cols; x++)
 			set_bitmap(fb, term, y, x, offset,
-				fb->buf + pos + x * term->cell_width * fb->bpp + offset * fb->line_length);
+				fb->buf + pos + x * cell_width * fb->bpp + offset * fb->line_length);
 		src = fb->buf + pos + offset * fb->line_length;
 		dst = fb->fp + pos + offset * fb->line_length;
 		memcpy(dst, src, size);

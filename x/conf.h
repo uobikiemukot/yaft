@@ -13,14 +13,15 @@ enum {
 	DEFAULT_FG = 7,
 	DEFAULT_BG = 0,
 	CURSOR_COLOR = 2,
+	CURSOR_INACTIVE_COLOR = 8,
 };
 
 /* misc */
 enum {
 	DEBUG = false,
 	TABSTOP = 8,
-	//SUBSTITUTE_HALF = 0x20, /* SPACE */
-	SUBSTITUTE_HALF = 0xFFFD, /* REPLACEMENT CHARACTER: ambiguous width */
+	SUBSTITUTE_HALF = 0x20, /* SPACE */
+	//SUBSTITUTE_HALF = 0xFFFD, /* REPLACEMENT CHARACTER: ambiguous width */
 	SUBSTITUTE_WIDE = 0x3000, /* IDEOGRAPHIC SPACE */
 	WIDTH = 640,
 	HEIGHT = 384,
@@ -32,6 +33,7 @@ const struct keydef key[] = {
 	{ XK_Down,      XK_NO_MOD, "\033[B"  },
 	{ XK_Right,     XK_NO_MOD, "\033[C"  },
 	{ XK_Left,      XK_NO_MOD, "\033[D"  },
+	{ XK_Begin,     XK_NO_MOD, "\033[G"  },
 	{ XK_Home,      XK_NO_MOD, "\033[1~" },
 	{ XK_Insert,    XK_NO_MOD, "\033[2~" },
 	{ XK_Delete,    XK_NO_MOD, "\033[3~" },
@@ -60,14 +62,6 @@ const struct keydef key[] = {
 	{ XK_F20,       XK_NO_MOD, "\033[34~"},
 };
 
-/*
-kb2=\E[G, kbs=\177, kcbt=\E[Z, kcub1=\E[D,
-kcud1=\E[B, kcuf1=\E[C, kcuu1=\E[A, kdch1=\E[3~,
-kend=\E[4~, kf1=\E[[A, kf10=\E[21~, kf11=\E[23~,
-kf12=\E[24~, kf13=\E[25~, kf14=\E[26~, kf15=\E[28~,
-kf16=\E[29~, kf17=\E[31~, kf18=\E[32~, kf19=\E[33~,
-kf2=\E[[B, kf20=\E[34~, kf3=\E[[C, kf4=\E[[D, kf5=\E[[E,
-kf6=\E[17~, kf7=\E[18~, kf8=\E[19~, kf9=\E[20~,
-khome=\E[1~, kich1=\E[2~, kmous=\E[M, knp=\E[6~, kpp=\E[5~,
-kspd=^Z,
+/* not assigned:
+	kcbt=\E[Z,kmous=\E[M,kspd=^Z,
 */

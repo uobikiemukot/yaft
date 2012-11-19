@@ -27,7 +27,7 @@ void x_init(struct xwindow *xw)
 	xw->buf = XCreatePixmap(xw->dsp, xw->win,
 		WIDTH, HEIGHT, XDefaultDepth(xw->dsp, xw->sc));
 	
-	XSelectInput(xw->dsp, xw->win, ExposureMask | KeyPressMask | StructureNotifyMask);
+	XSelectInput(xw->dsp, xw->win, FocusChangeMask | ExposureMask | KeyPressMask | StructureNotifyMask);
 
 	XMapWindow(xw->dsp, xw->win);
 }
@@ -46,6 +46,7 @@ void set_bitmap(struct xwindow *xw, struct terminal *term, int y, int x, int off
 	struct color_pair color;
 	struct cell *cp;
 	const struct static_glyph_t *gp;
+	extern struct tty_state tty;
 
 	cp = &term->cells[x + y * term->cols];
 	if (cp->wide == NEXT_TO_WIDE)
@@ -59,7 +60,7 @@ void set_bitmap(struct xwindow *xw, struct terminal *term, int y, int x, int off
 	if ((term->mode & MODE_CURSOR && y == term->cursor.y) /* cursor */
 		&& (x == term->cursor.x || (cp->wide == WIDE && (x + 1) == term->cursor.x))) {
 		color.fg = DEFAULT_BG;
-		color.bg = CURSOR_COLOR;
+		color.bg = (tty.visible) ? CURSOR_COLOR: CURSOR_INACTIVE_COLOR;
 	}
 
 	if ((offset == (cell_height - 1)) /* underline */

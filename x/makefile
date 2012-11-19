@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -std=c99 -pedantic -Os -march=native -pipe -Wall -I/usr/X11R6/include -L/usr/X11R6/lib
-LDFLAGS = -lX11 -I/usr/X11R6/include -L/usr/X11R6/lib
+CFLAGS = -std=c99 -pedantic -Os -march=native -pipe -Wall -I/usr/X11R6/include
+LDFLAGS = -lX11 -L/usr/X11R6/lib
 
 HDR = *.h
 DST = yaftx

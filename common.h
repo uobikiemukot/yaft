@@ -7,6 +7,7 @@
 #include <linux/fb.h>
 #include <linux/vt.h>
 #include <linux/kd.h>
+#include <locale.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -18,7 +19,6 @@
 #include <sys/select.h>
 #include <termios.h>
 #include <unistd.h>
-#include <locale.h>
 #include <wchar.h>
 
 enum char_code {
@@ -37,7 +37,6 @@ enum {
 	UCS2_CHARS = 0x10000,	/* number of UCS2 glyph */
 	CTRL_CHARS = 0x20,		/* number of ctrl_func */
 	ESC_CHARS = 0x80,		/* number of esc_func */
-	OSC_CHARS = 9999,		/* number of osc_func */
 	DEFAULT_CHAR = SPACE,	/* used for erase char, cell_size */
 	RESET = 0x00,			/* reset for char_attr, term_mode, esc_state */
 	BRIGHT_INC = 8,			/* value used for brightening color */
@@ -132,11 +131,6 @@ struct esc_t {
 struct ucs_t {
 	uint32_t code;			/* UCS4: but only print UCS2 (<= U+FFFF) */
 	int length, count;
-};
-
-struct glyph_t {
-	uint8_t width, height;
-	uint32_t *bitmap;
 };
 
 struct state_t {			/* for save, restore state */

@@ -13,7 +13,7 @@ all: $(DST)
 
 $(DST): mkfont
 
-mkfont: tools/mkfont.c tools/font.h tools/bdf.h common.h util.h
+mkfont: tools/mkfont.c tools/font.h tools/bdf.h
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 $(DST): $(SRC) $(HDR)

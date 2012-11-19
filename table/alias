@@ -1,1 +1,6 @@
-/home/nak/haru/yaft/fonts/new.alias
+# use WAVE DASH for FULLWIDTH TILDE
+0xFF5E 0x301C
+# use TILDE for SMALL TILDE
+0x02DC 0x007E
+# use HYPHEN-MINUS for MINUS SIGN
+0x2212 0x002D 

@@ -117,10 +117,24 @@ void xredraw(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
+void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
+{
+	extern struct tty_state tty;
+
+	if (ev->type == FocusIn)
+		tty.visible = true;
+	else
+		tty.visible = false;
+
+	refresh(xw, term);
+}
+
 static void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, XEvent *ev) = {
 	[KeyPress] = xkeypress,
 	[ConfigureNotify] = xresize,
 	[Expose] = xredraw,
+	[FocusIn] = xfocus,
+	[FocusOut] = xfocus,
 };
 
 int main()
