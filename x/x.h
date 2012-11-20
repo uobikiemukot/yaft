@@ -3,41 +3,37 @@ void x_init(struct xwindow *xw)
 {
 	XTextProperty title;
 
-	if ((xw->dsp = XOpenDisplay(NULL)) == NULL) {
-		fprintf(stderr, "XOpenDisplay failed\n");
-		exit(EXIT_FAILURE);
-	}
+	if ((xw->dpy = XOpenDisplay(NULL)) == NULL)
+		fatal("XOpenDisplay failed");
 
-	xw->sc = DefaultScreen(xw->dsp);
+	xw->sc = DefaultScreen(xw->dpy);
 
-	xw->win = XCreateSimpleWindow(xw->dsp, DefaultRootWindow(xw->dsp),
+	xw->win = XCreateSimpleWindow(xw->dpy, DefaultRootWindow(xw->dpy),
 		0, 0, WIDTH, HEIGHT, 0, color_list[DEFAULT_FG], color_list[DEFAULT_BG]);
 
-	title.value = (unsigned char *) "yaft";
+	title.value = (unsigned char *) "yaftx";
 	title.encoding = XA_STRING;
 	title.format = 8;
 	title.nitems = 5;
-	XSetWMProperties(xw->dsp, xw->win, &title, NULL, NULL, 0, NULL, NULL, NULL);
+	XSetWMProperties(xw->dpy, xw->win, &title, NULL, NULL, 0, NULL, NULL, NULL);
 
-	xw->gc = XCreateGC(xw->dsp, xw->win, 0, NULL);
+	xw->gc = XCreateGC(xw->dpy, xw->win, 0, NULL);
 
 	xw->res.x = WIDTH;
 	xw->res.y = HEIGHT;
 
-	xw->buf = XCreatePixmap(xw->dsp, xw->win,
-		WIDTH, HEIGHT, XDefaultDepth(xw->dsp, xw->sc));
-	
-	XSelectInput(xw->dsp, xw->win, FocusChangeMask | ExposureMask | KeyPressMask | StructureNotifyMask);
+	xw->buf = XCreatePixmap(xw->dpy, xw->win, WIDTH, HEIGHT, XDefaultDepth(xw->dpy, xw->sc));
+	XSelectInput(xw->dpy, xw->win, FocusChangeMask | ExposureMask | KeyPressMask | StructureNotifyMask);
 
-	XMapWindow(xw->dsp, xw->win);
+	XMapWindow(xw->dpy, xw->win);
 }
 
 void x_die(struct xwindow *xw)
 {
-	XFreeGC(xw->dsp, xw->gc);
-	XFreePixmap(xw->dsp, xw->buf);
-	XDestroyWindow(xw->dsp, xw->win);
-	XCloseDisplay(xw->dsp);
+	XFreeGC(xw->dpy, xw->gc);
+	XFreePixmap(xw->dpy, xw->buf);
+	XDestroyWindow(xw->dpy, xw->win);
+	XCloseDisplay(xw->dpy);
 }
 
 void set_bitmap(struct xwindow *xw, struct terminal *term, int y, int x, int offset)
@@ -69,12 +65,12 @@ void set_bitmap(struct xwindow *xw, struct terminal *term, int y, int x, int off
 
 	for (i = 0; i < glyph_width; i++) {
 		if (gp->bitmap[offset] & (0x01 << (shift - i - 1))) {
-			XSetForeground(xw->dsp, xw->gc, color_list[color.fg]);
-			XDrawPoint(xw->dsp, xw->buf, xw->gc, cell_width * x + i, cell_height * y + offset);
+			XSetForeground(xw->dpy, xw->gc, color_list[color.fg]);
+			XDrawPoint(xw->dpy, xw->buf, xw->gc, cell_width * x + i, cell_height * y + offset);
 		}
 		else if (color.bg != DEFAULT_BG) {
-			XSetForeground(xw->dsp, xw->gc, color_list[color.bg]);
-			XDrawPoint(xw->dsp, xw->buf, xw->gc, cell_width * x + i, cell_height * y + offset);
+			XSetForeground(xw->dpy, xw->gc, color_list[color.bg]);
+			XDrawPoint(xw->dpy, xw->buf, xw->gc, cell_width * x + i, cell_height * y + offset);
 		}
 	}
 }
@@ -83,8 +79,8 @@ void draw_line(struct xwindow *xw, struct terminal *term, int y)
 {
 	int offset, x;
 
-	XSetForeground(xw->dsp, xw->gc, color_list[DEFAULT_BG]);
-	XFillRectangle(xw->dsp, xw->buf, xw->gc, 0, y * cell_height, term->width, cell_height);
+	XSetForeground(xw->dpy, xw->gc, color_list[DEFAULT_BG]);
+	XFillRectangle(xw->dpy, xw->buf, xw->gc, 0, y * cell_height, term->width, cell_height);
 
 	for (offset = 0; offset < cell_height; offset++) {
 		for (x = 0; x < term->cols; x++)
@@ -92,7 +88,7 @@ void draw_line(struct xwindow *xw, struct terminal *term, int y)
 	}
 	term->line_dirty[y] = (term->mode & MODE_CURSOR && term->cursor.y == y) ? true: false;
 
-	XCopyArea(xw->dsp, xw->buf, xw->win, xw->gc, 0, y * cell_height,
+	XCopyArea(xw->dpy, xw->buf, xw->win, xw->gc, 0, y * cell_height,
 		term->width, cell_height, 0, y * cell_height);
 }
 

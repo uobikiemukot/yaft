@@ -12,7 +12,6 @@ struct tty_state tty = {
 	.visible = true,
 	.redraw_flag = false,
 	.loop_flag = true,
-	.setmode = false,
 };
 
 void handler(int signo)
@@ -47,8 +46,8 @@ void set_rawmode(int fd, struct termios *save_tm)
 	tm.c_cflag &= ~CSIZE;
 	tm.c_cflag |= CS8;
 	tm.c_lflag &= ~(ECHO | ISIG | ICANON);
-	tm.c_cc[VMIN] = 1;			/* min data size (byte) */
-	tm.c_cc[VTIME] = 0;			/* time out */
+	tm.c_cc[VMIN] = 1;  /* min data size (byte) */
+	tm.c_cc[VTIME] = 0; /* time out */
 	etcsetattr(fd, TCSAFLUSH, &tm);
 }
 
@@ -56,7 +55,7 @@ void tty_init()
 {
 	extern struct tty_state tty; /* global var */
 	struct sigaction sigact;
-	keyboard_repeat_t keyboard_repeat;
+	struct vt_mode vtm;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = handler;
@@ -64,34 +63,17 @@ void tty_init()
 	esigaction(SIGCHLD, &sigact, NULL);
 	esigaction(SIGUSR1, &sigact, NULL);
 
-	if (ioctl(STDIN_FILENO, VT_SETMODE, &(struct vt_mode){.mode = VT_PROCESS,
-		.waitv = 0, .relsig = SIGUSR1, .acqsig = SIGUSR1, .frsig = SIGUSR1}) < 0) {
-		fprintf(stderr, "ioctl: VT_SETMODE failed\n");
-		exit(EXIT_FAILURE);
-	}
-	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0) {
-		fprintf(stderr, "ioctl: KDSETMODE failed\n");
-		exit(EXIT_FAILURE);
-	}
+	vtm.mode = VT_PROCESS;
+	vtm.waitv = 0;
+	vtm.relsig = vtm.acqsig = vtm.frsig = SIGUSR1;
+	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm))
+		fatal("ioctl: VT_SETMODE failed (maybe here is not console)");
+	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
+		fatal("ioctl: KDSETMODE failed (maybe here is not console)");
+
 	tty.save_tm = (struct termios *) emalloc(sizeof(struct termios));
-	tty.setmode = true;
-
-	if (ioctl(STDIN_FILENO, KDGETREPEAT, &keyboard_repeat) < 0) {
-		fprintf(stderr, "ioctl: KDSETREPEAT\n");
-		exit(EXIT_FAILURE);
-	}
-	tty.kb_delay = keyboard_repeat.kb_repeat[0];
-	tty.kb_repeat = keyboard_repeat.kb_repeat[1];
-
-	keyboard_repeat.kb_repeat[0] = KB_DELAY;
-	keyboard_repeat.kb_repeat[1] = KB_REPEAT;
-	if (ioctl(STDIN_FILENO, KDSETREPEAT, &keyboard_repeat) < 0) {
-		fprintf(stderr, "ioctl: KDSETREPEAT\n");
-		exit(EXIT_FAILURE);
-	}
-
 	set_rawmode(STDIN_FILENO, tty.save_tm);
-	ewrite(STDIN_FILENO, "\033[?25l", 6); /* set cusor invisible */
+	ewrite(STDIN_FILENO, "\033[?25l", 6); /* make cusor invisible */
 }
 
 void tty_die()
@@ -99,25 +81,22 @@ void tty_die()
  	/* no error handling */
 	extern struct tty_state tty; /* global var */
 	struct sigaction sigact;
-	keyboard_repeat_t keyboard_repeat;
+	struct vt_mode vtm;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = SIG_DFL;
 	sigaction(SIGCHLD, &sigact, NULL);
 	sigaction(SIGUSR1, &sigact, NULL);
 
-	if (tty.setmode) {
+	vtm.mode = VT_AUTO;
+	vtm.waitv = 0;
+	vtm.relsig = vtm.acqsig = vtm.frsig = 0;
+	ioctl(STDIN_FILENO, VT_SETMODE, &vtm);
+	ioctl(STDIN_FILENO, KDSETMODE, KD_PIXEL);
+
+	if (tty.save_tm != NULL)
 		tcsetattr(STDIN_FILENO, TCSAFLUSH, tty.save_tm);
-		ioctl(STDIN_FILENO, VT_SETMODE, &(struct vt_mode){.mode = VT_AUTO,
-			.waitv = 0, .relsig = 0, .acqsig = 0, .frsig = 0});
-		ioctl(STDIN_FILENO, KDSETMODE, KD_PIXEL);
-	}
-
-	keyboard_repeat.kb_repeat[0] = tty.kb_delay;
-	keyboard_repeat.kb_repeat[1] = tty.kb_repeat;
-	ioctl(STDIN_FILENO, KDSETREPEAT, &keyboard_repeat);
-
-	ewrite(STDIN_FILENO, "\033[?25h", 6); /* set cursor visible */
+	write(STDIN_FILENO, "\033[?25h", 6); /* make cursor visible */
 	fflush(stdout);
 }
 
@@ -142,10 +121,8 @@ int main()
 
 	/* init */
 	setlocale(LC_ALL, "");
-	if (atexit(tty_die) != 0) {
-		fprintf(stderr, "atexit failed\n");
-		exit(EXIT_FAILURE);
-	}
+	if (atexit(tty_die) != 0)
+		fatal("atexit failed");
 
 	fb_init(&fb);
 	term_init(&term, fb.res);

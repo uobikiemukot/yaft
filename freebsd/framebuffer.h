@@ -74,10 +74,8 @@ void cmap_init(struct framebuffer *fb, video_info_t *video_info)
 		*(fb->cmap->blue + i) = color.b;
 	}
 
-	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0) {
-		fprintf(stderr, "ioctl: FBIOPUTCMAP\n");
-		exit(EXIT_FAILURE);
-	}
+	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
+		fatal("ioctl: FBIOPUTCMAP failed");
 }
 
 uint32_t get_color(video_info_t *video_info, int i)
@@ -111,26 +109,20 @@ void fb_init(struct framebuffer *fb)
 	else
 		fb->fd = eopen(fb_path, O_RDWR);
 
-	if (ioctl(fb->fd, FBIO_GETMODE, &video_mode) < 0) {
-		fprintf(stderr, "ioctl: FBIO_GETMODE\n");
-		exit(EXIT_FAILURE);
-	}
+	if (ioctl(fb->fd, FBIO_GETMODE, &video_mode) < 0)
+		fatal("ioctl: FBIO_GETMODE failed");
 
 	if (video_mode != MODE) {
-		fprintf(stderr, "video mode unmatch: current mode:%d request mode:%d\n", video_mode, MODE);
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "current mode:%d request mode:%d\n", video_mode, MODE);
+		fatal("video mode unmatch");
 	}
 
 	video_info.vi_mode = video_mode;
-	if (ioctl(fb->fd, FBIO_MODEINFO, &video_info) < 0) {
-		fprintf(stderr, "ioctl: FBIO_MODEINFO\n");
-		exit(EXIT_FAILURE);
-	}
+	if (ioctl(fb->fd, FBIO_MODEINFO, &video_info) < 0)
+		fatal("ioctl: FBIO_MODEINFO failed");
 
-	if (ioctl(fb->fd, FBIO_ADPINFO, &video_adapter_info) < 0) {
-		fprintf(stderr, "ioctl: FBIO_ADPINFO\n");
-		exit(EXIT_FAILURE);
-	}
+	if (ioctl(fb->fd, FBIO_ADPINFO, &video_adapter_info) < 0)
+		fatal("ioctl: FBIO_ADPINFO failed");
 
 	fb->res.x = video_info.vi_width;
 	fb->res.y = video_info.vi_height;
@@ -151,19 +143,21 @@ void fb_init(struct framebuffer *fb)
 		cmap_init(fb, &video_info);
 		fb->bpp = 1;
 	}
-	else {
+	else
 		/* non packed pixel, mono color, grayscale: not implimented */
-		fprintf(stderr, "unsupported framebuffer vi_mem_model:%d\n", video_info.vi_mem_model);
-		exit(EXIT_FAILURE);
-	}
+		fatal("unsupported framebuffer type");
 
 	for (i = 0; i < COLORS; i++) /* init color palette */
 		fb->color_palette[i] = get_color(&video_info, i);
 
-	fb->fp = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
+	fb->fp = (uint8_t *) emmap(0, fb->screen_size,
+		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
 	fb->buf = (uint8_t *) emalloc(fb->screen_size);
-	fb->wall = ((env = getenv("YAFT")) != NULL && strncmp(env, "wall", 4) == 0 && fb->bpp > 1) ?
-		load_wallpaper(fb): NULL;
+
+	if ((env = getenv("YAFT")) != NULL && strncmp(env, "wall", 4) == 0 && fb->bpp > 1)
+		fb->wall = load_wallpaper(fb);
+	else
+		fb->wall = NULL;
 }
 
 void fb_die(struct framebuffer *fb)

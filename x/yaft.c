@@ -12,7 +12,6 @@ struct tty_state tty = {
 	.visible = true,
 	.redraw_flag = false,
 	.loop_flag = true,
-	.setmode = false,
 };
 
 void handler(int signo)
@@ -89,9 +88,9 @@ void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
 		term->lines = term->height / cell_height;
 		term->cols = term->width / cell_width;
 
-		XFreePixmap(xw->dsp, xw->buf);
-		xw->buf = XCreatePixmap(xw->dsp, xw->win,
-			term->width, term->height, XDefaultDepth(xw->dsp, xw->sc));
+		XFreePixmap(xw->dpy, xw->buf);
+		xw->buf = XCreatePixmap(xw->dpy, xw->win,
+			term->width, term->height, XDefaultDepth(xw->dpy, xw->sc));
 
 		free(term->line_dirty);
 		term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
@@ -165,8 +164,8 @@ int main()
 	while (tty.loop_flag) {
 		check_fds(&fds, &tv, term.fd);
 
-		while(XPending(xw.dsp)) {
-			XNextEvent(xw.dsp, &ev);
+		while(XPending(xw.dpy)) {
+			XNextEvent(xw.dpy, &ev);
 			if(XFilterEvent(&ev, xw.win))
 				continue;
 			if (event_func[ev.type])
