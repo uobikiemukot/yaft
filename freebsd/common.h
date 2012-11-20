@@ -38,28 +38,28 @@ enum char_code {
 
 enum {
 	BITS_PER_BYTE = 8,
-	BUFSIZE = 1024,			/* read, esc, various buffer size */
-	SELECT_TIMEOUT = 20000,	/* used by select() */
-	ESC_PARAMS = 16,		/* max parameters of csi/osc sequence */
-	COLORS = 256,			/* num of color */
-	UCS2_CHARS = 0x10000,	/* number of UCS2 glyph */
-	CTRL_CHARS = 0x20,		/* number of ctrl_func */
-	ESC_CHARS = 0x80,		/* number of esc_func */
-	DEFAULT_CHAR = SPACE,	/* used for erase char, cell_size */
-	RESET = 0x00,			/* reset for char_attr, term_mode, esc_state */
-	BRIGHT_INC = 8,			/* value used for brightening color */
+	BUFSIZE = 1024,         /* read, esc, various buffer size */
+	SELECT_TIMEOUT = 20000, /* used by select() */
+	ESC_PARAMS = 16,        /* max parameters of csi/osc sequence */
+	COLORS = 256,           /* num of color */
+	UCS2_CHARS = 0x10000,   /* number of UCS2 glyph */
+	CTRL_CHARS = 0x20,      /* number of ctrl_func */
+	ESC_CHARS = 0x80,       /* number of esc_func */
+	DEFAULT_CHAR = SPACE,   /* used for erase char, cell_size */
+	RESET = 0x00,           /* reset for char_attr, term_mode, esc_state */
+	BRIGHT_INC = 8,         /* value used for brightening color */
 };
 
 enum char_attr {
-	BOLD = 1,				/* brighten foreground */
+	BOLD = 1,               /* brighten foreground */
 	UNDERLINE = 4,
-	BLINK = 5,				/* brighten background */
+	BLINK = 5,              /* brighten background */
 	REVERSE = 7,
 };
 
 const uint8_t attr_mask[] = {
-	0x00, 0x01, 0x00, 0x00,	/* 0:none      1:bold  2:none 3:none */
-	0x02, 0x04, 0x00, 0x08,	/* 4:underline 5:blink 6:none 7:reverse */
+	0x00, 0x01, 0x00, 0x00, /* 0:none      1:bold  2:none 3:none */
+	0x02, 0x04, 0x00, 0x08, /* 4:underline 5:blink 6:none 7:reverse */
 };
 
 const uint32_t bit_mask[] = {
@@ -75,15 +75,15 @@ const uint32_t bit_mask[] = {
 };
 
 enum term_mode {
-	MODE_ORIGIN = 0x01,		/* origin mode: DECOM */
-	MODE_CURSOR = 0x02,		/* cursor visible: DECTECM */
-	MODE_AMRIGHT = 0x04,	/* auto wrap: DECAWM */
+	MODE_ORIGIN = 0x01,     /* origin mode: DECOM */
+	MODE_CURSOR = 0x02,     /* cursor visible: DECTECM */
+	MODE_AMRIGHT = 0x04,    /* auto wrap: DECAWM */
 };
 
 enum esc_state {
-	STATE_ESC = 1,			/* 0x1B, \033, ESC */
-	STATE_CSI,				/* ESC [ */
-	STATE_OSC,				/* ESC ] */
+	STATE_ESC = 1,          /* 0x1B, \033, ESC */
+	STATE_CSI,              /* ESC [ */
+	STATE_OSC,              /* ESC ] */
 };
 
 enum width_flag {
@@ -94,11 +94,9 @@ enum width_flag {
 
 struct tty_state {
 	struct termios *save_tm;
-	int kb_delay, kb_repeat;
 	bool visible;
 	bool redraw_flag;
 	bool loop_flag;
-	bool setmode;
 };
 
 struct pair { int x, y; };
@@ -107,26 +105,26 @@ struct color_t { uint32_t r, g, b; };
 struct color_pair { uint8_t fg, bg; };
 
 struct framebuffer {
-	uint8_t *fp;			/* pointer of framebuffer(read only) */
-	uint8_t *wall;			/* buffer for wallpaper */
-	uint8_t *buf;			/* copy of framebuffer */
-	int fd;					/* file descriptor of framebuffer */
-	struct pair res;		/* resolution (x, y) */
-	long screen_size;		/* screen data size (byte) */
-	int line_length;		/* line length (byte) */
-	int bpp;				/* BYTES per pixel */
+	uint8_t *fp;            /* pointer of framebuffer(read only) */
+	uint8_t *wall;          /* buffer for wallpaper */
+	uint8_t *buf;           /* copy of framebuffer */
+	int fd;                 /* file descriptor of framebuffer */
+	struct pair res;        /* resolution (x, y) */
+	long screen_size;       /* screen data size (byte) */
+	int line_length;        /* line length (byte) */
+	int bpp;                /* BYTES per pixel */
 	uint32_t color_palette[COLORS];
 	video_color_palette_t *cmap, *cmap_org;
 };
 
 struct cell {
-	uint16_t code;			/* UCS2 */
+	uint16_t code;          /* UCS2 */
 	struct color_pair color;/* color (fg, bg) */
-	uint8_t attribute;		/* bold, underscore, etc... */
-	int wide;				/* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
+	uint8_t attribute;      /* bold, underscore, etc... */
+	int wide;               /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
 };
 
-struct parm_t {				/* for parse_arg() */
+struct parm_t {             /* for parse_arg() */
 	int argc;
 	char *argv[ESC_PARAMS];
 };
@@ -134,38 +132,38 @@ struct parm_t {				/* for parse_arg() */
 struct esc_t {
 	uint8_t buf[BUFSIZE];
 	uint8_t *bp;
-	int state;				/* esc state */
+	int state;              /* esc state */
 };
 
 struct ucs_t {
-	uint32_t code;			/* UCS4: but only print UCS2 (<= U+FFFF) */
+	uint32_t code;          /* UCS4: but only print UCS2 (<= U+FFFF) */
 	int length, count;
 };
 
-struct state_t {			/* for save, restore state */
+struct state_t {            /* for save, restore state */
 	int mode;
 	struct pair cursor;
 	uint8_t attribute;
 };
 
 struct terminal {
-	int fd;							/* master fd */
-	struct pair offset;				/* window offset (x, y) */
-	int width, height;				/* terminal size (pixel) */
-	int cols, lines;				/* terminal size (cell) */
-	struct cell *cells;				/* pointer to each cell: cells[cols + lines * num_of_cols] */
-	struct margin scroll;			/* scroll margin */
-	struct pair cursor;				/* cursor pos (x, y) */
-	bool *line_dirty;				/* dirty flag */
-	bool *tabstop;					/* tabstop flag */
-	int mode;						/* for set/reset mode */
-	bool wrap;						/* whether auto wrap occured or not */
-	struct state_t state;			/* for restore */
-	struct color_pair color;		/* color (fg, bg) */
-	uint8_t attribute;				/* bold, underscore, etc... */
-	struct esc_t esc;				/* store escape sequence */
-	struct ucs_t ucs;				/* store UTF-8 sequence */
+	int fd;                 /* master fd */
+	struct pair offset;     /* window offset (x, y) */
+	int width, height;      /* terminal size (pixel) */
+	int cols, lines;        /* terminal size (cell) */
+	struct cell *cells;     /* pointer to each cell: cells[cols + lines * num_of_cols] */
+	struct margin scroll;   /* scroll margin */
+	struct pair cursor;     /* cursor pos (x, y) */
+	bool *line_dirty;       /* dirty flag */
+	bool *tabstop;          /* tabstop flag */
+	int mode;               /* for set/reset mode */
+	bool wrap;              /* whether auto wrap occured or not */
+	struct state_t state;   /* for restore */
+	struct color_pair color;/* color (fg, bg) */
+	uint8_t attribute;      /* bold, underscore, etc... */
+	struct esc_t esc;       /* store escape sequence */
+	struct ucs_t ucs;       /* store UTF-8 sequence */
 };
 
-#include "conf.h"		/* user configuration */
-#include "../color.h"	/* 256color definition */
+#include "conf.h"           /* user configuration */
+#include "../color.h"       /* 256color definition */

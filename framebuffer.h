@@ -81,10 +81,8 @@ void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
 			bit_reverse(b, 16) & bit_mask[16]: b;
 	}
 
-	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0) {
-		fprintf(stderr, "ioctl: FBIOPUTCMAP\n");
-		exit(EXIT_FAILURE);
-	}
+	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
+		fatal("ioctl: FBIOPUTCMAP failed");
 }
 
 uint32_t get_color(struct fb_var_screeninfo *vinfo, int i)
@@ -124,15 +122,11 @@ void fb_init(struct framebuffer *fb)
 	else
 		fb->fd = eopen(fb_path, O_RDWR);
 
-	if (ioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo) < 0) {
-		fprintf(stderr, "ioctl: FBIOGET_FSCREENINFO failed\n");
-		exit(EXIT_FAILURE);
-	}
+	if (ioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo) < 0)
+		fatal("ioctl: FBIOGET_FSCREENINFO failed");
 
-	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo) < 0) {
-		fprintf(stderr, "ioctl: FBIOGET_VSCREENINFO failed\n");
-		exit(EXIT_FAILURE);
-	}
+	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo) < 0)
+		fatal("ioctl: FBIOGET_VSCREENINFO failed");
 
 	fb->res.x = vinfo.xres;
 	fb->res.y = vinfo.yres;
@@ -152,19 +146,21 @@ void fb_init(struct framebuffer *fb)
 		cmap_init(fb, &vinfo);
 		fb->bpp = 1;
 	}
-	else {
+	else
 		/* non packed pixel, mono color, grayscale: not implimented */
-		fprintf(stderr, "unsupported framebuffer type:%d\n", finfo.type);
-		exit(EXIT_FAILURE);
-	}
+		fatal("unsupported framebuffer type");
 
 	for (i = 0; i < COLORS; i++) /* init color palette */
 		fb->color_palette[i] = get_color(&vinfo, i);
 
-	fb->fp = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
+	fb->fp = (uint8_t *) emmap(0, fb->screen_size,
+		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
 	fb->buf = (uint8_t *) emalloc(fb->screen_size);
-	fb->wall = ((env = getenv("YAFT")) != NULL && strncmp(env, "wall", 4) == 0 && fb->bpp > 1) ?
-		load_wallpaper(fb): NULL;
+
+	if ((env = getenv("YAFT")) != NULL && strncmp(env, "wall", 4) == 0 && fb->bpp > 1)
+		fb->wall = load_wallpaper(fb);
+	else
+		fb->wall = NULL;
 }
 
 void fb_die(struct framebuffer *fb)

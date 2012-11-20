@@ -96,7 +96,7 @@ void parse_arg(uint8_t *buf, struct parm_t *pt, int delim, int (is_valid)(int c)
 
 void control_character(struct terminal *term, uint8_t ch)
 {
-	const char *ctrl_char[] = {
+	static const char *ctrl_char[] = {
 		"NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
 		"BS ", "HT ", "LF ", "VT ", "FF ", "CR ", "SO ", "SI ",
 		"DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
