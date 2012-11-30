@@ -36,7 +36,6 @@ int set_cell(struct terminal *term, int y, int x, uint16_t code)
 	gp = &fonts[code];
 
 	nc.code = code;
-
 	nc.color.fg = (term->attribute & attr_mask[BOLD] && term->color.fg <= 7) ?
 		term->color.fg + BRIGHT_INC: term->color.fg;
 	nc.color.bg = (term->attribute & attr_mask[BLINK] && term->color.bg <= 7) ?
@@ -157,14 +156,13 @@ void addch(struct terminal *term, uint32_t code)
 	const struct static_glyph_t *gp;
 
 	width = wcwidth(code);
-	if (code >= UCS2_CHARS				/* not print over UCS2 (>= 0x10000) */
-		|| width == 0)		/* zero width */
+	if (code >= UCS2_CHARS || width == 0) /* never print over UCS2 (>= 0x10000) or zero width */
 		return;
 
 	if (fonts[code].width == 0)
 		gp = (width == 1) ? &fonts[SUBSTITUTE_HALF]: &fonts[SUBSTITUTE_WIDE];
 	else
-		gp = &fonts[code];			
+		gp = &fonts[code];
 
 	if ((term->wrap && term->cursor.x == term->cols - 1) /* folding */
 		|| (gp->width == WIDE && term->cursor.x == term->cols - 1)) {
@@ -188,7 +186,7 @@ void reset_esc(struct terminal *term)
 
 bool push_esc(struct terminal *term, uint8_t ch)
 {
-	if (term->esc.bp == &term->esc.buf[BUFSIZE - 1]) {	/* buffer limit */
+	if (term->esc.bp == &term->esc.buf[BUFSIZE - 1]) { /* buffer limit */
 		reset_esc(term);
 		return false;
 	}
@@ -244,6 +242,10 @@ void reset(struct terminal *term)
 
 	term->cursor.x = term->cursor.y = 0;
 
+	term->state.mode = term->mode;
+	term->state.cursor = term->cursor;
+	term->state.attribute = RESET;
+
 	term->color.fg = DEFAULT_FG;
 	term->color.bg = DEFAULT_BG;
 
@@ -279,14 +281,14 @@ void term_init(struct terminal *term, struct pair res)
 
 	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
 	term->tabstop = (bool *) emalloc(sizeof(bool) * term->cols);
+	term->cells = (struct cell *) emalloc(sizeof(struct cell) * term->cols * term->lines);
 
-	term->cells = (struct cell *)
-		emalloc(sizeof(struct cell) * term->cols * term->lines);
 	reset(term);
 }
 
 void term_die(struct terminal *term)
 {
 	free(term->line_dirty);
+	free(term->tabstop);
 	free(term->cells);
 }

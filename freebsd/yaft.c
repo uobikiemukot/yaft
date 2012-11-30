@@ -124,9 +124,9 @@ int main()
 	if (atexit(tty_die) != 0)
 		fatal("atexit failed");
 
+	tty_init(&tty);
 	fb_init(&fb);
 	term_init(&term, fb.res);
-	tty_init(&tty);
 
 	/* fork and exec shell */
 	eforkpty(&term.fd, term.lines, term.cols);
