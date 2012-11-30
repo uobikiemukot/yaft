@@ -18,7 +18,7 @@ void fatal(char *str)
 	exit(EXIT_FAILURE);
 }
 
-int eopen(char *path, int flag)
+int eopen(const char *path, int flag)
 {
 	int fd;
 
@@ -76,7 +76,7 @@ void *emalloc(size_t size)
 	return p;
 }
 
-void eexecl(char *path)
+void eexecl(const char *path)
 {
 	if (execl(path, path, NULL) < 0)
 		error("execl");
@@ -103,6 +103,12 @@ void eunlockpt(int fd)
 		error("unlockpt");
 }
 
+void esetenv(const char *name, const char *val, int overwrite)
+{
+	if (setenv(name, val, overwrite) < 0)
+		error("setenv");
+}
+
 void eforkpty(int *master, int lines, int cols)
 {
 	int slave;
@@ -127,7 +133,7 @@ void eforkpty(int *master, int lines, int cols)
 		ioctl(slave, TIOCSCTTY, NULL);
 		close(slave);
 		close(*master);
-		putenv(term_name);
+		esetenv("TERM", term_name, 1);
 		eexecl(shell_cmd);
 	}
 	else /* parent */

@@ -1,12 +1,12 @@
 /* See LICENSE for licence details. */
 /* framubuffer device */
-char *fb_path = "/dev/fb0";
+const char *fb_path = "/dev/fb0";
 
 /* shell */
-char *shell_cmd = "/bin/bash";
+const char *shell_cmd = "/bin/bash";
 
 /* TERM value */
-char *term_name = "TERM=yaft-256color";
+const char *term_name = "yaft-256color";
 
 /* color: index number of color_palette[] in color.h */
 enum {

@@ -47,20 +47,19 @@ void enter_esc(struct terminal *term, void *arg)
 /* function for escape sequence */
 void save_state(struct terminal *term, void *arg)
 {
+	term->state.mode = term->mode & MODE_ORIGIN;
 	term->state.cursor = term->cursor;
 	term->state.attribute = term->attribute;
-	term->state.mode = term->mode & MODE_ORIGIN;
 }
 
 void restore_state(struct terminal *term, void *arg)
 {
-	term->cursor = term->state.cursor;
-	term->attribute = term->state.attribute;
-
 	if (term->state.mode & MODE_ORIGIN)
 		term->mode |= MODE_ORIGIN;
 	else
 		term->mode &= ~MODE_ORIGIN;
+	term->cursor = term->state.cursor;
+	term->attribute = term->state.attribute;
 }
 
 void crnl(struct terminal *term, void *arg)

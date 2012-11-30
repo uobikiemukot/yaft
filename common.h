@@ -68,7 +68,7 @@ const uint32_t bit_mask[] = {
 
 enum term_mode {
 	MODE_ORIGIN = 0x01,     /* origin mode: DECOM */
-	MODE_CURSOR = 0x02,     /* cursor visible: DECTECM */
+	MODE_CURSOR = 0x02,     /* cursor visible: DECTCEM */
 	MODE_AMRIGHT = 0x04,    /* auto wrap: DECAWM */
 };
 

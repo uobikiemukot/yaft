@@ -153,9 +153,9 @@ int main()
 		exit(EXIT_FAILURE);
 	}
 
+	tty_init(&tty);
 	x_init(&xw);
 	term_init(&term, xw.res);
-	tty_init(&tty);
 
 	/* fork and exec shell */
 	eforkpty(&term.fd, term.lines, term.cols);
