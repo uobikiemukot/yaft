@@ -1,7 +1,7 @@
 /* See LICENSE for licence details. */
 void init_cell(struct cell *cp)
 {
-	cp->code = DEFAULT_CHAR;
+	cp->gp = &fonts[DEFAULT_CHAR];
 	cp->color.fg = DEFAULT_FG;
 	cp->color.bg = DEFAULT_BG;
 	cp->attribute = RESET;
@@ -27,15 +27,12 @@ void swap_color(struct color_pair *cp)
 	cp->bg = tmp;
 }
 
-int set_cell(struct terminal *term, int y, int x, uint16_t code)
+int set_cell(struct terminal *term, int y, int x, const struct static_glyph_t *gp)
 {
 	struct cell nc, *cp;
-	const struct static_glyph_t *gp;
 
 	cp = &term->cells[x + y * term->cols];
-	gp = &fonts[code];
-
-	nc.code = code;
+	nc.gp = gp;
 	nc.color.fg = (term->attribute & attr_mask[BOLD] && term->color.fg <= 7) ?
 		term->color.fg + BRIGHT_INC: term->color.fg;
 	nc.color.bg = (term->attribute & attr_mask[BLINK] && term->color.bg <= 7) ?
@@ -156,10 +153,9 @@ void addch(struct terminal *term, uint32_t code)
 	const struct static_glyph_t *gp;
 
 	width = wcwidth(code);
-	if (code >= UCS2_CHARS || width == 0) /* never print over UCS2 (>= 0x10000) or zero width */
+	if (width <= 0) /* zero width */
 		return;
-
-	if (fonts[code].width == 0)
+	else if (code >= UCS2_CHARS || fonts[code].width == 0) /* missing glyph */
 		gp = (width == 1) ? &fonts[SUBSTITUTE_HALF]: &fonts[SUBSTITUTE_WIDE];
 	else
 		gp = &fonts[code];
@@ -171,8 +167,7 @@ void addch(struct terminal *term, uint32_t code)
 	}
 	term->wrap = false;
 
-	move_cursor(term, 0,
-		set_cell(term, term->cursor.y, term->cursor.x, code));
+	move_cursor(term, 0, set_cell(term, term->cursor.y, term->cursor.x, gp));
 }
 
 void reset_esc(struct terminal *term)
@@ -218,7 +213,8 @@ bool push_esc(struct terminal *term, uint8_t ch)
 
 void reset_ucs(struct terminal *term)
 {
-	term->ucs.code = term->ucs.count = term->ucs.length = 0;
+	term->ucs.code = term->ucs.count = term->ucs.following_byte = 0;
+	term->ucs.is_valid = true;
 }
 
 void redraw(struct terminal *term)

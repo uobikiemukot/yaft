@@ -152,8 +152,12 @@ void eselect(int max_fd, fd_set *fds, struct timeval *tv)
 
 void ewrite(int fd, void *buf, int size)
 {
-	if (write(fd, buf, size) < 0)
+	int ret;
+
+	if ((ret = write(fd, buf, size)) < 0)
 		error("write");
+	else if (ret < size)
+		ewrite(fd, (char *) buf + ret, size - ret);
 }
 
 void esigaction(int signo, struct sigaction *act, struct sigaction *oact)

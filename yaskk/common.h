@@ -14,10 +14,9 @@
 #include <sys/stat.h>
 #include <termios.h>
 #include <unistd.h>
-#include <curses.h>
-#include <term.h>
 
 enum ctrl_chars {
+	BS = 0x08, /* backspace */
 	LF = 0x0A, /* Ctrl-J */
 	SPACE = 0x20,
 	DEL = 0x7F,
@@ -43,18 +42,13 @@ enum hash_parm {
 	NHASH = 512,
 	//MULTIPLIER = 31,
 	MULTIPLIER = 37,
-	KEYSIZE = 8,
+	KEYSIZE = 4,
 	VALSIZE = 16,
 };
 
-struct parm_t {
-	int argc;
-	char *argv[MAX_PARAMS];
-};
-
-struct map_t {
+struct hash_t {
 	char key[KEYSIZE], val[VALSIZE];
-	struct map_t *next;
+	struct hash_t *next;
 };
 
 struct list_t {
@@ -62,25 +56,27 @@ struct list_t {
 	struct list_t *next;
 };
 
-/*
-struct entry_t {
-	char *key;
-	char *entry;
-	long offset;
-	struct parm_t parm;
+struct parm_t {
+	int argc;
+	char *argv[MAX_PARAMS];
 };
-*/
 
 struct entry_t {
 	char *key;
 	long offset;
 };
 
-struct entry_table_t {
+struct table_t {
 	struct entry_t *entries;
 	int count;
 };
 
-struct map_t *r2h[NHASH], *r2k[NHASH];
+struct buffer_t {
+	struct list_t *lp;
+	int wrote;
+};
+
+struct hash_t *rom2hira[NHASH], *rom2kata[NHASH];
+struct table_t okuri_ari, okuri_nasi;
 
 #include "conf.h"
