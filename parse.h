@@ -68,7 +68,7 @@ void parse_arg(char *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
 	int length;
 	char *cp;
 
-	length = strlen((char *) buf);
+	length = strlen(buf);
 	cp = buf;
 
 	while (cp < &buf[length - 1]) {
@@ -80,7 +80,7 @@ void parse_arg(char *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
 	cp = buf;
   start:
 	if (pt->argc < ESC_PARAMS && is_valid(*cp)) {
-		pt->argv[pt->argc] = (char *) cp;
+		pt->argv[pt->argc] = cp;
 		pt->argc++;
 	}
 
@@ -115,7 +115,7 @@ void esc_sequence(struct terminal *term, uint8_t ch)
 	if (DEBUG)
 		fprintf(stderr, "esc: ESC %s\n", term->esc.buf);
 
-	if (strlen((char *) term->esc.buf) == 1 && esc_func[ch])
+	if (strlen(term->esc.buf) == 1 && esc_func[ch])
 		esc_func[ch](term, NULL);
 
 	if (ch != '[' && ch != ']')
