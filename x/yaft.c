@@ -1,8 +1,7 @@
 /* See LICENSE for licence details. */
 #include "common.h"
-#include "../glyph.h"
 #include "../util.h"
-#include "x.h"
+#include "framebuffer.h"
 #include "../terminal.h"
 #include "../function.h"
 #include "../parse.h"
@@ -63,7 +62,7 @@ char *keymap(KeySym k, unsigned int state)
 	return NULL;
 }
 
-void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xkeypress(struct framebuffer *xw, struct terminal *term, XEvent *ev)
 {
 	int size;
 	char buf[BUFSIZE], *customkey;
@@ -77,7 +76,7 @@ void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 		ewrite(term->fd, buf, size);
 }
 
-void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xresize(struct framebuffer *xw, struct terminal *term, XEvent *ev)
 {
 	XConfigureEvent *e = &ev->xconfigure;
 
@@ -106,7 +105,7 @@ void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
-void xredraw(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xredraw(struct framebuffer *xw, struct terminal *term, XEvent *ev)
 {
 	XExposeEvent *e = &ev->xexpose;
 
@@ -116,7 +115,7 @@ void xredraw(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
-void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xfocus(struct framebuffer *xw, struct terminal *term, XEvent *ev)
 {
 	extern struct tty_state tty;
 
@@ -128,7 +127,7 @@ void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	refresh(xw, term);
 }
 
-static void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, XEvent *ev) = {
+static void (*event_func[LASTEvent])(struct framebuffer *xw, struct terminal *term, XEvent *ev) = {
 	[KeyPress] = xkeypress,
 	[ConfigureNotify] = xresize,
 	[Expose] = xredraw,
@@ -142,20 +141,18 @@ int main()
 	ssize_t size;
 	fd_set fds;
 	struct timeval tv;
-	struct xwindow xw;
+	struct framebuffer fb;
 	struct terminal term;
 	XEvent ev;
 
 	/* init */
 	setlocale(LC_ALL, "");
-	if (atexit(tty_die) != 0) {
-		fprintf(stderr, "atexit failed\n");
-		exit(EXIT_FAILURE);
-	}
+	if (atexit(tty_die) != 0)
+		fatal("atexit failed");
 
 	tty_init(&tty);
-	x_init(&xw);
-	term_init(&term, xw.res);
+	fb_init(&fb);
+	term_init(&term, fb.res);
 
 	/* fork and exec shell */
 	eforkpty(&term.fd, term.lines, term.cols);
@@ -164,12 +161,12 @@ int main()
 	while (tty.loop_flag) {
 		check_fds(&fds, &tv, term.fd);
 
-		while(XPending(xw.dpy)) {
-			XNextEvent(xw.dpy, &ev);
-			if(XFilterEvent(&ev, xw.win))
+		while(XPending(fb.dpy)) {
+			XNextEvent(fb.dpy, &ev);
+			if(XFilterEvent(&ev, fb.win))
 				continue;
 			if (event_func[ev.type])
-				event_func[ev.type](&xw, &term, &ev);
+				event_func[ev.type](&fb, &term, &ev);
 		}
 
 		if (FD_ISSET(term.fd, &fds)) {
@@ -180,14 +177,14 @@ int main()
 				parse(&term, buf, size);
 				if (size == BUFSIZE) /* lazy drawing */
 					continue;
-				refresh(&xw, &term);
+				refresh(&fb, &term);
 			}
 		}
 	}
 
 	/* die */
 	term_die(&term);
-	x_die(&xw);
+	fb_die(&fb);
 
 	return EXIT_SUCCESS;
 }

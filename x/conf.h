@@ -20,8 +20,9 @@ enum {
 enum {
 	DEBUG = false,
 	TABSTOP = 8,
-	SUBSTITUTE_HALF = 0x20, /* SPACE (0x20) or REPLACEMENT CHARACTER (0xFFFD) */
-	SUBSTITUTE_WIDE = 0x3000, /* IDEOGRAPHIC SPACE */
+	SUBSTITUTE_HALF = 0x20,   /* used for missing glyph: SPACE (0x20) */
+	SUBSTITUTE_WIDE = 0x3000, /* used for missing glyph: IDEOGRAPHIC SPACE(0x3000) */
+	REPLACEMENT_CHAR = 0xFFFD,/* used for malformed UTF-8 sequence */
 	WIDTH = 640,
 	HEIGHT = 384,
 };

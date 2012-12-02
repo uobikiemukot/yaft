@@ -72,7 +72,7 @@ const uint32_t bit_mask[] = {
 
 enum term_mode {
 	MODE_ORIGIN = 0x01,     /* origin mode: DECOM */
-	MODE_CURSOR = 0x02,     /* cursor visible: DECTECM */
+	MODE_CURSOR = 0x02,     /* cursor visible: DECTCEM */
 	MODE_AMRIGHT = 0x04,    /* auto wrap: DECAWM */
 };
 
@@ -88,6 +88,8 @@ enum width_flag {
 	WIDE,
 };
 
+#include "../glyph.h"
+
 struct tty_state {
 	struct termios *save_tm;
 	bool visible;
@@ -101,19 +103,6 @@ struct color_t { uint32_t r, g, b; };
 struct color_pair { uint8_t fg, bg; };
 
 struct framebuffer {
-	uint8_t *fp;            /* pointer of framebuffer(read only) */
-	uint8_t *wall;          /* buffer for wallpaper */
-	uint8_t *buf;           /* copy of framebuffer */
-	int fd;                 /* file descriptor of framebuffer */
-	struct pair res;        /* resolution (x, y) */
-	long screen_size;       /* screen data size (byte) */
-	int line_length;        /* line length (byte) */
-	int bpp;                /* BYTES per pixel */
-	uint32_t color_palette[COLORS];
-	struct fb_cmap *cmap, *cmap_org;
-};
-
-struct xwindow {
 	Display *dpy;
 	Window win;
 	Pixmap buf;
@@ -129,7 +118,7 @@ struct keydef {
 };
 
 struct cell {
-	uint16_t code;          /* UCS2 */
+	const struct static_glyph_t *gp;
 	struct color_pair color;/* color (fg, bg) */
 	uint8_t attribute;      /* bold, underscore, etc... */
 	int wide;               /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
@@ -141,14 +130,15 @@ struct parm_t {             /* for parse_arg() */
 };
 
 struct esc_t {
-	uint8_t buf[BUFSIZE];
-	uint8_t *bp;
+	char buf[BUFSIZE];
+	char *bp;
 	int state;              /* esc state */
 };
 
 struct ucs_t {
 	uint32_t code;          /* UCS4: but only print UCS2 (<= U+FFFF) */
-	int length, count;
+	int following_byte, count;
+	bool is_valid;
 };
 
 struct state_t {            /* for save, restore state */
