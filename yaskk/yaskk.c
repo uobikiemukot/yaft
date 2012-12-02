@@ -1,5 +1,6 @@
 #include "common.h"
 #include "util.h"
+#include "misc.h"
 #include "list.h"
 #include "hash.h"
 #include "parse.h"
@@ -46,6 +47,7 @@ void init()
 
 void die()
 {
+	extern struct termios save_tm;
 	struct sigaction sigact;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
@@ -66,47 +68,46 @@ void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 	select(master + 1, fds, NULL, NULL, tv);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-	extern struct map_t *r2h[], *r2k[];
-	extern struct entry_t ari[], nasi[];
-	extern int ari_count, nasi_count;
-	int mode, master, status;
+	extern struct hash_t *rom2hira[NHASH], *rom2kata[NHASH];
+	extern struct table_t okuri_ari, okuri_nasi;
+	int mode, master, wrote;
 	char buf[BUFSIZE];
+	const char *cmd;
 	ssize_t size;
-	pid_t pid;
 	fd_set fds;
-
 	struct timeval tv;
 	struct winsize wsize;
-	struct list_t *lp;
+	struct list_t *list;
 
+	/* init */
 	atexit(die);
-	setupterm(NULL, STDOUT_FILENO, &status);
 	init(&save_tm);
 
-	hash_init(r2h);
-	hash_init(r2k);
-	list_init(&lp);
-	load_map(r2h, r2k);
-	load_dict(ari, &ari_count, nasi, &nasi_count);
+	list_init(&list);
+	hash_init(rom2hira);
+	hash_init(rom2kata);
+
+	load_map(rom2hira, rom2kata);
+	load_dict(&okuri_ari, &okuri_nasi);
 
 	mode = MODE_ASCII;
+	wrote = 0;
 
-	pid = forkpty(&master, NULL, NULL, NULL);
-	if (pid == 0)
-		execl("/bin/bash", "bash", NULL);
-
+	/* fork */
 	ioctl(STDIN_FILENO, TIOCGWINSZ, &wsize);
-	ioctl(master, TIOCSWINSZ, &wsize);
+	cmd = (argc < 2) ? exec_cmd: argv[1];
+	eforkpty(&master, cmd, wsize.ws_row, wsize.ws_col);
 
+	/* main loop */
 	while (loop_flag) {
 		check_fds(&fds, &tv, STDIN_FILENO, master);
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
 			size = read(STDIN_FILENO, buf, BUFSIZE);
 			if (size > 0) {
-				list_push_back_n(&lp, buf, size);
-				mode = parse[mode](master, &lp);
+				list_push_back_n(&list, buf, size);
+				mode = parse[mode](master, &list, &wrote);
 			}
 		}
 		if (FD_ISSET(master, &fds)) {

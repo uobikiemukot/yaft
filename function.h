@@ -222,19 +222,19 @@ void erase_display(struct terminal *term, void *arg)
 			for (j = 0; j < term->cols; j++)
 				if (i > term->cursor.y
 					|| (i == term->cursor.y && j >= term->cursor.x))
-					set_cell(term, i, j, DEFAULT_CHAR);
+					set_cell(term, i, j, &fonts[DEFAULT_CHAR]);
 	}
 	else if (mode == 1) {
 		for (i = 0; i <= term->cursor.y; i++)
 			for (j = 0; j < term->cols; j++)
 				if (i < term->cursor.y
 					|| (i == term->cursor.y && j <= term->cursor.x))
-					set_cell(term, i, j, DEFAULT_CHAR);
+					set_cell(term, i, j, &fonts[DEFAULT_CHAR]);
 	}
 	else if (mode == 2) {
 		for (i = 0; i < term->lines; i++)
 			for (j = 0; j < term->cols; j++)
-				set_cell(term, i, j, DEFAULT_CHAR);
+				set_cell(term, i, j, &fonts[DEFAULT_CHAR]);
 	}
 }
 
@@ -251,15 +251,15 @@ void erase_line(struct terminal *term, void *arg)
 
 	if (mode == 0) {
 		for (i = term->cursor.x; i < term->cols; i++)
-			set_cell(term, term->cursor.y, i, DEFAULT_CHAR);
+			set_cell(term, term->cursor.y, i, &fonts[DEFAULT_CHAR]);
 	}
 	else if (mode == 1) {
 		for (i = 0; i <= term->cursor.x; i++)
-			set_cell(term, term->cursor.y, i, DEFAULT_CHAR);
+			set_cell(term, term->cursor.y, i, &fonts[DEFAULT_CHAR]);
 	}
 	else if (mode == 2) {
 		for (i = 0; i < term->cols; i++)
-			set_cell(term, term->cursor.y, i, DEFAULT_CHAR);
+			set_cell(term, term->cursor.y, i, &fonts[DEFAULT_CHAR]);
 	}
 }
 
@@ -324,7 +324,7 @@ void erase_char(struct terminal *term, void *arg)
 		num = term->cols - term->cursor.x;
 
 	for (i = term->cursor.x; i < term->cursor.x + num; i++)
-		set_cell(term, term->cursor.y, i, DEFAULT_CHAR);
+		set_cell(term, term->cursor.y, i, &fonts[DEFAULT_CHAR]);
 }
 
 void curs_line(struct terminal *term, void *arg)

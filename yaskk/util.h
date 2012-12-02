@@ -1,12 +1,5 @@
 void error(char *str)
 {
-	/* for DEBUG
-	void *buffer[BUFSIZE];
-	int size;
-
-	size = backtrace(buffer, sizeof(buffer) / sizeof(buffer[0]));
-	backtrace_symbols_fd(buffer, size, STDERR_FILENO);
-	*/
 	perror(str);
 	exit(EXIT_FAILURE);
 }
@@ -75,7 +68,7 @@ void *emalloc(size_t size)
 	return p;
 }
 
-void eexecl(char *path)
+void eexecl(const char *path)
 {
 	if (execl(path, path, NULL) < 0)
 		error("execl");
@@ -102,7 +95,7 @@ void eunlockpt(int fd)
 		error("unlockpt");
 }
 
-void eforkpty(int *master, char *term, char *cmd, int line, int col)
+void eforkpty(int *master, const char *cmd, int line, int col)
 {
 	int slave;
 	pid_t pid;
@@ -126,7 +119,7 @@ void eforkpty(int *master, char *term, char *cmd, int line, int col)
 		ioctl(slave, TIOCSCTTY, NULL);
 		close(slave);
 		close(*master);
-		putenv(term);
+		//setenv("TERM", term, 1);
 		eexecl(cmd);
 	}
 	else /* parent */

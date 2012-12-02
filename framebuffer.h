@@ -1,9 +1,9 @@
 /* See LICENSE for licence details. */
-uint8_t *load_wallpaper(struct framebuffer *fb)
+char *load_wallpaper(struct framebuffer *fb)
 {
-	uint8_t *ptr;
+	char *ptr;
 
-	ptr = (uint8_t *) emalloc(fb->screen_size);
+	ptr = (char *) emalloc(fb->screen_size);
 	memcpy(ptr, fb->fp, fb->screen_size);
 
 	return ptr;
@@ -153,9 +153,8 @@ void fb_init(struct framebuffer *fb)
 	for (i = 0; i < COLORS; i++) /* init color palette */
 		fb->color_palette[i] = get_color(&vinfo, i);
 
-	fb->fp = (uint8_t *) emmap(0, fb->screen_size,
-		PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
-	fb->buf = (uint8_t *) emalloc(fb->screen_size);
+	fb->fp = (char *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
+	fb->buf = (char *) emalloc(fb->screen_size);
 
 	if ((env = getenv("YAFT")) != NULL && strncmp(env, "wall", 4) == 0 && fb->bpp > 1)
 		fb->wall = load_wallpaper(fb);
@@ -176,7 +175,7 @@ void fb_die(struct framebuffer *fb)
 	eclose(fb->fd);
 }
 
-void set_bitmap(struct framebuffer *fb, struct terminal *term, int y, int x, int offset, uint8_t *src)
+void set_bitmap(struct framebuffer *fb, struct terminal *term, int y, int x, int offset, char *src)
 {
 	int i, shift, glyph_width;
 	uint32_t pixel;
@@ -188,7 +187,7 @@ void set_bitmap(struct framebuffer *fb, struct terminal *term, int y, int x, int
 	if (cp->wide == NEXT_TO_WIDE)
 		return;
 
-	gp = &fonts[cp->code];
+	gp = cp->gp;
 	glyph_width = gp->width * cell_width;
 	shift = ((glyph_width + BITS_PER_BYTE - 1) / BITS_PER_BYTE) * BITS_PER_BYTE;
 	color = cp->color;
@@ -218,7 +217,7 @@ void set_bitmap(struct framebuffer *fb, struct terminal *term, int y, int x, int
 void draw_line(struct framebuffer *fb, struct terminal *term, int y)
 {
 	int offset, x, size, pos;
-	uint8_t *src, *dst;
+	char *src, *dst;
 
 	pos = term->offset.x * fb->bpp + (term->offset.y + y * cell_height) * fb->line_length;
 	size = term->width * fb->bpp;

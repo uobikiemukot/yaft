@@ -1,6 +1,5 @@
 /* See LICENSE for licence details. */
 #include "common.h"
-#include "glyph.h"
 #include "util.h"
 #include "framebuffer.h"
 #include "terminal.h"
@@ -96,8 +95,8 @@ void tty_die()
 
 	if (tty.save_tm != NULL)
 		tcsetattr(STDIN_FILENO, TCSAFLUSH, tty.save_tm);
-	write(STDIN_FILENO, "\033[?25h", 6); /* make cursor visible */
 	fflush(stdout);
+	ewrite(STDIN_FILENO, "\033[?25h", 6); /* make cursor visible */
 }
 
 void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
