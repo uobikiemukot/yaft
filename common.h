@@ -22,10 +22,20 @@
 #include <wchar.h>
 
 enum char_code {
-	BEL = 0x07, BS = 0x08, HT = 0x09,
-	LF = 0x0A, VT = 0x0B, FF = 0x0C,
-	CR = 0x0D, ESC = 0x1B, SPACE = 0x20,
-	BACKSLASH = 0x5C, DEL = 0x7F,
+	/* 7 bit */
+	BEL = 0x07, BS  = 0x08, HT  = 0x09,
+	LF  = 0x0A, VT  = 0x0B, FF  = 0x0C,
+	CR  = 0x0D, ESC = 0x1B, DEL = 0x7F,
+	/* 8 bit */
+	IND   = 0x84, NEL = 0x85, HTS = 0x88, RI  = 0x8D,
+	SS2   = 0x8E, SS3 = 0x8F, DCS = 0x90, SOS = 0x98,
+	DECID = 0x9A, CSI = 0x9B, ST  = 0x9C, OSC = 0x9D,
+	PM    = 0x9E, APC = 0x9F,
+	/* others */
+	SPACE = 0x20,
+	BACKSLASH = 0x5C,
+	IDEOGRAPHIC_SPACE = 0x3000,
+	REPLACEMENT_CHARACTER = 0xFFFD,
 };
 
 enum {
@@ -35,7 +45,8 @@ enum {
 	ESC_PARAMS = 16,        /* max parameters of csi/osc sequence */
 	COLORS = 256,           /* num of color */
 	UCS2_CHARS = 0x10000,   /* number of UCS2 glyph */
-	CTRL_CHARS = 0x20,      /* number of ctrl_func */
+	//CTRL_CHARS = 0x20,    /* number of ctrl_func */
+	CTRL_CHARS = 0xA0,      /* number of ctrl_func */
 	ESC_CHARS = 0x80,       /* number of esc_func */
 	DEFAULT_CHAR = SPACE,   /* used for erase char, cell_size */
 	RESET = 0x00,           /* reset for char_attr, term_mode, esc_state */
