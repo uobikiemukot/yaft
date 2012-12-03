@@ -201,9 +201,8 @@ bool push_esc(struct terminal *term, uint8_t ch)
 	}
 	else if (term->esc.state == STATE_OSC) {
 		if ((ch == BEL)
-			|| (ch == BACKSLASH
-			&& (term->esc.bp - term->esc.buf) >= 2
-			&& *(term->esc.bp - 2) == ESC))
+			|| (ch == ST)
+			|| (ch == BACKSLASH && strlen(term->esc.buf) >= 2 && *(term->esc.bp - 2) == ESC))
 			return true;
 		else if ((ch != ESC) && (' ' > ch || ch > '~'))
 			reset_esc(term);
