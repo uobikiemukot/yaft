@@ -15,9 +15,16 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "conf.h"
+#include "util.h"
+#include "list.h"
+#include "hash.h"
+#include "args.h"
+
 enum ctrl_chars {
 	BS = 0x08, /* backspace */
-	LF = 0x0A, /* Ctrl-J */
+	LF = 0x0A, /* LF */
+	ESC = 0x1B,
 	SPACE = 0x20,
 	DEL = 0x7F,
 };
@@ -26,39 +33,21 @@ enum misc {
 	RESET = 0x00,
 	BUFSIZE = 1024,
 	SELECT_TIMEOUT = 20000,
-	MAX_PARAMS = 256,
 };
 
 enum mode {
-	MODE_ASCII = 1,
-	MODE_HIRAGANA,
-	MODE_KATAKANA,
-	MODE_ZENEI,
-	MODE_HANKANA,
-	MODE_HENKAN,
+	MODE_ASCII = 0x01,
+	MODE_HIRA = 0x02,
+	MODE_KATA = 0x04,
+	MODE_COOK = 0x08,
+	MODE_SELECT = 0x10,
+	MODE_APPEND = 0x20,
 };
 
-enum hash_parm {
-	NHASH = 512,
-	//MULTIPLIER = 31,
-	MULTIPLIER = 37,
-	KEYSIZE = 4,
-	VALSIZE = 16,
-};
-
-struct hash_t {
-	char key[KEYSIZE], val[VALSIZE];
-	struct hash_t *next;
-};
-
-struct list_t {
-	char c;
-	struct list_t *next;
-};
-
-struct parm_t {
-	int argc;
-	char *argv[MAX_PARAMS];
+enum select {
+	//SELECT_FIXED = -2,
+	SELECT_EMPTY = -1,
+	SELECT_LOADED = 0,
 };
 
 struct entry_t {
@@ -71,12 +60,22 @@ struct table_t {
 	int count;
 };
 
-struct buffer_t {
-	struct list_t *lp;
-	int wrote;
+struct triplet_t {
+	char *key, *hira, *kata;
 };
 
-struct hash_t *rom2hira[NHASH], *rom2kata[NHASH];
-struct table_t okuri_ari, okuri_nasi;
+struct map_t {
+	struct triplet_t *triplets;
+	int count;
+};
 
-#include "conf.h"
+struct linebuf_t {
+	struct list_t *pre, *key;
+	int fd, mode, pwrote, kwrote, select;
+	char entry[BUFSIZE];
+	struct parm_t parm;
+};
+
+struct map_t rom2kana;
+struct table_t okuri_ari, okuri_nasi;
+FILE *dict_fp;

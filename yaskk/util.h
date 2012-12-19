@@ -95,7 +95,7 @@ void eunlockpt(int fd)
 		error("unlockpt");
 }
 
-void eforkpty(int *master, const char *cmd, int line, int col)
+void eforkpty(int *master, const char *cmd, struct winsize *ws, struct termios *tm)
 {
 	int slave;
 	pid_t pid;
@@ -104,7 +104,7 @@ void eforkpty(int *master, const char *cmd, int line, int col)
 	egrantpt(*master);
 	eunlockpt(*master);
 	if (ioctl(*master, TIOCSWINSZ,
-		&(struct winsize){.ws_row = line, .ws_col = col, .ws_xpixel = 0, .ws_ypixel = 0}) < 0)
+		&(struct winsize){.ws_row = ws->ws_row, .ws_col = ws->ws_col, .ws_xpixel = 0, .ws_ypixel = 0}) < 0)
 		fatal("ioctl: TIOCSWINSZ");
 	slave = eopen(ptsname(*master), O_RDWR);
 
@@ -117,6 +117,7 @@ void eforkpty(int *master, const char *cmd, int line, int col)
 		dup2(slave, STDERR_FILENO);
 		setsid();
 		ioctl(slave, TIOCSCTTY, NULL);
+		tcsetattr(slave, TCSAFLUSH, tm);
 		close(slave);
 		close(*master);
 		//setenv("TERM", term, 1);
@@ -138,8 +139,12 @@ void eselect(int max_fd, fd_set *fds, struct timeval *tv)
 
 void ewrite(int fd, void *buf, int size)
 {
-	if (write(fd, buf, size) < 0)
+	int ret;
+
+	if ((ret = write(fd, buf, size)) < 0)
 		error("write");
+	else if (ret < size)
+		ewrite(fd, (char *) buf + ret, size - ret);
 }
 
 void esigaction(int signo, struct sigaction *act, struct sigaction *oact)

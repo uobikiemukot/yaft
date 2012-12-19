@@ -1,3 +1,22 @@
+enum hash_parm {
+	NHASH = 512,
+	MULTIPLIER = 37, // or 31
+	KEYSIZE = 4,
+	VALSIZE = 16,
+};
+
+struct hash_t {
+	char key[KEYSIZE], val[VALSIZE];
+	struct hash_t *next;
+};
+
+void safe_strncpy(char *dst, const char *src, size_t n)
+{
+	strncpy(dst, src, n);
+	if (n > 0)
+		dst[n - 1]= '\0';
+}
+
 void hash_init(struct hash_t *symtable[])
 {
 	int i;
@@ -8,22 +27,25 @@ void hash_init(struct hash_t *symtable[])
 
 int hash_key(char *cp)
 {
+	/*
 	int ret = 0;
 
 	while (*cp != 0)
 		ret = MULTIPLIER * ret + *cp++;
 
 	return ret % NHASH;
+	*/
+	return 0;
 }
 
-struct hash_t *hash_lookup(struct hash_t *symtable[], char *key, char *val, bool create)
+struct hash_t *hash_lookup(struct hash_t *symtable[], char *key, int len, char *val, bool create)
 {
 	int hkey;
 	struct hash_t *hp;
 
 	hkey = hash_key(key);
 	for (hp = symtable[hkey]; hp != NULL; hp = hp->next) {
-		if (strcmp(key, hp->key) == 0)
+		if (strncmp(key, hp->key, len) == 0)
 			return hp;
 	}
 

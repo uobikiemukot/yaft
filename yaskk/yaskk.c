@@ -1,8 +1,6 @@
 #include "common.h"
-#include "util.h"
 #include "misc.h"
-#include "list.h"
-#include "hash.h"
+#include "linebuf.h"
 #include "parse.h"
 #include "load.h"
 
@@ -70,48 +68,43 @@ void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 
 int main(int argc, char *argv[])
 {
-	extern struct hash_t *rom2hira[NHASH], *rom2kata[NHASH];
+	extern struct map_t rom2kana;
 	extern struct table_t okuri_ari, okuri_nasi;
-	int mode, master, wrote;
+	struct linebuf_t linebuf;
 	char buf[BUFSIZE];
 	const char *cmd;
 	ssize_t size;
 	fd_set fds;
 	struct timeval tv;
 	struct winsize wsize;
-	struct list_t *list;
 
 	/* init */
 	atexit(die);
 	init(&save_tm);
 
-	list_init(&list);
-	hash_init(rom2hira);
-	hash_init(rom2kata);
+	map_init(&rom2kana);
+	dict_init(&okuri_ari, &okuri_nasi);
+	linebuf_init(&linebuf);
 
-	load_map(rom2hira, rom2kata);
+	load_map(&rom2kana);
 	load_dict(&okuri_ari, &okuri_nasi);
-
-	mode = MODE_ASCII;
-	wrote = 0;
 
 	/* fork */
 	ioctl(STDIN_FILENO, TIOCGWINSZ, &wsize);
 	cmd = (argc < 2) ? exec_cmd: argv[1];
-	eforkpty(&master, cmd, wsize.ws_row, wsize.ws_col);
+	eforkpty(&linebuf.fd, cmd, &wsize, &save_tm);
 
 	/* main loop */
 	while (loop_flag) {
-		check_fds(&fds, &tv, STDIN_FILENO, master);
+		check_fds(&fds, &tv, STDIN_FILENO, linebuf.fd);
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
 			size = read(STDIN_FILENO, buf, BUFSIZE);
 			if (size > 0) {
-				list_push_back_n(&list, buf, size);
-				mode = parse[mode](master, &list, &wrote);
+				parse(&linebuf, buf, size);
 			}
 		}
-		if (FD_ISSET(master, &fds)) {
-			size = read(master, buf, BUFSIZE);
+		if (FD_ISSET(linebuf.fd, &fds)) {
+			size = read(linebuf.fd, buf, BUFSIZE);
 			if (size > 0)
 				write(STDOUT_FILENO, buf, size);
 		}
