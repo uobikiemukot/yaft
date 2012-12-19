@@ -1,20 +1,35 @@
 /* See LICENSE for licence details. */
-void init_cell(struct cell *cp)
+void erase_cell(struct terminal *term, int y, int x)
 {
+	struct cell *cp;
+
+	cp = &term->cells[x + y * term->cols];
 	cp->gp = &fonts[DEFAULT_CHAR];
-	cp->color.fg = DEFAULT_FG;
-	cp->color.bg = DEFAULT_BG;
+	cp->color = term->color; /* bce */
 	cp->attribute = RESET;
 	cp->wide = HALF;
+
+	term->line_dirty[y] = true;
 }
 
-void copy_cell(struct cell *dst, struct cell *src)
+void copy_cell(struct terminal *term, int dst_y, int dst_x, int src_y, int src_x)
 {
-	*dst = *src;
+	struct cell *dst, *src;
 
-	if (src->wide == WIDE) {
-		*(dst + 1) = *src;
-		(dst + 1)->wide = NEXT_TO_WIDE;
+	dst = &term->cells[dst_x + dst_y * term->cols];
+	src = &term->cells[src_x + src_y * term->cols];
+
+	if (src->wide == NEXT_TO_WIDE)
+		return;
+	else if (src->wide == WIDE && dst_x == (term->cols - 1))
+		erase_cell(term, dst_y, dst_x);
+	else {
+		*dst = *src;
+		if (src->wide == WIDE) {
+			*(dst + 1) = *src;
+			(dst + 1)->wide = NEXT_TO_WIDE;
+		}
+		term->line_dirty[dst_y] = true;
 	}
 }
 
@@ -81,13 +96,13 @@ void scroll(struct terminal *term, int from, int to, int offset)
 		memmove(dst, src, size);
 		for (i = (to - offset + 1); i <= to; i++)
 			for (j = 0; j < term->cols; j++)
-				init_cell(&term->cells[j + i * term->cols]);
+				erase_cell(term, i, j);
 	}
 	else {
 		memmove(src, dst, size);
 		for (i = from; i < from + abs_offset; i++)
 			for (j = 0; j < term->cols; j++)
-				init_cell(&term->cells[j + i * term->cols]);
+				erase_cell(term, i, j);
 	}
 }
 
@@ -201,7 +216,6 @@ bool push_esc(struct terminal *term, uint8_t ch)
 	}
 	else if (term->esc.state == STATE_OSC) {
 		if ((ch == BEL)
-			|| (ch == ST)
 			|| (ch == BACKSLASH && strlen(term->esc.buf) >= 2 && *(term->esc.bp - 2) == ESC))
 			return true;
 		else if ((ch != ESC) && (' ' > ch || ch > '~'))
@@ -248,7 +262,7 @@ void reset(struct terminal *term)
 
 	for (i = 0; i < term->lines; i++) {
 		for (j = 0; j < term->cols; j++) {
-			init_cell(&term->cells[j + i * term->cols]);
+			erase_cell(term, i, j);
 			if ((j % TABSTOP) == 0)
 				term->tabstop[j] = true;
 			else

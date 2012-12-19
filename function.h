@@ -102,24 +102,15 @@ void ris(struct terminal *term, void *arg)
 void insert_blank(struct terminal *term, void *arg)
 {
 	int i, num = sum((struct parm_t *) arg);
-	struct cell *cp, erase;
 
 	if (num <= 0)
 		num = 1;
 
-	init_cell(&erase);
-
 	for (i = term->cols - 1; term->cursor.x <= i; i--) {
 		if (term->cursor.x <= (i - num))
-			cp = &term->cells[(i - num) + term->cursor.y * term->cols];
+			copy_cell(term, term->cursor.y, i, term->cursor.y, i - num);
 		else
-			cp = &erase;
-
-		if (i == term->cols - 1 && cp->wide == WIDE)
-			cp = &erase;
-
-		if (cp->wide != NEXT_TO_WIDE)
-			copy_cell(&term->cells[i + term->cursor.y * term->cols], cp);
+			erase_cell(term, term->cursor.y, i);
 	}
 }
 
@@ -220,21 +211,19 @@ void erase_display(struct terminal *term, void *arg)
 	if (mode == 0) {
 		for (i = term->cursor.y; i < term->lines; i++)
 			for (j = 0; j < term->cols; j++)
-				if (i > term->cursor.y
-					|| (i == term->cursor.y && j >= term->cursor.x))
-					set_cell(term, i, j, &fonts[DEFAULT_CHAR]);
+				if (i > term->cursor.y || (i == term->cursor.y && j >= term->cursor.x))
+					erase_cell(term, i, j);
 	}
 	else if (mode == 1) {
 		for (i = 0; i <= term->cursor.y; i++)
 			for (j = 0; j < term->cols; j++)
-				if (i < term->cursor.y
-					|| (i == term->cursor.y && j <= term->cursor.x))
-					set_cell(term, i, j, &fonts[DEFAULT_CHAR]);
+				if (i < term->cursor.y || (i == term->cursor.y && j <= term->cursor.x))
+					erase_cell(term, i, j);
 	}
 	else if (mode == 2) {
 		for (i = 0; i < term->lines; i++)
 			for (j = 0; j < term->cols; j++)
-				set_cell(term, i, j, &fonts[DEFAULT_CHAR]);
+				erase_cell(term, i, j);
 	}
 }
 
@@ -251,15 +240,15 @@ void erase_line(struct terminal *term, void *arg)
 
 	if (mode == 0) {
 		for (i = term->cursor.x; i < term->cols; i++)
-			set_cell(term, term->cursor.y, i, &fonts[DEFAULT_CHAR]);
+			erase_cell(term, term->cursor.y, i);
 	}
 	else if (mode == 1) {
 		for (i = 0; i <= term->cursor.x; i++)
-			set_cell(term, term->cursor.y, i, &fonts[DEFAULT_CHAR]);
+			erase_cell(term, term->cursor.y, i);
 	}
 	else if (mode == 2) {
 		for (i = 0; i < term->cols; i++)
-			set_cell(term, term->cursor.y, i, &fonts[DEFAULT_CHAR]);
+			erase_cell(term, term->cursor.y, i);
 	}
 }
 
@@ -294,23 +283,14 @@ void delete_line(struct terminal *term, void *arg)
 void delete_char(struct terminal *term, void *arg)
 {
 	int i, num = sum((struct parm_t *) arg);
-	struct cell *cp, erase;
 
 	num = (num <= 0) ? 1 : num;
 
-	init_cell(&erase);
-
 	for (i = term->cursor.x; i < term->cols; i++) {
 		if ((i + num) < term->cols)
-			cp = &term->cells[(i + num) + term->cursor.y * term->cols];
+			copy_cell(term, term->cursor.y, i, term->cursor.y, i + num);
 		else
-			cp = &erase;
-
-		if (i == term->cols - 1 && cp->wide == WIDE)
-			cp = &erase;
-
-		if (cp->wide != NEXT_TO_WIDE)
-			copy_cell(&term->cells[i + term->cursor.y * term->cols], cp);
+			erase_cell(term, term->cursor.y, i);
 	}
 }
 
@@ -324,7 +304,7 @@ void erase_char(struct terminal *term, void *arg)
 		num = term->cols - term->cursor.x;
 
 	for (i = term->cursor.x; i < term->cursor.x + num; i++)
-		set_cell(term, term->cursor.y, i, &fonts[DEFAULT_CHAR]);
+		erase_cell(term, term->cursor.y, i);
 }
 
 void curs_line(struct terminal *term, void *arg)
