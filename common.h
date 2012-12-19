@@ -45,8 +45,7 @@ enum {
 	ESC_PARAMS = 16,        /* max parameters of csi/osc sequence */
 	COLORS = 256,           /* num of color */
 	UCS2_CHARS = 0x10000,   /* number of UCS2 glyph */
-	//CTRL_CHARS = 0x20,    /* number of ctrl_func */
-	CTRL_CHARS = 0xA0,      /* number of ctrl_func */
+	CTRL_CHARS = 0x20,      /* number of ctrl_func */
 	ESC_CHARS = 0x80,       /* number of esc_func */
 	DEFAULT_CHAR = SPACE,   /* used for erase char, cell_size */
 	RESET = 0x00,           /* reset for char_attr, term_mode, esc_state */
@@ -123,7 +122,7 @@ struct framebuffer {
 };
 
 struct cell {
-	const struct static_glyph_t *gp;
+	const struct static_glyph_t *gp; /* pointer to glyph */
 	struct color_pair color;/* color (fg, bg) */
 	uint8_t attribute;      /* bold, underscore, etc... */
 	int wide;               /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */

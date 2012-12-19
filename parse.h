@@ -1,19 +1,12 @@
 /* See LICENSE for licence details. */
 void (*ctrl_func[CTRL_CHARS])(struct terminal * term, void *arg) = {
-	[BS]    = bs,
-	[HT]    = tab,
-	[LF]    = nl,
-	[VT]    = nl,
-	[FF]    = nl,
-	[CR]    = cr,
-	[ESC]   = enter_esc,
-	[IND]   = nl,
-	[NEL]   = crnl, 
-	[HTS]   = set_tabstop,
-	[RI]    = reverse_nl,
-	[DECID] = identify,
-	[CSI]   = enter_csi,
-	[OSC]   = enter_osc,
+	[BS]  = bs,
+	[HT]  = tab,
+	[LF]  = nl,
+	[VT]  = nl,
+	[FF]  = nl,
+	[CR]  = cr,
+	[ESC] = enter_esc,
 };
 
 void (*esc_func[ESC_CHARS])(struct terminal * term, void *arg) = {
@@ -157,10 +150,6 @@ void osc_sequence(struct terminal *term, uint8_t ch)
 void utf8_character(struct terminal *term, uint8_t ch)
 {
 	if (0x80 <= ch && ch <= 0xBF) {
-		if (term->ucs.following_byte == 0 && ctrl_func[ch]) { /* 8bit control char */
-			ctrl_func[ch](term, NULL);
-			return;
-		}
 		/* check illegal UTF-8 sequence
 			* ? byte sequence: first byte must be between 0xC2 ~ 0xFD
 			* 2 byte sequence: first byte must be between 0xC2 ~ 0xDF
@@ -253,7 +242,7 @@ void parse(struct terminal *term, uint8_t *buf, int size)
 	for (i = 0; i < size; i++) {
 		ch = buf[i];
 		if (term->esc.state == RESET) {
-			if (term->ucs.following_byte > 0 && (ch < 0x80 || ch > 0xBF)) { /* interruput */
+			if (term->ucs.following_byte > 0 && (ch < 0x80 || ch > 0xBF)) { /* interruput: need to rewrite */
 				addch(term, REPLACEMENT_CHAR);
 				reset_ucs(term);
 			}

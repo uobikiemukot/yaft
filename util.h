@@ -76,70 +76,6 @@ void *emalloc(size_t size)
 	return p;
 }
 
-void eexecl(const char *path)
-{
-	if (execl(path, path, NULL) < 0)
-		error("execl");
-}
-
-int eposix_openpt(int flags)
-{
-	int fd;
-
-	if ((fd = posix_openpt(O_RDWR)) < 0)
-		error("posix_openpt");
-	return fd;	
-}
-
-void egrantpt(int fd)
-{
-	if (grantpt(fd) < 0)
-		error("grantpt");
-}
-
-void eunlockpt(int fd)
-{
-	if (unlockpt(fd) < 0)
-		error("unlockpt");
-}
-
-void esetenv(const char *name, const char *val, int overwrite)
-{
-	if (setenv(name, val, overwrite) < 0)
-		error("setenv");
-}
-
-void eforkpty(int *master, int lines, int cols)
-{
-	int slave;
-	pid_t pid;
-
-	*master = eposix_openpt(O_RDWR);
-	egrantpt(*master);
-	eunlockpt(*master);
-	if (ioctl(*master, TIOCSWINSZ,
-		&(struct winsize){.ws_row = lines, .ws_col = cols, .ws_xpixel = 0, .ws_ypixel = 0}) < 0)
-		fatal("ioctl: TIOCSWINSZ");
-	slave = eopen(ptsname(*master), O_RDWR);
-
-	pid = fork();
-	if (pid < 0)
-		error("fork");
-	else if (pid == 0) { /* child */
-		dup2(slave, STDIN_FILENO);
-		dup2(slave, STDOUT_FILENO);
-		dup2(slave, STDERR_FILENO);
-		setsid();
-		ioctl(slave, TIOCSCTTY, NULL);
-		close(slave);
-		close(*master);
-		esetenv("TERM", term_name, 1);
-		eexecl(shell_cmd);
-	}
-	else /* parent */
-		close(slave);
-}
-
 void eselect(int max_fd, fd_set *fds, struct timeval *tv)
 {
 	if (select(max_fd, fds, NULL, NULL, tv) < 0) {
@@ -158,6 +94,42 @@ void ewrite(int fd, void *buf, int size)
 		error("write");
 	else if (ret < size)
 		ewrite(fd, (char *) buf + ret, size - ret);
+}
+
+void eforkpty(int *master, int lines, int cols)
+{
+	int slave;
+	char *name;
+	pid_t pid;
+
+	if ((*master = posix_openpt(O_RDWR | O_NOCTTY)) < 0
+		|| grantpt(*master) < 0 || unlockpt(*master) < 0
+		|| (name = ptsname(*master)) == NULL)
+		error("forkpty");
+		
+	slave = eopen(name, O_RDWR | O_NOCTTY);
+	ioctl(slave, TIOCSWINSZ, &(struct winsize)
+		{.ws_row = lines, .ws_col = cols, .ws_xpixel = 0, .ws_ypixel = 0});
+
+	pid = fork();
+	if (pid < 0)
+		error("fork");
+	else if (pid == 0) { /* child */
+		dup2(slave, STDIN_FILENO);
+		dup2(slave, STDOUT_FILENO);
+		dup2(slave, STDERR_FILENO);
+		setsid();
+		/* ioctl may fail in Mac : ref http://www.opensource.apple.com/source/Libc/Libc-825.25/util/pty.c?txt */
+		ioctl(slave, TIOCSCTTY, NULL);
+		close(slave);
+		close(*master);
+		if (setenv("TERM", term_name, 1) < 0)
+			error("setenv");
+		if (execlp(shell_cmd, shell_cmd, NULL) < 0)
+			error("execl");
+	}
+	/* parent */
+	close(slave);
 }
 
 void esigaction(int signo, struct sigaction *act, struct sigaction *oact)

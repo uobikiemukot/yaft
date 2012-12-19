@@ -101,7 +101,8 @@ void xresize(struct framebuffer *xw, struct terminal *term, XEvent *ev)
 		term->cells = (struct cell *) emalloc(sizeof(struct cell) * term->cols * term->lines);
 
 		reset(term);
-		ioctl(term->fd, TIOCSWINSZ, &(struct winsize){.ws_row = term->lines, .ws_col = term->cols, .ws_xpixel = 0, .ws_ypixel = 0});
+		ioctl(term->fd, TIOCSWINSZ, &(struct winsize)
+			{.ws_row = term->lines, .ws_col = term->cols, .ws_xpixel = 0, .ws_ypixel = 0});
 	}
 }
 
@@ -150,7 +151,7 @@ int main()
 	if (atexit(tty_die) != 0)
 		fatal("atexit failed");
 
-	tty_init(&tty);
+	tty_init();
 	fb_init(&fb);
 	term_init(&term, fb.res);
 

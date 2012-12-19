@@ -123,7 +123,7 @@ int main()
 	if (atexit(tty_die) != 0)
 		fatal("atexit failed");
 
-	tty_init(&tty);
+	tty_init();
 	fb_init(&fb);
 	term_init(&term, fb.res);
 
