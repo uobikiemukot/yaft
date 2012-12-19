@@ -1,40 +1,57 @@
 % yaft
 % haru
-% Last update: 12/11/13
+% Last update: 12/12/19
 
 yet another framebuffer terminal
 
 ## download
--	[yaft-0.2.0](./release/yaft-0.2.0.tar.gz) (Linux console)
--	[yaft-x-0.2.0](./release/yaft-x-0.2.0.tar.gz) (X Window System)
--	[yaft-freebsd-0.2.0](./release/yaft-freebsd-0.2.0.tar.gz) (FreeBSD console)
+-	[yaft-0.2.3](./release/yaft-0.2.3.tar.gz) (Linux console)
+-	[yaft-x-0.2.3](./release/yaft-x-0.2.3.tar.gz) (X Window System)
+-	[yaft-freebsd-0.2.3](./release/yaft-freebsd-0.2.3.tar.gz) (FreeBSD console)
 
 ## features
-+	recognizes most of escape sequences of vt102 and linux console ([all sequences](escape.html))
++	recognizes most of escape sequences of vt102 and linux console ([detail](escape.html))
 +	supports various framebuffer types (8/15/16/24/32bpp)
 +	supports (only) UTF-8 encoding
 +	supports 256 colors (same as xterm)
 +	supports wallpaper
 
 ## recent changes
-for more detail, see [ChangeLog](./release/yaft-0.2.0/ChangeLog)
+for more detail, see [ChangeLog](./changelog.html)
 
-### version 0.1.9 (2012-10-18)
-
--	supported virtual console switching
--	removed all optios without "YAFT=wall"
-
-### version 0.2.0 (2012-11-09)
-
+### 2012-11-09
+-	version 0.2.0
 -	suppported BDF
 
 ~~~
-	$ ./mkfont alias /your/favorite/bdf > glyph.h
-	$ make yaft
+$ ./mkfont alias-file your/favorite/bdf > glyph.h
+$ make yaft
 ~~~
 
+### 2012-11-30
+-	version 0.2.1
+-	bug fix
+	-	single CSI u (not following CSI s) causes Segmentation fault (reported by saitoha ([@kefir_]))
+
+[@kefir_]: http://twitter.com/kefir_
+
+### 2012-12-02
+-	version 0.2.2
+-	improved UTF-8 parser (now valid for [UTF-8 decoder capability and stress test])
+-	bug fix
+	-	not working glyph substitution
+
+[UTF-8 decoder capability and stress test]: http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
+
+## 2012-12-19
+-	version 0.2.3
+-	bug fix
+	-	wrong behavior of bce (ED, EL, DL, IL, ICH, DCH, ECH) (reported by IWAMOTO Kouichi ([@ttdoda]))
+
+[@ttdoda]: http://doda.teraterm.org/whoami.xhtm
+
 ## screenshot
-![](http://www.nak.ics.keio.ac.jp/~haru/yaft/img/yaft-screenshot.png)
+![screenshot1](./img/yaft-screenshot.png)
 
 <!--
 ## configuration
