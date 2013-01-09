@@ -45,7 +45,6 @@ enum mode {
 };
 
 enum select {
-	//SELECT_FIXED = -2,
 	SELECT_EMPTY = -1,
 	SELECT_LOADED = 0,
 };
@@ -69,13 +68,21 @@ struct map_t {
 	int count;
 };
 
-struct linebuf_t {
-	struct list_t *pre, *key;
-	int fd, mode, pwrote, kwrote, select;
-	char entry[BUFSIZE];
-	struct parm_t parm;
+struct candidate_t {
+	FILE *fp;            /* dict fp */
+	char entry[BUFSIZE]; /* buffer for entry buffer */
+	struct parm_t parm;  /* candidate of table entry */
 };
 
-struct map_t rom2kana;
-struct table_t okuri_ari, okuri_nasi;
-FILE *dict_fp;
+struct skk_t {
+	int fd;                               /* master of pseudo terminal */
+	int mode;                             /* input mode */
+	int pwrote, kwrote;                   /* count of wroted character count */
+	int select;                           /* candidate select status */
+	struct map_t rom2kana;                /* romaji to kana map */
+	struct table_t okuri_ari, okuri_nasi; /* convert table */
+	struct list_t *key;                   /* keyword string for table lookup */
+	struct list_t *append;
+	struct list_t *preedit;               /* preedit string for map lookup */
+	struct candidate_t candidate;
+};

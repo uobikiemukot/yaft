@@ -1,8 +1,3 @@
-enum {
-	READ_OKURIARI = 1,
-	READ_OKURINASI,
-};
-
 void load_map(struct map_t *mp)
 {
 	int num;
@@ -29,20 +24,27 @@ void load_map(struct map_t *mp)
 		memcpy(mp->triplets[mp->count].kata, kata, strlen(kata));
 		mp->count++;
 	}
-	//fprintf(stderr, "map_count:%d\n", mp->count);
+	fprintf(stderr, "map_count:%d\n", mp->count);
+
+	fclose(fp);
 }
 
-void load_dict(struct table_t *okuri_ari, struct table_t *okuri_nasi)
+FILE *load_dict(struct table_t *okuri_ari, struct table_t *okuri_nasi)
 {
 	char buf[BUFSIZE], key[BUFSIZE], entry[BUFSIZE];
 	int  mode = RESET, num;
 	long offset;
-	extern FILE *dict_fp;
+	FILE *fp;
 	struct table_t *tp;
 
-	dict_fp = efopen(dict_file, "r");
+	enum {
+		READ_OKURIARI = 1,
+		READ_OKURINASI,
+	};
 
-	while (fgets(buf, BUFSIZE, dict_fp) != NULL) {
+	fp = efopen(dict_file, "r");
+
+	while (fgets(buf, BUFSIZE, fp) != NULL) {
 		if (strstr(buf, ";; okuri-ari entries") != NULL) {
 			mode = READ_OKURIARI;
 			continue;
@@ -59,8 +61,8 @@ void load_dict(struct table_t *okuri_ari, struct table_t *okuri_nasi)
 		if (num != 2)
 			continue;
 
-		offset = ftell(dict_fp) - strlen(buf);
-		//printf("key:%s entry:%s offset:%ld\n", key, entry, offset);
+		offset = ftell(fp) - strlen(buf);
+		//fprintf(stderr, "key:%s entry:%s offset:%ld\n", key, entry, offset);
 		tp = (mode == READ_OKURIARI) ? okuri_ari: okuri_nasi;
 
 		tp->entries = (struct entry_t *) realloc(tp->entries, sizeof(struct entry_t) * (tp->count + 1));
@@ -70,4 +72,7 @@ void load_dict(struct table_t *okuri_ari, struct table_t *okuri_nasi)
 		tp->entries[tp->count].offset = offset;
 		tp->count++;
 	}
+	fprintf(stderr, "okuri_ari:%d okuri_nasi:%d\n", okuri_ari->count, okuri_nasi->count);
+
+	return fp;
 }

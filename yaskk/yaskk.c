@@ -1,6 +1,5 @@
 #include "common.h"
 #include "misc.h"
-#include "linebuf.h"
 #include "parse.h"
 #include "load.h"
 
@@ -30,10 +29,23 @@ void set_rawmode(int fd, struct termios *save_tm)
 	tcsetattr(fd, TCSAFLUSH, &tm);
 }
 
-void init()
+void init(struct skk_t *skk)
 {
 	extern struct termios save_tm;
 	struct sigaction sigact;
+
+	skk->key = skk->preedit = skk->append = NULL;
+	skk->pwrote = skk->kwrote = 0;
+	skk->mode = MODE_ASCII;
+	skk->select = SELECT_EMPTY;
+
+	skk->okuri_ari.count = skk->okuri_nasi.count = 0;
+	skk->okuri_ari.entries = skk->okuri_nasi.entries = NULL;
+	skk->rom2kana.count = 0;
+	skk->rom2kana.triplets = NULL;
+
+	load_map(&skk->rom2kana);
+	skk->candidate.fp = load_dict(&skk->okuri_ari, &skk->okuri_nasi);
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = handler;
@@ -53,7 +65,6 @@ void die()
 	sigaction(SIGCHLD, &sigact, NULL);
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &save_tm);
-	fflush(stdout);
 }
 
 void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
@@ -63,48 +74,43 @@ void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 	FD_SET(master, fds);
 	tv->tv_sec = 0;
 	tv->tv_usec = SELECT_TIMEOUT;
-	select(master + 1, fds, NULL, NULL, tv);
+	eselect(master + 1, fds, NULL, NULL, tv);
 }
 
 int main(int argc, char *argv[])
 {
-	extern struct map_t rom2kana;
-	extern struct table_t okuri_ari, okuri_nasi;
-	struct linebuf_t linebuf;
+	struct skk_t skk;
 	char buf[BUFSIZE];
-	const char *cmd;
+	char *cmd;
 	ssize_t size;
+	pid_t pid;
 	fd_set fds;
 	struct timeval tv;
 	struct winsize wsize;
 
 	/* init */
-	atexit(die);
-	init(&save_tm);
-
-	map_init(&rom2kana);
-	dict_init(&okuri_ari, &okuri_nasi);
-	linebuf_init(&linebuf);
-
-	load_map(&rom2kana);
-	load_dict(&okuri_ari, &okuri_nasi);
+	if (atexit(die) != 0)
+		fatal("atexit");
+	init(&skk);
 
 	/* fork */
-	ioctl(STDIN_FILENO, TIOCGWINSZ, &wsize);
 	cmd = (argc < 2) ? exec_cmd: argv[1];
-	eforkpty(&linebuf.fd, cmd, &wsize, &save_tm);
+	ioctl(STDIN_FILENO, TIOCGWINSZ, &wsize);
+
+	pid = eforkpty(&skk.fd, NULL, &save_tm, &wsize);
+	if (pid == 0) /* child */
+		eexecvp(cmd, (char *const []){cmd, NULL});
 
 	/* main loop */
 	while (loop_flag) {
-		check_fds(&fds, &tv, STDIN_FILENO, linebuf.fd);
+		check_fds(&fds, &tv, STDIN_FILENO, skk.fd);
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
 			size = read(STDIN_FILENO, buf, BUFSIZE);
-			if (size > 0) {
-				parse(&linebuf, buf, size);
-			}
+			if (size > 0)
+				parse(&skk, buf, size);
 		}
-		if (FD_ISSET(linebuf.fd, &fds)) {
-			size = read(linebuf.fd, buf, BUFSIZE);
+		if (FD_ISSET(skk.fd, &fds)) {
+			size = read(skk.fd, buf, BUFSIZE);
 			if (size > 0)
 				write(STDOUT_FILENO, buf, size);
 		}
