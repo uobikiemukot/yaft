@@ -68,70 +68,11 @@ void *emalloc(size_t size)
 	return p;
 }
 
-void eexecl(const char *path)
+void eselect(int max_fd, fd_set *rd, fd_set *wr, fd_set *err, struct timeval *tv)
 {
-	if (execl(path, path, NULL) < 0)
-		error("execl");
-}
-
-int eposix_openpt(int flags)
-{
-	int fd;
-
-	if ((fd = posix_openpt(O_RDWR)) < 0)
-		error("posix_openpt");
-	return fd;	
-}
-
-void egrantpt(int fd)
-{
-	if (grantpt(fd) < 0)
-		error("grantpt");
-}
-
-void eunlockpt(int fd)
-{
-	if (unlockpt(fd) < 0)
-		error("unlockpt");
-}
-
-void eforkpty(int *master, const char *cmd, struct winsize *ws, struct termios *tm)
-{
-	int slave;
-	pid_t pid;
-
-	*master = eposix_openpt(O_RDWR);
-	egrantpt(*master);
-	eunlockpt(*master);
-	if (ioctl(*master, TIOCSWINSZ,
-		&(struct winsize){.ws_row = ws->ws_row, .ws_col = ws->ws_col, .ws_xpixel = 0, .ws_ypixel = 0}) < 0)
-		fatal("ioctl: TIOCSWINSZ");
-	slave = eopen(ptsname(*master), O_RDWR);
-
-	pid = fork();
-	if (pid < 0)
-		error("fork");
-	else if (pid == 0) { /* child */
-		dup2(slave, STDIN_FILENO);
-		dup2(slave, STDOUT_FILENO);
-		dup2(slave, STDERR_FILENO);
-		setsid();
-		ioctl(slave, TIOCSCTTY, NULL);
-		tcsetattr(slave, TCSAFLUSH, tm);
-		close(slave);
-		close(*master);
-		//setenv("TERM", term, 1);
-		eexecl(cmd);
-	}
-	else /* parent */
-		close(slave);
-}
-
-void eselect(int max_fd, fd_set *fds, struct timeval *tv)
-{
-	if (select(max_fd, fds, NULL, NULL, tv) < 0) {
+	if (select(max_fd, rd, wr, err, tv) < 0) {
 		if (errno == EINTR)
-			eselect(max_fd, fds, tv);
+			eselect(max_fd, rd, wr, err, tv);
 		else
 			error("select");
 	}
@@ -147,6 +88,13 @@ void ewrite(int fd, void *buf, int size)
 		ewrite(fd, (char *) buf + ret, size - ret);
 }
 
+void eexecvp(const char *file, char *const arg[])
+{
+	if (execvp(file, arg) < 0)
+		error("execl");
+}
+
+/*
 void esigaction(int signo, struct sigaction *act, struct sigaction *oact)
 {
 	if (sigaction(signo, act, oact) < 0)
@@ -164,3 +112,57 @@ void etcsetattr(int fd, int action, struct termios *tm)
 	if (tcsetattr(fd, action, tm) < 0)
 		error("tcgetattr");
 }
+*/
+
+pid_t eforkpty(int *master, char *name, struct termios *termp, struct winsize *winp)
+{
+	/* name must be null */
+	int slave;
+	char *sname;
+	pid_t pid;
+
+	if (((*master = posix_openpt(O_RDWR | O_NOCTTY)) < 0)
+		|| (grantpt(*master) < 0)
+		|| (unlockpt(*master) < 0)
+		|| ((sname = ptsname(*master)) == NULL))
+		error("forkpty");
+
+	slave = eopen(sname, O_RDWR | O_NOCTTY);
+
+	if (termp)
+		tcsetattr(slave, TCSAFLUSH, termp);
+
+	if (winp)
+		ioctl(*master, TIOCSWINSZ, winp);
+
+	pid = fork();
+	if (pid < 0)
+		error("fork");
+	else if (pid == 0) { /* child */
+		dup2(slave, STDIN_FILENO);
+		dup2(slave, STDOUT_FILENO);
+		dup2(slave, STDERR_FILENO);
+		setsid();
+		ioctl(slave, TIOCSCTTY, NULL); /* ioctl may fail in Mac OS X */
+		close(slave);
+		close(*master);
+	}
+	else /* parent */
+		close(slave);
+
+	return pid;
+}
+
+/*
+void efseek(FILE *fp, long offset, int whence)
+{
+	if (fseek(fp, offset, whence) < 0)
+		error("fseek");
+}
+
+void efgets(char *buf, int size, FILE *fp)
+{
+	if (fgets(buf, size, fp) == NULL)
+		error("fgets");
+}
+*/
