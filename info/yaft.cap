@@ -17,4 +17,5 @@ yaft-256color|yet another framebuffer terminal:\
 	:mb=\E[5m:md=\E[1m:me=\E[m:mr=\E[7m:nd=\E[C:nw=\EE:\
 	:op=\E[39;49m:rc=\E8:rs=\Ec:sc=\E7:se=\E[27m:sf=^J:\
 	:so=\E[7m:sr=\EM:st=\EH:ta=^I:ue=\E[24m:up=\E[A:us=\E[4m:\
-	:ve=\E[?25h:vi=\E[?25l:
+	:ve=\E[?25h:vi=\E[?25l:\
+	:u6=\E[%d;%dR:u7=\E[6n:
