@@ -25,7 +25,8 @@ void handler(int signo)
 			ioctl(STDIN_FILENO, VT_RELDISP, 1);
 			sigfillset(&sigset);
 			sigdelset(&sigset, SIGUSR1);
-			sigsuspend(&sigset);
+			if (!BACKGROUND_DRAW)
+				sigsuspend(&sigset);
 		}
 		else {
 			tty.visible = true;
@@ -150,7 +151,7 @@ int main()
 				if (DEBUG)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
-				if (size == BUFSIZE) /* lazy drawing */
+				if (LAZY_DRAW && size == BUFSIZE)
 					continue;
 				refresh(&fb, &term);
 			}

@@ -175,73 +175,145 @@ void fb_die(struct framebuffer *fb)
 	eclose(fb->fd);
 }
 
-void set_bitmap(struct framebuffer *fb, struct terminal *term, int y, int x, int offset, char *src)
+int get_rotated_pos(struct framebuffer *fb, struct terminal *term, int x, int y)
 {
-	int i, shift, glyph_width;
+	int p, q;
+	long pos;
+
+	if (ROTATE == CLOCKWISE) {
+		p = y;
+		q = (term->width - 1) - x;
+	}
+	else if (ROTATE == UPSIDE_DOWN) {
+		p = (term->width - 1) - x;
+		q = (term->height - 1) - y;
+	}
+	else if (ROTATE == COUNTER_CLOCKWISE) {
+		p = (term->height - 1) - y;
+		q = x;
+	}
+	else { /* rotate: NORMAL */
+		p = x;
+		q = y;
+	}
+
+	pos = p * fb->bpp + q * fb->line_length;
+	if (pos < 0 || pos >= fb->screen_size) {
+		fprintf(stderr, "(%d, %d) -> (%d, %d) term:(%d, %d) res:(%d, %d) pos:%ld\n",
+			x, y, p, q, term->width, term->height, fb->res.x, fb->res.y, pos);
+		exit(EXIT_FAILURE);
+	}
+
+	return pos;
+}
+
+void draw_line(struct framebuffer *fb, struct terminal *term, int line)
+{
+	int copy_size, pos, bit_shift, margin_right;
+
+	int col, glyph_width_offset, glyph_height_offset;
 	uint32_t pixel;
 	struct color_pair color;
 	struct cell *cp;
 	const struct static_glyph_t *gp;
 
-	cp = &term->cells[x + y * term->cols];
-	if (cp->wide == NEXT_TO_WIDE)
-		return;
+	/*
+		1280(width) x 1024(height) = 1310720 pixels
 
-	gp = cp->gp;
-	glyph_width = gp->width * cell_width;
-	shift = ((glyph_width + BITS_PER_BYTE - 1) / BITS_PER_BYTE) * BITS_PER_BYTE;
-	color = cp->color;
+		     0                     1279
+		     +-- ...              --+
+		     |                      |
+		1280 +-- ...              --+2559
+		     |                      |
+		     .                      .
+		     .                      .
+		     +-- ...              --+
+		    1309440                1310719
 
-	if ((term->mode & MODE_CURSOR && y == term->cursor.y) /* cursor */
-		&& (x == term->cursor.x || (cp->wide == WIDE && (x + 1) == term->cursor.x))) {
-		color.fg = DEFAULT_BG;
-		color.bg = CURSOR_COLOR;
+		cell size: 8x16
+		term cell: line 0 - 63 col 0 - 159
+	*/
+
+	pos = get_rotated_pos(fb, term, term->width - 1, line * cell_height);
+	copy_size = (ROTATE == CLOCKWISE || ROTATE == COUNTER_CLOCKWISE) ?
+		cell_height * fb->bpp: cell_height * fb->line_length;
+
+	for (col = term->cols - 1; col >= 0; col--) {
+		margin_right = (term->cols - 1 - col) * cell_width;
+
+		/* get cell color and glyph */
+		cp = &term->cells[col + line * term->cols];
+		color = cp->color;
+		gp = cp->gp;
+
+		/* check cursor positon */
+		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
+			&& (col == term->cursor.x
+			|| (cp->wide == WIDE && (col + 1) == term->cursor.x)
+			|| (cp->wide == NEXT_TO_WIDE && (col - 1) == term->cursor.x))) {
+			color.fg = DEFAULT_BG;
+			color.bg = CURSOR_COLOR;
+		}
+
+		for (glyph_height_offset = 0; glyph_height_offset < cell_height; glyph_height_offset++) {
+			if ((glyph_height_offset == (cell_height - 1)) && (cp->attribute & attr_mask[UNDERLINE]))
+				color.bg = color.fg;
+
+			for (glyph_width_offset = 0; glyph_width_offset < cell_width; glyph_width_offset++) {
+				pos = get_rotated_pos(fb, term, term->width - 1 - margin_right - glyph_width_offset,
+					// min: 1280 - 1 - (160 - 1 - 0) * 8 - 7 = 0 / max: 1280 - 1 - (160 - 1 - 159) * 8 - 0 = 1279
+						line * cell_height + glyph_height_offset);
+					// min: 0 * 16 + 0 = 0 / max: (64 - 1) * 16 + 15 = 1023
+
+				if (cp->wide == WIDE)
+					bit_shift = glyph_width_offset + cell_width;
+				else
+					bit_shift = glyph_width_offset;
+
+				/* set color palette */
+				if (gp->bitmap[glyph_height_offset] & (0x01 << bit_shift))
+					pixel = fb->color_palette[color.fg];
+				else if (fb->wall && color.bg == DEFAULT_BG) /* wallpaper */
+					memcpy(&pixel, fb->wall + pos, fb->bpp);
+				else
+					pixel = fb->color_palette[color.bg];
+
+				memcpy(fb->buf + pos, &pixel, fb->bpp);
+			}
+		}
+
+		if (ROTATE == CLOCKWISE || ROTATE == COUNTER_CLOCKWISE) {
+			for (glyph_width_offset = 0; glyph_width_offset < cell_width; glyph_width_offset++) {
+				pos = (ROTATE == CLOCKWISE) ?
+					get_rotated_pos(fb, term, term->width - 1 - margin_right - glyph_width_offset, line * cell_height):
+					// min: 1024 - 1 - (128 - 1 - 0) * 8 - 7 = 0 / max: 1024 - 1 - (128 - 1 - 127) * 8 - 0 = 1023
+					// min: 0 * 16 = 0 / max: 79 * 16 = 1264
+					get_rotated_pos(fb, term, term->width - 1 - margin_right - glyph_width_offset, (line + 1) * cell_height - 1);
+					// min: 1 * 16 - 1 = 15 /  max: 80 * 16 - 1 = 1279
+				memcpy(fb->fp + pos, fb->buf + pos, copy_size);
+			}
+		}
 	}
 
-	if ((offset == (cell_height - 1)) /* underline */
-		&& (cp->attribute & attr_mask[UNDERLINE]))
-		color.bg = color.fg;
-	
-	for (i = 0; i < glyph_width; i++) {
-		if (gp->bitmap[offset] & (0x01 << (shift - i - 1)))
-			pixel = fb->color_palette[color.fg];
-		else if (fb->wall && color.bg == DEFAULT_BG) /* wallpaper */
-			memcpy(&pixel, fb->wall + (i + x * cell_width + term->offset.x) * fb->bpp
-				+ (offset + y * cell_height + term->offset.y) * fb->line_length, fb->bpp);
-		else
-			pixel = fb->color_palette[color.bg];
-		memcpy(src + i * fb->bpp, &pixel, fb->bpp);
+	if (ROTATE == NORMAL || ROTATE == UPSIDE_DOWN) {
+		pos = (ROTATE == NORMAL) ?
+			get_rotated_pos(fb, term, 0, line * cell_height):
+			get_rotated_pos(fb, term, term->width - 1, (line + 1) * cell_height - 1);
+		memcpy(fb->fp + pos, fb->buf + pos, copy_size);
 	}
-}
 
-void draw_line(struct framebuffer *fb, struct terminal *term, int y)
-{
-	int offset, x, size, pos;
-	char *src, *dst;
-
-	pos = term->offset.x * fb->bpp + (term->offset.y + y * cell_height) * fb->line_length;
-	size = term->width * fb->bpp;
-
-	for (offset = 0; offset < cell_height; offset++) {
-		for (x = 0; x < term->cols; x++)
-			set_bitmap(fb, term, y, x, offset,
-				fb->buf + pos + x * cell_width * fb->bpp + offset * fb->line_length);
-		src = fb->buf + pos + offset * fb->line_length;
-		dst = fb->fp + pos + offset * fb->line_length;
-		memcpy(dst, src, size);
-	}
-	term->line_dirty[y] = (term->mode & MODE_CURSOR && term->cursor.y == y) ? true: false;
+	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
 }
 
 void refresh(struct framebuffer *fb, struct terminal *term)
 {
-	int y;
+	int line;
 
 	if (term->mode & MODE_CURSOR)
 		term->line_dirty[term->cursor.y] = true;
 
-	for (y = 0; y < term->lines; y++) {
-		if (term->line_dirty[y])
-			draw_line(fb, term, y);
+	for (line = 0; line < term->lines; line++) {
+		if (term->line_dirty[line])
+			draw_line(fb, term, line);
 	}
 }

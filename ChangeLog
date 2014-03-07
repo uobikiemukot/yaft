@@ -83,3 +83,11 @@
 		ex)
 			$ ./mkfont alias-file your/favorite/bdf > glyph.h
 			$ make yaft
+
+2014-03-07 haru
+	* version 0.2.1
+	* conf.hにいくつかの設定を追加
+		* ROTATE = NORMAL or CLOCKWISE or COUNTER_CLOCKWISE or UPSIDE_DOWN
+		* LAZY_DRAW(データ量が多いときに描画を抑制する)を追加
+		* BACKGROUND_DRAW(VT切り替え後も描画を続ける)を追加
+	* struct terminalのoffsetを削除

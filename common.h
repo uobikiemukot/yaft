@@ -108,19 +108,6 @@ struct margin { int top, bottom; };
 struct color_t { uint32_t r, g, b; };
 struct color_pair { uint8_t fg, bg; };
 
-struct framebuffer {
-	char *fp;               /* pointer of framebuffer(read only) */
-	char *wall;             /* buffer for wallpaper */
-	char *buf;              /* copy of framebuffer */
-	int fd;                 /* file descriptor of framebuffer */
-	struct pair res;        /* resolution (x, y) */
-	long screen_size;       /* screen data size (byte) */
-	int line_length;        /* line length (byte) */
-	int bpp;                /* BYTES per pixel */
-	uint32_t color_palette[COLORS];
-	struct fb_cmap *cmap, *cmap_org;
-};
-
 struct cell {
 	const struct static_glyph_t *gp; /* pointer to glyph */
 	struct color_pair color;/* color (fg, bg) */
@@ -153,7 +140,7 @@ struct state_t {            /* for save, restore state */
 
 struct terminal {
 	int fd;                 /* master fd */
-	struct pair offset;     /* window offset (x, y) */
+	//struct pair offset;     /* window offset (x, y) */
 	int width, height;      /* terminal size (pixel) */
 	int cols, lines;        /* terminal size (cell) */
 	struct cell *cells;     /* pointer to each cell: cells[cols + lines * num_of_cols] */
@@ -168,6 +155,19 @@ struct terminal {
 	uint8_t attribute;      /* bold, underscore, etc... */
 	struct esc_t esc;       /* store escape sequence */
 	struct ucs_t ucs;       /* store UTF-8 sequence */
+};
+
+struct framebuffer {
+	char *fp;               /* pointer of framebuffer(read only) */
+	char *wall;             /* buffer for wallpaper */
+	char *buf;              /* copy of framebuffer */
+	int fd;                 /* file descriptor of framebuffer */
+	struct pair res;        /* resolution (x, y) */
+	long screen_size;       /* screen data size (byte) */
+	int line_length;        /* line length (byte) */
+	int bpp;                /* BYTES per pixel */
+	uint32_t color_palette[COLORS];
+	struct fb_cmap *cmap, *cmap_org;
 };
 
 #include "conf.h"           /* user configuration */

@@ -219,11 +219,9 @@ void utf8_character(struct terminal *term, uint8_t ch)
 			|| ((term->ucs.code & 0xFFFF) == 0xFFFE || (term->ucs.code & 0xFFFF) == 0xFFFF)
 			|| (term->ucs.code > 0x10FFFF))
 			addch(term, REPLACEMENT_CHAR);
-		else {
-			if (DEBUG)
-				fprintf(stderr, "unicode: U+%4.4X\n", term->ucs.code);
+		else
 			addch(term, term->ucs.code);
-		}
+
 		reset_ucs(term);
 	}
 }
@@ -242,19 +240,16 @@ void parse(struct terminal *term, uint8_t *buf, int size)
 	for (i = 0; i < size; i++) {
 		ch = buf[i];
 		if (term->esc.state == RESET) {
-			if (term->ucs.following_byte > 0 && (ch < 0x80 || ch > 0xBF)) { /* interruput: need to rewrite */
+			if (term->ucs.following_byte > 0 && (ch < 0x80 || ch > 0xBF)) { /* interrupt */
 				addch(term, REPLACEMENT_CHAR);
 				reset_ucs(term);
 			}
 
 			if (ch <= 0x1F)
 				control_character(term, ch);
-			else if (ch <= 0x7F) {
-				if (DEBUG)
-					fprintf(stderr, "ascii: %c\n", ch);
+			else if (ch <= 0x7F)
 				addch(term, ch);
-			}
-			else /* ch >= 0x80 */
+			else
 				utf8_character(term, ch);
 		}
 		else if (term->esc.state == STATE_ESC) {

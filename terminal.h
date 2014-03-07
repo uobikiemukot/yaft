@@ -167,6 +167,9 @@ void addch(struct terminal *term, uint32_t code)
 	int width;
 	const struct static_glyph_t *gp;
 
+	if (DEBUG)
+		fprintf(stderr, "addch: U+%.4X\n", code);
+
 	width = wcwidth(code);
 	if (width <= 0) /* zero width */
 		return;
@@ -275,18 +278,31 @@ void reset(struct terminal *term)
 	reset_ucs(term);
 }
 
+void swap(int *a, int *b)
+{
+	int tmp;
+
+	tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
 void term_init(struct terminal *term, struct pair res)
 {
+	//term->offset.x = TERM_OFFSET_X;
+	//term->offset.y = TERM_OFFSET_Y;
 	term->width = res.x;
 	term->height = res.y;
-	term->offset.x = term->offset.y = 0;
+
+	if (ROTATE == CLOCKWISE || ROTATE == COUNTER_CLOCKWISE)
+		swap(&term->width, &term->height);
 
 	term->cols = term->width / cell_width;
 	term->lines = term->height / cell_height;
 
 	if (DEBUG)
 		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",
-			term->width, term->height, term->cols, term->lines);
+			res.x, res.y, term->cols, term->lines);
 
 	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
 	term->tabstop = (bool *) emalloc(sizeof(bool) * term->cols);
