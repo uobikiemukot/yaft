@@ -691,7 +691,7 @@ void glyph_width_report(struct terminal *term, void *arg)
 			https://gist.github.com/saitoha/8767268
 	*/
 	struct parm_t *pt = (struct parm_t *) arg, sub_parm;
-	int i, width, from, to, left, right, w; //reserved
+	int i, width, from, to, left, right, w, wcw; //reserved
 	char **argv = pt->argv, buf[BUFSIZE];
 
 	reset_parm(&sub_parm);
@@ -713,7 +713,13 @@ void glyph_width_report(struct terminal *term, void *arg)
 
 	left = right = -1;
 	for (i = from; i <= to; i++) {
-		w = fonts[i].width;
+		wcw = wcwidth(i);
+		if (wcw <= 0) /* zero width */
+			w = 0;
+		else if (fonts[i].width == 0) /* missing glyph */
+			w = wcw;
+		else
+			w = fonts[i].width;
 
 		if (w != width) {
 			if (right != -1) {
