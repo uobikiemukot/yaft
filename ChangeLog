@@ -91,3 +91,57 @@
 		* LAZY_DRAW(データ量が多いときに描画を抑制する)を追加
 		* BACKGROUND_DRAW(VT切り替え後も描画を続ける)を追加
 	* struct terminalのoffsetを削除
+
+2014-03-24
+	* version 0.2.1
+	* BACKGROUND_DRAW, ROTATEの設定をconf.hでなく環境変数YAFTでするようにした
+	  (実行時に変更する必要がないと思われるものは相変わらずconf.hで指定)
+		* 環境変数YAFTで有効なオプション
+			wall: 背景画像を有効にする
+			background or bg: activeになっていないVTでも描画を続ける(2画面用)
+			clockwise or cw: 90度描画を回転
+			counter_clockwise or ccw: 270度描画を回転
+			upside_down or ud: 180度描画を回転
+			ex) YAFT="wall cw bg" yaft
+		* 環境変数FRAMEBUFFER
+			framebuffer deviceを指定する
+			ex) FRAMEBUFFER="/dev/fb0" yaft
+	* 幾つかのOSCを実装した
+		OSC 4: color paletteの変更
+			色の設定(rgbの指定は1-4桁)
+				OSC 4 ; c ; rgb:rr/gg/bb ST
+				OSC 4 ; c ; #rrggbb ST
+			c番目の色設定の応答
+				request
+				OSC 4 ; c ; ? ST
+				response
+				OSC 4 ; c ; rgb:rr/gg/bb ST
+		OSC 104: color paletteの初期化
+			c番目の色を初期化
+				OSC 104 ; c ST
+			全ての色を初期化
+				OSC 104 ST
+		OSC 8900: glyph width report
+			requestの際にwidth, from, toの指定を強制するようにした
+			* request *
+			OSC 8900 ; Ps ; ? : Pw : Pf : Pt ST
+				Ps: reserved
+				Pw: width (0 or 1 or 2)
+				Pf: beginning of unicode code point
+				Pt: end of unicode code point
+				ST: BEL(0x07) or ESC(0x1B) BACKSLASH(0x5C)
+			* answer *
+			OSC 8900 ; Ps ; Pt ; Pf : Pt ; Pf : Pt ; ... ST
+				Ps: responce code
+					0: ok (default)
+					1: recognized but not supported
+					2: not recognized
+				Pt: reserved (maybe East Asian Width Version)
+				<!-- Pw: width (0 or 1 or 2) depricated -->
+				Pf: beginning of unicode code point
+				Pt: end of unicode code point
+				ST: BEL(0x07) or ESC(0x1B) BACKSLASH(0x5C)
+			(ref)
+			http://uobikiemukot.github.io/yaft/glyph_width_report.html
+			https://gist.github.com/saitoha/8767268
+	* コードを色々整理した

@@ -16,6 +16,7 @@ void (*esc_func[ESC_CHARS])(struct terminal * term, void *arg) = {
 	['E'] = crnl,
 	['H'] = set_tabstop,
 	['M'] = reverse_nl,
+	['P'] = enter_dcs,
 	['Z'] = identify,
 	['['] = enter_csi,
 	[']'] = enter_osc,
@@ -54,45 +55,9 @@ void (*csi_func[ESC_CHARS])(struct terminal * term, void *arg) = {
 	['`'] = curs_col,
 };
 
-void reset_parm(struct parm_t *pt)
-{
-	int i;
-
-	pt->argc = 0;
-	for (i = 0; i < ESC_PARAMS; i++)
-		pt->argv[i] = NULL;
-}
-
-void parse_arg(char *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
-{
-	int length;
-	char *cp;
-
-	length = strlen(buf);
-	cp = buf;
-
-	while (cp < &buf[length - 1]) {
-		if (*cp == delim)
-			*cp = '\0';
-		cp++;
-	}
-
-	cp = buf;
-  start:
-	if (pt->argc < ESC_PARAMS && is_valid(*cp)) {
-		pt->argv[pt->argc] = cp;
-		pt->argc++;
-	}
-
-	while (is_valid(*cp))
-		cp++;
-
-	while (!is_valid(*cp) && cp < &buf[length - 1])
-		cp++;
-
-	if (cp < &buf[length - 1])
-		goto start;
-}
+void (*dcs_func[ESC_CHARS])(struct terminal * term, void *arg) = {
+	['{'] = decdld_header,
+};
 
 void control_character(struct terminal *term, uint8_t ch)
 {
@@ -130,7 +95,7 @@ void csi_sequence(struct terminal *term, uint8_t ch)
 		fprintf(stderr, "csi: CSI %s\n", term->esc.buf);
 
 	reset_parm(&parm);
-	parse_arg(term->esc.buf, &parm, ';', isdigit);
+	parse_arg(term->esc.buf + 1, &parm, ';', isdigit); /* skip '[' */
 	*(term->esc.bp - 1) = '\0'; /* omit final character */
 
 	if (csi_func[ch])
@@ -141,10 +106,54 @@ void csi_sequence(struct terminal *term, uint8_t ch)
 
 void osc_sequence(struct terminal *term, uint8_t ch)
 {
+	int i, osc_mode;
+	struct parm_t parm;
+
 	if (DEBUG)
 		fprintf(stderr, "osc: OSC %s\n", term->esc.buf);
 
+	reset_parm(&parm);
+	parse_arg(term->esc.buf + 1, &parm, ';', is_osc_parm); /* skip ']' */
+	if (*(term->esc.bp - 1) == BACKSLASH) /* ST: ESC BACKSLASH */
+		*(term->esc.bp - 2) = '\0';
+	*(term->esc.bp - 1) = '\0'; /* omit final character */
+
+	if (DEBUG)
+		for (i = 0; i < parm.argc; i++)
+			fprintf(stderr, "\targv[%d]: %s\n", i, parm.argv[i]);
+
+	if (parm.argc > 0) {
+		osc_mode = atoi(parm.argv[0]);
+		if (DEBUG)
+			fprintf(stderr, "osc_mode:%d\n", osc_mode);
+
+		if (osc_mode == 4)
+			set_palette(term, &parm);
+		else if (osc_mode == 104)
+			reset_palette(term, &parm);
+		else if (osc_mode == 8900)
+			glyph_width_report(term, &parm);
+	}
+
 	reset_esc(term);
+}
+
+void dcs_sequence(struct terminal *term, uint8_t ch)
+{
+	struct parm_t parm;
+
+	if (DEBUG)
+		fprintf(stderr, "dcs: DCS %s\n", term->esc.buf);
+
+	reset_parm(&parm);
+	parse_arg(term->esc.buf, &parm, ';', isdigit);
+	*(term->esc.bp - 1) = '\0'; /* omit final character */
+
+	if (dcs_func[ch])
+		dcs_func[ch](term, &parm);
+
+	if (ch != '{')
+		reset_esc(term);
 }
 
 void utf8_character(struct terminal *term, uint8_t ch)
@@ -239,7 +248,7 @@ void parse(struct terminal *term, uint8_t *buf, int size)
 
 	for (i = 0; i < size; i++) {
 		ch = buf[i];
-		if (term->esc.state == RESET) {
+		if (term->esc.state == STATE_RESET) {
 			if (term->ucs.following_byte > 0 && (ch < 0x80 || ch > 0xBF)) { /* interrupt */
 				addch(term, REPLACEMENT_CHAR);
 				reset_ucs(term);
@@ -263,6 +272,10 @@ void parse(struct terminal *term, uint8_t *buf, int size)
 		else if (term->esc.state == STATE_OSC) {
 			if (push_esc(term, ch))
 				osc_sequence(term, ch);
+		}
+		else if (term->esc.state == STATE_DCS) {
+			if (push_esc(term, ch))
+				dcs_sequence(term, ch);
 		}
 	}
 }

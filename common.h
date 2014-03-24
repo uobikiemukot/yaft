@@ -4,9 +4,6 @@
 #include <errno.h>
 /* #include <execinfo.h> for DEBUG */
 #include <fcntl.h>
-#include <linux/fb.h>
-#include <linux/vt.h>
-#include <linux/kd.h>
 #include <locale.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -38,7 +35,7 @@ enum char_code {
 	REPLACEMENT_CHARACTER = 0xFFFD,
 };
 
-enum {
+enum misc {
 	BITS_PER_BYTE = 8,
 	BUFSIZE = 1024,         /* read, esc, various buffer size */
 	SELECT_TIMEOUT = 20000, /* used by select() */
@@ -50,12 +47,13 @@ enum {
 	DEFAULT_CHAR = SPACE,   /* used for erase char, cell_size */
 	RESET = 0x00,           /* reset for char_attr, term_mode, esc_state */
 	BRIGHT_INC = 8,         /* value used for brightening color */
+	OSC_GWREPT = 8900,      /* OSC Ps: mode number of yaft GWREPT */
 };
 
 enum char_attr {
-	BOLD = 1,               /* brighten foreground */
+	BOLD = 1,      /* brighten foreground */
 	UNDERLINE = 4,
-	BLINK = 5,              /* brighten background */
+	BLINK = 5,     /* brighten background */
 	REVERSE = 7,
 };
 
@@ -77,21 +75,31 @@ const uint32_t bit_mask[] = {
 };
 
 enum term_mode {
-	MODE_ORIGIN = 0x01,     /* origin mode: DECOM */
-	MODE_CURSOR = 0x02,     /* cursor visible: DECTCEM */
-	MODE_AMRIGHT = 0x04,    /* auto wrap: DECAWM */
+	MODE_ORIGIN = 0x01,  /* origin mode: DECOM */
+	MODE_CURSOR = 0x02,  /* cursor visible: DECTCEM */
+	MODE_AMRIGHT = 0x04, /* auto wrap: DECAWM */
 };
 
 enum esc_state {
-	STATE_ESC = 1,          /* 0x1B, \033, ESC */
-	STATE_CSI,              /* ESC [ */
-	STATE_OSC,              /* ESC ] */
+	STATE_RESET = 0,
+	STATE_ESC,       /* 0x1B, \033, ESC */
+	STATE_CSI,       /* ESC [ */
+	STATE_OSC,       /* ESC ] */
+	STATE_DCS,       /* ESC P */
+	STATE_DSCS,
 };
 
 enum width_flag {
 	NEXT_TO_WIDE = 0,
 	HALF,
 	WIDE,
+};
+
+enum rotate_mode {
+	NORMAL = 0,
+	CLOCKWISE = 90,
+	UPSIDE_DOWN = 180,
+	COUNTER_CLOCKWISE = 270,
 };
 
 #include "glyph.h"
@@ -101,6 +109,8 @@ struct tty_state {
 	bool visible;
 	bool redraw_flag;
 	bool loop_flag;
+	bool background_draw;
+	bool lazy_draw;
 };
 
 struct pair { int x, y; };
@@ -110,12 +120,12 @@ struct color_pair { uint8_t fg, bg; };
 
 struct cell {
 	const struct static_glyph_t *gp; /* pointer to glyph */
-	struct color_pair color;/* color (fg, bg) */
-	uint8_t attribute;      /* bold, underscore, etc... */
-	int wide;               /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
+	struct color_pair color;         /* color (fg, bg) */
+	uint8_t attribute;               /* bold, underscore, etc... */
+	enum width_flag width;                        /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
 };
 
-struct parm_t {             /* for parse_arg() */
+struct parm_t { /* for parse_arg() */
 	int argc;
 	char *argv[ESC_PARAMS];
 };
@@ -123,52 +133,58 @@ struct parm_t {             /* for parse_arg() */
 struct esc_t {
 	char buf[BUFSIZE];
 	char *bp;
-	int state;              /* esc state */
+	enum esc_state state; /* esc state */
 };
 
 struct ucs_t {
-	uint32_t code;          /* UCS4: but only print UCS2 (<= U+FFFF) */
+	uint32_t code; /* UCS4: but only print UCS2 (<= U+FFFF) */
 	int following_byte, count;
 	bool is_valid;
 };
 
-struct state_t {            /* for save, restore state */
-	int mode;
+struct state_t { /* for save, restore state */
+	enum term_mode mode;
 	struct pair cursor;
 	uint8_t attribute;
 };
 
+//struct drcs_t { /* for drcs */
+	//int erase_mode;
+	//uint8_t start_char;
+//};
+
 struct terminal {
-	int fd;                 /* master fd */
-	//struct pair offset;     /* window offset (x, y) */
-	int width, height;      /* terminal size (pixel) */
-	int cols, lines;        /* terminal size (cell) */
-	struct cell *cells;     /* pointer to each cell: cells[cols + lines * num_of_cols] */
-	struct margin scroll;   /* scroll margin */
-	struct pair cursor;     /* cursor pos (x, y) */
-	bool *line_dirty;       /* dirty flag */
-	bool *tabstop;          /* tabstop flag */
-	int mode;               /* for set/reset mode */
-	bool wrap;              /* whether auto wrap occured or not */
-	struct state_t state;   /* for restore */
-	struct color_pair color;/* color (fg, bg) */
-	uint8_t attribute;      /* bold, underscore, etc... */
-	struct esc_t esc;       /* store escape sequence */
-	struct ucs_t ucs;       /* store UTF-8 sequence */
+	int fd;                  /* master fd */
+	int width, height;       /* terminal size (pixel) */
+	int cols, lines;         /* terminal size (cell) */
+	struct cell *cells;      /* pointer to each cell: cells[cols + lines * num_of_cols] */
+	struct margin scroll;    /* scroll margin */
+	struct pair cursor;      /* cursor pos (x, y) */
+	bool *line_dirty;        /* dirty flag */
+	bool *tabstop;           /* tabstop flag */
+	enum term_mode mode;     /* for set/reset mode */
+	bool wrap;               /* whether auto wrap occured or not */
+	struct state_t state;    /* for restore */
+	struct color_pair color; /* color (fg, bg) */
+	uint8_t attribute;       /* bold, underscore, etc... */
+	struct esc_t esc;        /* store escape sequence */
+	struct ucs_t ucs;        /* store UTF-8 sequence */
+	uint32_t color_palette[COLORS]; /* 256 color palette */
 };
 
-struct framebuffer {
-	char *fp;               /* pointer of framebuffer(read only) */
-	char *wall;             /* buffer for wallpaper */
-	char *buf;              /* copy of framebuffer */
-	int fd;                 /* file descriptor of framebuffer */
-	struct pair res;        /* resolution (x, y) */
-	long screen_size;       /* screen data size (byte) */
-	int line_length;        /* line length (byte) */
-	int bpp;                /* BYTES per pixel */
-	uint32_t color_palette[COLORS];
-	struct fb_cmap *cmap, *cmap_org;
+//struct sixel {
+	//uint8_t width;             /* always 1 */
+	//char *pixmap[CELL_HEIGHT]; /* size: 24bpp * cell width */
+//};
+
+struct tty_state tty = {
+	.save_tm = NULL,
+	.visible = true,
+	.redraw_flag = false,
+	.loop_flag = true,
+	.background_draw = false,
+	.lazy_draw = true,
 };
 
-#include "conf.h"           /* user configuration */
-#include "color.h"          /* 256color definition */
+#include "conf.h"  /* user configuration */
+#include "color.h" /* 256color definition */

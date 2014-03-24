@@ -138,7 +138,11 @@ void dump_fonts(struct glyph_t *fonts)
 		"\tuint%d_t bitmap[%d];\n"
 		"};\n\n", ((cell_width + BITS_PER_BYTE - 1) / BITS_PER_BYTE) * BITS_PER_BYTE * 2, cell_height);
 	
+	/*
 	fprintf(stdout, "static const uint8_t cell_width = %d, cell_height = %d;\n",
+		cell_width, cell_height);
+	*/
+	fprintf(stdout, "enum {\n\tCELL_WIDTH = %d,\n\tCELL_HEIGHT = %d\n};\n\n",
 		cell_width, cell_height);
 
 	fprintf(stdout, "static const struct static_glyph_t fonts[UCS2_CHARS] = {\n");

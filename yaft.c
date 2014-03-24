@@ -1,17 +1,9 @@
 /* See LICENSE for licence details. */
-#include "common.h"
-#include "util.h"
-#include "framebuffer.h"
+#include "linux.h"
+//#include "freebsd.h"
 #include "terminal.h"
 #include "function.h"
 #include "parse.h"
-
-struct tty_state tty = {
-	.save_tm = NULL,
-	.visible = true,
-	.redraw_flag = false,
-	.loop_flag = true,
-};
 
 void handler(int signo)
 {
@@ -25,7 +17,9 @@ void handler(int signo)
 			ioctl(STDIN_FILENO, VT_RELDISP, 1);
 			sigfillset(&sigset);
 			sigdelset(&sigset, SIGUSR1);
-			if (!BACKGROUND_DRAW)
+			if (tty.background_draw)
+				tty.redraw_flag = true;
+			else
 				sigsuspend(&sigset);
 		}
 		else {
@@ -51,11 +45,37 @@ void set_rawmode(int fd, struct termios *save_tm)
 	etcsetattr(fd, TCSAFLUSH, &tm);
 }
 
+void check_env(struct framebuffer *fb)
+{
+	extern struct tty_state tty; /* global var */
+	char *env;
+
+	if ((env = getenv("YAFT")) != NULL) {
+		if (strstr(env, "wall") != NULL && fb->bpp > 1)
+			fb->wall = load_wallpaper(fb);
+
+		if (strstr(env, "clockwise") != NULL || strstr(env, "cw") != NULL)
+			fb->rotate = CLOCKWISE;
+		else if (strstr(env, "upside_down") != NULL || strstr(env, "ud") != NULL)
+			fb->rotate = UPSIDE_DOWN;
+		else if (strstr(env, "counter_clockwise") != NULL || strstr(env, "ccw") != NULL)
+			fb->rotate = COUNTER_CLOCKWISE;
+
+		if (strstr(env, "background") != NULL || strstr(env, "bg") != NULL)
+			tty.background_draw = true;
+	}
+	else {
+		fb->wall = NULL;
+		fb->rotate = NORMAL;
+	}
+}
+
 void tty_init()
 {
 	extern struct tty_state tty; /* global var */
 	struct sigaction sigact;
 	struct vt_mode vtm;
+	char *env;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = handler;
@@ -74,6 +94,13 @@ void tty_init()
 	tty.save_tm = (struct termios *) emalloc(sizeof(struct termios));
 	set_rawmode(STDIN_FILENO, tty.save_tm);
 	ewrite(STDIN_FILENO, "\033[?25l", 6); /* make cusor invisible */
+
+	if ((env = getenv("YAFT")) != NULL) {
+		if (strstr(env, "background") != NULL)
+			tty.background_draw = true;
+		if (strstr(env, "lazy") != NULL)
+			tty.lazy_draw = true;
+	}
 }
 
 void tty_die()
@@ -125,8 +152,9 @@ int main()
 		fatal("atexit failed");
 
 	tty_init();
-	fb_init(&fb);
-	term_init(&term, fb.res);
+	fb_init(&fb, term.color_palette);
+	check_env(&fb);
+	term_init(&term, fb.res, fb.rotate);
 
 	/* fork and exec shell */
 	eforkpty(&term.fd, term.lines, term.cols);
@@ -151,7 +179,7 @@ int main()
 				if (DEBUG)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
-				if (LAZY_DRAW && size == BUFSIZE)
+				if (tty.lazy_draw && size == BUFSIZE)
 					continue;
 				refresh(&fb, &term);
 			}

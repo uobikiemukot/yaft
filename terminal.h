@@ -7,7 +7,7 @@ void erase_cell(struct terminal *term, int y, int x)
 	cp->gp = &fonts[DEFAULT_CHAR];
 	cp->color = term->color; /* bce */
 	cp->attribute = RESET;
-	cp->wide = HALF;
+	cp->width = HALF;
 
 	term->line_dirty[y] = true;
 }
@@ -19,15 +19,15 @@ void copy_cell(struct terminal *term, int dst_y, int dst_x, int src_y, int src_x
 	dst = &term->cells[dst_x + dst_y * term->cols];
 	src = &term->cells[src_x + src_y * term->cols];
 
-	if (src->wide == NEXT_TO_WIDE)
+	if (src->width == NEXT_TO_WIDE)
 		return;
-	else if (src->wide == WIDE && dst_x == (term->cols - 1))
+	else if (src->width == WIDE && dst_x == (term->cols - 1))
 		erase_cell(term, dst_y, dst_x);
 	else {
 		*dst = *src;
-		if (src->wide == WIDE) {
+		if (src->width == WIDE) {
 			*(dst + 1) = *src;
-			(dst + 1)->wide = NEXT_TO_WIDE;
+			(dst + 1)->width = NEXT_TO_WIDE;
 		}
 		term->line_dirty[dst_y] = true;
 	}
@@ -57,15 +57,15 @@ int set_cell(struct terminal *term, int y, int x, const struct static_glyph_t *g
 		swap_color(&nc.color);
 
 	nc.attribute = term->attribute;
-	nc.wide = gp->width;
+	nc.width = gp->width;
 
 	*cp = nc;
 	term->line_dirty[y] = true;
 
-	if (nc.wide == WIDE && x + 1 < term->cols) {
+	if (nc.width == WIDE && x + 1 < term->cols) {
 		cp = &term->cells[x + 1 + y * term->cols];
 		*cp = nc;
-		cp->wide = NEXT_TO_WIDE;
+		cp->width = NEXT_TO_WIDE;
 		return WIDE;
 	}
 
@@ -224,6 +224,12 @@ bool push_esc(struct terminal *term, uint8_t ch)
 		else if ((ch != ESC) && (' ' > ch || ch > '~'))
 			reset_esc(term);
 	}
+	else if (term->esc.state == STATE_DCS) {
+		if (ch == '{')
+			return true;
+		else if (ch != ';' && (ch < '0' || ch > '9'))
+			reset_esc(term);
+	}
 	return false;
 }
 
@@ -278,7 +284,7 @@ void reset(struct terminal *term)
 	reset_ucs(term);
 }
 
-void swap(int *a, int *b)
+void swap_int(int *a, int *b)
 {
 	int tmp;
 
@@ -287,18 +293,16 @@ void swap(int *a, int *b)
 	*b = tmp;
 }
 
-void term_init(struct terminal *term, struct pair res)
+void term_init(struct terminal *term, struct pair res, int rotate)
 {
-	//term->offset.x = TERM_OFFSET_X;
-	//term->offset.y = TERM_OFFSET_Y;
 	term->width = res.x;
 	term->height = res.y;
 
-	if (ROTATE == CLOCKWISE || ROTATE == COUNTER_CLOCKWISE)
-		swap(&term->width, &term->height);
+	if (rotate == CLOCKWISE || rotate == COUNTER_CLOCKWISE)
+		swap_int(&term->width, &term->height);
 
-	term->cols = term->width / cell_width;
-	term->lines = term->height / cell_height;
+	term->cols = term->width / CELL_WIDTH;
+	term->lines = term->height / CELL_HEIGHT;
 
 	if (DEBUG)
 		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",
