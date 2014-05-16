@@ -1,17 +1,17 @@
 /* See LICENSE for licence details. */
 #include "common.h"
-#include "../util.h"
-#include "framebuffer.h"
-#include "../terminal.h"
-#include "../function.h"
-#include "../parse.h"
-
-struct tty_state tty = {
-	.save_tm = NULL,
-	.visible = true,
-	.redraw_flag = false,
-	.loop_flag = true,
-};
+#include "conf.h"
+#include "color.h"
+#include "glyph.h"
+#include "util.h"
+//#include "linux.h"
+//#include "freebsd.h"
+#include "x.h"
+#include "terminal.h"
+#include "function.h"
+#include "osc.h"
+#include "dcs.h"
+#include "parse.h"
 
 void handler(int signo)
 {
@@ -62,7 +62,7 @@ char *keymap(KeySym k, unsigned int state)
 	return NULL;
 }
 
-void xkeypress(struct framebuffer *xw, struct terminal *term, XEvent *ev)
+void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 {
 	int size;
 	char buf[BUFSIZE], *customkey;
@@ -76,7 +76,7 @@ void xkeypress(struct framebuffer *xw, struct terminal *term, XEvent *ev)
 		ewrite(term->fd, buf, size);
 }
 
-void xresize(struct framebuffer *xw, struct terminal *term, XEvent *ev)
+void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
 {
 	XConfigureEvent *e = &ev->xconfigure;
 
@@ -84,29 +84,31 @@ void xresize(struct framebuffer *xw, struct terminal *term, XEvent *ev)
 		term->width = e->width;
 		term->height = e->height;
 
-		term->lines = term->height / cell_height;
-		term->cols = term->width / cell_width;
+		term->lines = term->height / CELL_HEIGHT;
+		term->cols = term->width / CELL_WIDTH;
 
-		XFreePixmap(xw->dpy, xw->buf);
-		xw->buf = XCreatePixmap(xw->dpy, xw->win,
-			term->width, term->height, XDefaultDepth(xw->dpy, xw->sc));
+		XFreePixmap(xw->display, xw->pixbuf);
+		xw->pixbuf = XCreatePixmap(xw->display, xw->window,
+			term->width, term->height, XDefaultDepth(xw->display, xw->screen));
 
 		free(term->line_dirty);
-		term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
+		term->line_dirty = (bool *) ecalloc(sizeof(bool) * term->lines);
 
 		free(term->tabstop);
-		term->tabstop = (bool *) emalloc(sizeof(bool) * term->cols);
+		term->tabstop = (bool *) ecalloc(sizeof(bool) * term->cols);
 
 		free(term->cells);
-		term->cells = (struct cell *) emalloc(sizeof(struct cell) * term->cols * term->lines);
+		term->cells = (struct cell *) ecalloc(sizeof(struct cell) * term->cols * term->lines);
 
 		reset(term);
 		ioctl(term->fd, TIOCSWINSZ, &(struct winsize)
 			{.ws_row = term->lines, .ws_col = term->cols, .ws_xpixel = 0, .ws_ypixel = 0});
+
+		parse(term, "\n", 1);
 	}
 }
 
-void xredraw(struct framebuffer *xw, struct terminal *term, XEvent *ev)
+void xredraw(struct xwindow *xw, struct terminal *term, XEvent *ev)
 {
 	XExposeEvent *e = &ev->xexpose;
 
@@ -116,7 +118,7 @@ void xredraw(struct framebuffer *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
-void xfocus(struct framebuffer *xw, struct terminal *term, XEvent *ev)
+void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
 {
 	extern struct tty_state tty;
 
@@ -128,7 +130,7 @@ void xfocus(struct framebuffer *xw, struct terminal *term, XEvent *ev)
 	refresh(xw, term);
 }
 
-static void (*event_func[LASTEvent])(struct framebuffer *xw, struct terminal *term, XEvent *ev) = {
+static void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, XEvent *ev) = {
 	[KeyPress] = xkeypress,
 	[ConfigureNotify] = xresize,
 	[Expose] = xredraw,
@@ -136,13 +138,49 @@ static void (*event_func[LASTEvent])(struct framebuffer *xw, struct terminal *te
 	[FocusOut] = xfocus,
 };
 
+void fork_and_exec(int *master, int lines, int cols)
+{
+    int slave;
+    char *name = NULL;
+    pid_t pid;
+
+    if ((*master = posix_openpt(O_RDWR | O_NOCTTY)) < 0
+        || grantpt(*master) < 0 || unlockpt(*master) < 0
+        || (name = ptsname(*master)) == NULL)
+        error("forkpty");
+
+    slave = eopen(name, O_RDWR | O_NOCTTY);
+    ioctl(slave, TIOCSWINSZ, &(struct winsize)
+        {.ws_row = lines, .ws_col = cols, .ws_xpixel = 0, .ws_ypixel = 0});
+
+    pid = fork();
+    if (pid < 0)
+        error("fork");
+    else if (pid == 0) { /* child */
+        dup2(slave, STDIN_FILENO);
+        dup2(slave, STDOUT_FILENO);
+        dup2(slave, STDERR_FILENO);
+        setsid();
+        /* ioctl may fail in Mac : ref http://www.opensource.apple.com/source/Libc/Libc-825.25/util/pty.c?txt */
+        ioctl(slave, TIOCSCTTY, NULL);
+        close(slave);
+        close(*master);
+        if (setenv("TERM", term_name, 1) < 0)
+            error("setenv");
+        if (execlp(shell_cmd, shell_cmd, NULL) < 0)
+            error("execl");
+    }
+    /* parent */
+    close(slave);
+}
+
 int main()
 {
 	uint8_t buf[BUFSIZE];
 	ssize_t size;
 	fd_set fds;
 	struct timeval tv;
-	struct framebuffer fb;
+	struct xwindow xw;
 	struct terminal term;
 	XEvent ev;
 
@@ -152,22 +190,22 @@ int main()
 		fatal("atexit failed");
 
 	tty_init();
-	fb_init(&fb);
-	term_init(&term, fb.res);
+	xw_init(&xw);
+	term_init(&term, xw.width, xw.height);
 
 	/* fork and exec shell */
-	eforkpty(&term.fd, term.lines, term.cols);
+	fork_and_exec(&term.fd, term.lines, term.cols);
 
 	/* main loop */
 	while (tty.loop_flag) {
 		check_fds(&fds, &tv, term.fd);
 
-		while(XPending(fb.dpy)) {
-			XNextEvent(fb.dpy, &ev);
-			if(XFilterEvent(&ev, fb.win))
+		while(XPending(xw.display)) {
+			XNextEvent(xw.display, &ev);
+			if(XFilterEvent(&ev, xw.window))
 				continue;
 			if (event_func[ev.type])
-				event_func[ev.type](&fb, &term, &ev);
+				event_func[ev.type](&xw, &term, &ev);
 		}
 
 		if (FD_ISSET(term.fd, &fds)) {
@@ -178,14 +216,14 @@ int main()
 				parse(&term, buf, size);
 				if (size == BUFSIZE) /* lazy drawing */
 					continue;
-				refresh(&fb, &term);
+				refresh(&xw, &term);
 			}
 		}
 	}
 
 	/* die */
 	term_die(&term);
-	fb_die(&fb);
+	xw_die(&xw);
 
 	return EXIT_SUCCESS;
 }
