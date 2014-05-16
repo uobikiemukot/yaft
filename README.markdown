@@ -2,9 +2,10 @@
 Last update: Fri May 16 16:50:52 JST 2014
 
 ## download
--	[yaft-0.2.3](./release/yaft-0.2.3.tar.gz) (Linux console)
--	[yaft-x-0.2.3](./release/yaft-x-0.2.3.tar.gz) (X Window System)
--	[yaft-freebsd-0.2.3](./release/yaft-freebsd-0.2.3.tar.gz) (FreeBSD console)
+
+~~~
+$ git clone https://github.com/uobikiemukot/yaft
+~~~
 
 ## features
 +	recognizes most of escape sequences of vt102 and linux console ([detail](escape.html))
