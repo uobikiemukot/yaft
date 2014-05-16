@@ -8,7 +8,7 @@ $ git clone https://github.com/uobikiemukot/yaft
 ~~~
 
 ## features
-+	recognizes most of escape sequences of vt102 and linux console ([detail](http://uobikiemukot.github.io/escape.html))
++	recognizes most of escape sequences of vt102 and linux console ([detail](http://uobikiemukot.github.io/yaft/escape.html))
 +	supports various framebuffer types (8/15/16/24/32bpp)
 +	supports (only) UTF-8 encoding
 +	supports 256 colors (same as xterm)
@@ -16,7 +16,7 @@ $ git clone https://github.com/uobikiemukot/yaft
 +	supports DRCS (DECDLD/DRCSMMv1) (experimental)
 
 ## recent changes
-for more detail, see [ChangeLog](http://uobikiemukot.github.io//changelog.html) (Japanese)
+for more detail, see [ChangeLog](http://uobikiemukot.github.io/yaft/changelog.html) (Japanese)
 
 ### 2014-05-16
 -	version 0.2.5
