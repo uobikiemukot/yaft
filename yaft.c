@@ -1,11 +1,18 @@
 /* See LICENSE for licence details. */
+#include "common.h"
+#include "conf.h"
+#include "color.h"
+#include "glyph.h"
+#include "util.h"
 #include "linux.h"
 //#include "freebsd.h"
 #include "terminal.h"
 #include "function.h"
+#include "osc.h"
+#include "dcs.h"
 #include "parse.h"
 
-void handler(int signo)
+void sig_handler(int signo)
 {
 	sigset_t sigset;
 
@@ -51,22 +58,12 @@ void check_env(struct framebuffer *fb)
 	char *env;
 
 	if ((env = getenv("YAFT")) != NULL) {
-		if (strstr(env, "wall") != NULL && fb->bpp > 1)
+		if ((strstr(env, "wallpaper") != NULL || strstr(env, "wall") != NULL)
+			&& fb->bpp > 1)
 			fb->wall = load_wallpaper(fb);
-
-		if (strstr(env, "clockwise") != NULL || strstr(env, "cw") != NULL)
-			fb->rotate = CLOCKWISE;
-		else if (strstr(env, "upside_down") != NULL || strstr(env, "ud") != NULL)
-			fb->rotate = UPSIDE_DOWN;
-		else if (strstr(env, "counter_clockwise") != NULL || strstr(env, "ccw") != NULL)
-			fb->rotate = COUNTER_CLOCKWISE;
 
 		if (strstr(env, "background") != NULL || strstr(env, "bg") != NULL)
 			tty.background_draw = true;
-	}
-	else {
-		fb->wall = NULL;
-		fb->rotate = NORMAL;
 	}
 }
 
@@ -75,10 +72,9 @@ void tty_init()
 	extern struct tty_state tty; /* global var */
 	struct sigaction sigact;
 	struct vt_mode vtm;
-	char *env;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
-	sigact.sa_handler = handler;
+	sigact.sa_handler = sig_handler;
 	sigact.sa_flags = SA_RESTART;
 	esigaction(SIGCHLD, &sigact, NULL);
 	esigaction(SIGUSR1, &sigact, NULL);
@@ -91,16 +87,9 @@ void tty_init()
 	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
 		fatal("ioctl: KDSETMODE failed (maybe here is not console)");
 
-	tty.save_tm = (struct termios *) emalloc(sizeof(struct termios));
+	tty.save_tm = (struct termios *) ecalloc(sizeof(struct termios));
 	set_rawmode(STDIN_FILENO, tty.save_tm);
 	ewrite(STDIN_FILENO, "\033[?25l", 6); /* make cusor invisible */
-
-	if ((env = getenv("YAFT")) != NULL) {
-		if (strstr(env, "background") != NULL)
-			tty.background_draw = true;
-		if (strstr(env, "lazy") != NULL)
-			tty.lazy_draw = true;
-	}
 }
 
 void tty_die()
@@ -125,6 +114,42 @@ void tty_die()
 		tcsetattr(STDIN_FILENO, TCSAFLUSH, tty.save_tm);
 	fflush(stdout);
 	ewrite(STDIN_FILENO, "\033[?25h", 6); /* make cursor visible */
+}
+
+void fork_and_exec(int *master, int lines, int cols)
+{
+	int slave;
+	char *name = NULL;
+	pid_t pid;
+
+	if ((*master = posix_openpt(O_RDWR | O_NOCTTY)) < 0
+		|| grantpt(*master) < 0 || unlockpt(*master) < 0
+		|| (name = ptsname(*master)) == NULL)
+		error("forkpty");
+
+	slave = eopen(name, O_RDWR | O_NOCTTY);
+	ioctl(slave, TIOCSWINSZ, &(struct winsize)
+		{.ws_row = lines, .ws_col = cols, .ws_xpixel = 0, .ws_ypixel = 0});
+
+	pid = fork();
+	if (pid < 0)
+		error("fork");
+	else if (pid == 0) { /* child */
+		dup2(slave, STDIN_FILENO);
+		dup2(slave, STDOUT_FILENO);
+		dup2(slave, STDERR_FILENO);
+		setsid();
+		/* ioctl may fail in Mac : ref http://www.opensource.apple.com/source/Libc/Libc-825.25/util/pty.c?txt */
+		ioctl(slave, TIOCSCTTY, NULL);
+		close(slave);
+		close(*master);
+		if (setenv("TERM", term_name, 1) < 0)
+			error("setenv");
+		if (execlp(shell_cmd, shell_cmd, NULL) < 0)
+			error("execl");
+	}
+	/* parent */
+	close(slave);
 }
 
 void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
@@ -154,14 +179,19 @@ int main()
 	tty_init();
 	fb_init(&fb, term.color_palette);
 	check_env(&fb);
-	term_init(&term, fb.res, fb.rotate);
+	term_init(&term, fb.width, fb.height);
 
 	/* fork and exec shell */
-	eforkpty(&term.fd, term.lines, term.cols);
+	fork_and_exec(&term.fd, term.lines, term.cols);
 
 	/* main loop */
 	while (tty.loop_flag) {
-		if (tty.redraw_flag) {
+		if (tty.redraw_flag) { 
+			/* at VT switching, need to restore cmap (8bpp mode) */
+			if (fb.cmap != NULL) {
+				if (ioctl(fb.fd, FBIOPUTCMAP, fb.cmap) < 0)
+					fatal("ioctl: FBIOPUTCMAP failed");
+			}
 			redraw(&term);
 			refresh(&fb, &term);
 			tty.redraw_flag = false;
@@ -179,9 +209,11 @@ int main()
 				if (DEBUG)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
-				if (tty.lazy_draw && size == BUFSIZE)
+
+				if (LAZY_DRAW && size == BUFSIZE)
 					continue;
-				refresh(&fb, &term);
+				else
+					refresh(&fb, &term);
 			}
 		}
 	}

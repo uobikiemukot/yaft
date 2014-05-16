@@ -5,6 +5,18 @@ enum {
 	BDF_BITMAP = 2,
 };
 
+enum encode_t {
+	X68000,
+	JISX0208,
+	JISX0201,
+	/*
+	JISX0212,
+	JISX0213,
+	*/
+	ISO8859,
+	ISO10646
+};
+
 struct bdf_t {
 	int bbw, bbh, bbx, bby;
 	int ascent, descent;
@@ -47,7 +59,7 @@ int bit2byte(int bits)
 	return (bits + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
 }
 
-void convert(struct bdf_t *bdf, struct bdf_glyph_t *glyph)
+void shift_glyph(struct bdf_t *bdf, struct bdf_glyph_t *glyph)
 {
 	int i, byte, shift;
 	uint32_t tmp;
@@ -76,7 +88,7 @@ void convert(struct bdf_t *bdf, struct bdf_glyph_t *glyph)
 	}
 }
 
-void load_table(char *path)
+void load_table(char *path, enum encode_t encode)
 {
 	int i;
 	char buf[BUFSIZE], *cp;
@@ -85,8 +97,12 @@ void load_table(char *path)
 
 	fp = efopen(path, "r");
 
-	for (i = 0; i < UCS2_CHARS; i++)
-		convert_table[i] = i;
+	for (i = 0; i < UCS2_CHARS; i++) {
+		if (encode == ISO10646)
+			convert_table[i] = i;
+		else
+			convert_table[i] = -1;
+	}
 
 	while (fgets(buf, BUFSIZE, fp) != NULL) {
 		if (strlen(buf) == 0 || buf[0] == '#')
@@ -117,20 +133,20 @@ int read_header(char *buf, struct bdf_t *bdf, struct bdf_glyph_t *glyph)
 		bdf->pixel_size = atoi(buf + strlen("PIXEL_SIZE "));
 	else if (pre_match(buf, "CHARSET_REGISTRY ")) {
 		strncpy(bdf->charset, buf + strlen("CHARSET_REGISTRY "), BUFSIZE - 1);
-		//fprintf(stderr, "%s\n", bdf->charset);
+		fprintf(stderr, "%s\n", bdf->charset);
 		for (cp = bdf->charset; *cp != '\0'; cp++)
 			*cp = toupper(*cp);
 
-		if (strstr(bdf->charset, "X68000") != NULL)
-			load_table("./table/X68000");
-		else if (strstr(bdf->charset, "JISX0208") != NULL)
-			load_table("./table/JISX0208");
-		else if (strstr(bdf->charset, "JISX0201") != NULL)
-			load_table("./table/JISX0201");
-		else if (strstr(bdf->charset, "ISO8859") != NULL)
-			load_table("./table/ISO8859");
+		if (strstr(bdf->charset, "X68000") != NULL || strstr(bdf->charset, "x68000") != NULL)
+			load_table("./table/X68000", X68000);
+		else if (strstr(bdf->charset, "JISX0201") != NULL || strstr(bdf->charset, "jisx0201") != NULL)
+			load_table("./table/JISX0201", JISX0201);
+		else if (strstr(bdf->charset, "JISX0208") != NULL || strstr(bdf->charset, "jisx0208") != NULL)
+			load_table("./table/JISX0208", JISX0208);
+		else if (strstr(bdf->charset, "ISO8859") != NULL || strstr(bdf->charset, "iso8859") != NULL)
+			load_table("./table/ISO8859", ISO8859);
 		else /* assume "ISO10646" */
-			load_table("./table/ISO10646");
+			load_table("./table/ISO10646", ISO10646);
 	}
 	else if (pre_match(buf, "CHARS ")) {
 		bdf->chars =  atoi(buf + strlen("CHARS "));
@@ -166,7 +182,7 @@ int read_bitmap(struct glyph_t *fonts, char *buf, struct bdf_t *bdf, struct bdf_
 	static int count = 0;
 
 	if (pre_match(buf, "ENDCHAR")) {
-		convert(bdf, glyph);
+		shift_glyph(bdf, glyph);
 		count = 0;
 
 		code = convert_table[glyph->encoding];
@@ -205,7 +221,7 @@ void load_bdf_glyph(struct glyph_t *fonts, char *path)
 	memset(&bdf, 0, sizeof(struct bdf_t));
 	memset(&glyph, 0, sizeof(struct bdf_glyph_t));
 
-	//fprintf(stderr, "read bdf: %s\n", path);
+	fprintf(stderr, "read bdf: %s\n", path);
 
 	while (fgets(buf, BUFSIZE, fp) != NULL) {
 		if ((cp = strchr(buf, '\n')) != NULL)

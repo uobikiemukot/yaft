@@ -1,8 +1,5 @@
-% yaft
-% haru
-% Last update: 12/12/19
-
-yet another framebuffer terminal
+# yet another framebuffer terminal
+Last update: Fri May 16 16:50:52 JST 2014
 
 ## download
 -	[yaft-0.2.3](./release/yaft-0.2.3.tar.gz) (Linux console)
@@ -15,9 +12,14 @@ yet another framebuffer terminal
 +	supports (only) UTF-8 encoding
 +	supports 256 colors (same as xterm)
 +	supports wallpaper
++	supports DRCS (DECDLD/DRCSMMv1) (experimental)
 
 ## recent changes
-for more detail, see [ChangeLog](./changelog.html)
+for more detail, see [ChangeLog](./changelog.html) (Japanese)
+
+### 2014-05-16
+-	version 0.2.5
+-	supported DRCS (DECDLD/DRCSMMv1)
 
 ### 2012-11-09
 -	version 0.2.0
@@ -43,7 +45,7 @@ $ make yaft
 
 [UTF-8 decoder capability and stress test]: http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
 
-## 2012-12-19
+### 2012-12-19
 -	version 0.2.3
 -	bug fix
 	-	wrong behavior of bce (ED, EL, DL, IL, ICH, DCH, ECH) (reported by IWAMOTO Kouichi ([@ttdoda]))
@@ -53,7 +55,6 @@ $ make yaft
 ## screenshot
 ![screenshot1](./img/yaft-screenshot.png)
 
-<!--
 ## configuration
 if you want to change configuration, rewrite conf.h
 
@@ -72,10 +73,20 @@ the value is an index of color_list[] in color.h
 
 ### misc
 
-+	DEBUG = false,
-+	TABSTOP = 8,
-+	SUBSTITUTE_HALF = 0x20, /* SPACE */
-+	SUBSTITUTE_WIDE = 0x3000, /* IDEOGRAPHIC SPACE */
++	DEBUG = false,             /* write dump of input to stdout, debug message to stderr */
++	TABSTOP = 8,               /* hardware tabstop */
++	LAZY_DRAW = false,         /* reduce drawing when input data size is larger than BUFSIZE */
++	SUBSTITUTE_HALF = 0x20,    /* used for missing glyph(single width): SPACE (U+20) */
++	SUBSTITUTE_WIDE = 0x3013,  /* used for missing glyph(double width): GETA MARK (U+3000) */
++	REPLACEMENT_CHAR = 0x3F,   /* used for malformed UTF-8 sequence: QUESTION MARK (U+3F) */
+
+## environment variable
+
+~~~
+$ FRAMEBUFFER="/dev/fb1" yaft # use another framebuffer device
+$ YAFT="wallpaper" yaft # enable wallpaper, see yaft_wall for detail
+$ YAFT="background" yaft # enable background drawing, useful for multi display
+~~~
 
 ## install
 
@@ -100,9 +111,10 @@ $ yaft_wall /path/to/wallpaper.jpg
 
 ## tools
 some useful tools (bdf to yaft font converter etc) are found in tools/ directory
--->
 
 ## license
+MIT License
+
 Copyright (c) 2012 haru (uobikiemukot at gmail dot com)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:

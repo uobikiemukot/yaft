@@ -93,7 +93,7 @@
 	* struct terminalのoffsetを削除
 
 2014-03-24
-	* version 0.2.1
+	* version 0.2.2
 	* BACKGROUND_DRAW, ROTATEの設定をconf.hでなく環境変数YAFTでするようにした
 	  (実行時に変更する必要がないと思われるものは相変わらずconf.hで指定)
 		* 環境変数YAFTで有効なオプション
@@ -145,3 +145,16 @@
 			http://uobikiemukot.github.io/yaft/glyph_width_report.html
 			https://gist.github.com/saitoha/8767268
 	* コードを色々整理した
+
+2014-05-16
+	* version 0.2.5
+	* rorateオプションを消した
+	* glyph.hの書式を変更 (フォントによってはyaftのバイナリがかなり小さく)
+		* それに伴いtools/以下のソースを書き換え
+	* glyph width report rev.3 に対応 (ref: http://uobikiemukot.github.io/yaft/glyph_width_report.html)
+		* DRCSの領域(Unicode Private Area)の応答にはまだ未対応
+	* DRCS/DRCSMMv1に試験的に対応 (無視しているパラメータが多いので注意)
+		* yaftにはSCS(Select Character Set)が実装されていないので常にDRCSMMv1が有効
+	* OSC/DCSはソースファイルを分離 (osc.h, dcs.h)
+	* 8bpp時にVT switchが起きてもcmapを復元していなかったのを修正
+	* その他にも色々コードを整理

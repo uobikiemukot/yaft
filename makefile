@@ -1,4 +1,3 @@
-SHELL = /bin/bash
 CC = gcc
 CFLAGS += -std=c99 -pedantic -Wall
 LDFLAGS +=
@@ -11,13 +10,13 @@ PREFIX = $(DESTDIR)/usr
 
 all: $(DST)
 
-$(DST): mkfont
+$(DST): mkfont_bdf
 
-mkfont: tools/mkfont.c tools/font.h tools/bdf.h
+mkfont_bdf: tools/mkfont_bdf.c tools/font.h tools/bdf.h
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 $(DST): $(SRC) $(HDR)
-	./mkfont table/alias fonts/{milkjf_8x16r.bdf,milkjf_8x16.bdf,milkjf_k16.bdf} > glyph.h
+	./mkfont_bdf table/alias fonts/milkjf_k16.bdf fonts/milkjf_8x16.bdf fonts/milkjf_8x16r.bdf > glyph.h
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 install:
@@ -31,4 +30,4 @@ uninstall:
 	rm -rf $(PREFIX)/bin/yaft_wall
 
 clean:
-	rm -f $(DST) mkfont glyph.h
+	rm -f $(DST) mkfont_bdf glyph.h

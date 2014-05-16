@@ -7,16 +7,6 @@
 #include <locale.h>
 #include <wchar.h>
 
-enum {
-	SUBSTITUTE_HALF = 0x20, /* SPACE */
-	//SUBSTITUTE_HALF = 0xFFFD, /* REPLACEMENT CHARACTER: ambiguous width */
-	SUBSTITUTE_WIDE = 0x3000, /* IDEOGRAPHIC SPACE */
-	UCS2_CHARS = 0x10000,
-	DEFAULT_CHAR = 0x20,
-	BUFSIZE = 1024,
-	BITS_PER_BYTE = 8,
-};
-
 struct glyph_t {
 	uint8_t width, height;
 	uint32_t *bitmap;
@@ -53,6 +43,17 @@ void *emalloc(size_t size)
 		fatal("calloc");
 	return p;
 }
+
+/* for yaft original font format: not used
+
+CODE
+WIDTH HEIGHT
+BITMAP
+BITMAP
+BITMAP
+CODE
+WIDTH HEIGHT
+....
 
 void load_glyph(struct glyph_t *fonts, char *path)
 {
@@ -93,6 +94,7 @@ void load_glyph(struct glyph_t *fonts, char *path)
 
 	efclose(fp);
 }
+*/
 
 void load_alias(struct glyph_t *fonts, char *alias)
 {
@@ -124,6 +126,24 @@ void load_alias(struct glyph_t *fonts, char *alias)
 	efclose(fp);
 }
 
+void check_fonts(struct glyph_t *fonts)
+{
+	if (fonts[DEFAULT_CHAR].bitmap == NULL) {
+		fprintf(stderr, "default glyph(U+%.4X) not found\n", DEFAULT_CHAR);
+		exit(EXIT_FAILURE);
+	}
+
+	if (fonts[SUBSTITUTE_HALF].bitmap == NULL) {
+		fprintf(stderr, "half substitute glyph(U+%.4X) not found\n", SUBSTITUTE_HALF);
+		exit(EXIT_FAILURE);
+	}
+
+	if (fonts[SUBSTITUTE_WIDE].bitmap == NULL) {
+		fprintf(stderr, "wide substitute glyph(U+%.4X) not found\n", SUBSTITUTE_WIDE);
+		exit(EXIT_FAILURE);
+	}
+}
+
 void dump_fonts(struct glyph_t *fonts)
 {
 	int i, j, width;
@@ -134,30 +154,25 @@ void dump_fonts(struct glyph_t *fonts)
 
 	fprintf(stdout,
 		"struct static_glyph_t {\n"
+		"\tuint32_t code;\n"
 		"\tuint8_t width;\n"
 		"\tuint%d_t bitmap[%d];\n"
 		"};\n\n", ((cell_width + BITS_PER_BYTE - 1) / BITS_PER_BYTE) * BITS_PER_BYTE * 2, cell_height);
 	
-	/*
-	fprintf(stdout, "static const uint8_t cell_width = %d, cell_height = %d;\n",
-		cell_width, cell_height);
-	*/
 	fprintf(stdout, "enum {\n\tCELL_WIDTH = %d,\n\tCELL_HEIGHT = %d\n};\n\n",
 		cell_width, cell_height);
 
-	fprintf(stdout, "static const struct static_glyph_t fonts[UCS2_CHARS] = {\n");
+	fprintf(stdout, "static const struct static_glyph_t glyphs[] = {\n");
 	for (i = 0; i < UCS2_CHARS; i++) {
 		width = wcwidth(i);
 
-		if (width <= 0) /* not printable */
-			continue;
-
-		if ((fonts[i].bitmap == NULL) /* glyph not found */
-			|| (fonts[i].height != cell_height) /* invalid font height */
+		if ((width <= 0)                                 /* not printable */
+			|| (fonts[i].bitmap == NULL)                 /* glyph not found */
+			|| (fonts[i].height != cell_height)          /* invalid font height */
 			|| (fonts[i].width != (cell_width * width))) /* invalid font width */
 			continue;
 
-		fprintf(stdout, "[%d] = {%d, {", i, width);
+		fprintf(stdout, "\t{%d, %d, {", i, width);
 		for (j = 0; j < cell_height; j++)
 			fprintf(stdout, "0x%X%s", fonts[i].bitmap[j], (j == (cell_height - 1)) ? "": ", ");
 		fprintf(stdout, "}},\n");

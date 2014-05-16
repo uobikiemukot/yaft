@@ -4,7 +4,7 @@ void erase_cell(struct terminal *term, int y, int x)
 	struct cell *cp;
 
 	cp = &term->cells[x + y * term->cols];
-	cp->gp = &fonts[DEFAULT_CHAR];
+	cp->gp = term->glyph_map[DEFAULT_CHAR];
 	cp->color = term->color; /* bce */
 	cp->attribute = RESET;
 	cp->width = HALF;
@@ -164,19 +164,40 @@ void set_cursor(struct terminal *term, int y, int x)
 
 void addch(struct terminal *term, uint32_t code)
 {
-	int width;
+	int width, drcs_ku, drcs_ten;
 	const struct static_glyph_t *gp;
 
 	if (DEBUG)
 		fprintf(stderr, "addch: U+%.4X\n", code);
 
 	width = wcwidth(code);
+
 	if (width <= 0) /* zero width */
 		return;
-	else if (code >= UCS2_CHARS || fonts[code].width == 0) /* missing glyph */
-		gp = (width == 1) ? &fonts[SUBSTITUTE_HALF]: &fonts[SUBSTITUTE_WIDE];
+	else if (0x100000 <= code && 0x10FFFD) { /* Unicode private area: plane 16 */
+		/* DRCSMMv1
+			ESC ( SP <\xXX> <\xYY> ESC ( B
+			<===> U+10XXYY ( 0x40 <= 0xXX <=0x7E, 0x20 <= 0xYY <= 0x7F )
+		*/
+		drcs_ku = (0xFF00 & code) >> 8;
+		drcs_ten = 0xFF & code;
+		fprintf(stderr, "ku:0x%.2X ten:0x%.2X\n", drcs_ku, drcs_ten);
+
+		if ((0x40 <= drcs_ku && drcs_ku <= 0x7E)
+			&& (0x20 <= drcs_ten && drcs_ten <= 0x7F)
+			&& (term->drcs[drcs_ku - 0x40].chars != NULL))
+			gp = &term->drcs[drcs_ku - 0x40].chars[drcs_ten - 0x20]; /* sub each offset */
+		else {
+			fprintf(stderr, "drcs char not found\n");
+			gp = term->glyph_map[SUBSTITUTE_HALF];
+		}
+	}
+	else if (code >= UCS2_CHARS /* yaft support only UCS2 */
+		|| term->glyph_map[code] == NULL /* missing glyph */
+		|| term->glyph_map[code]->width != width) /* width unmatch */
+		gp = (width == 1) ? term->glyph_map[SUBSTITUTE_HALF]: term->glyph_map[SUBSTITUTE_WIDE];
 	else
-		gp = &fonts[code];
+		gp = term->glyph_map[code];
 
 	if ((term->wrap && term->cursor.x == term->cols - 1) /* folding */
 		|| (gp->width == WIDE && term->cursor.x == term->cols - 1)) {
@@ -194,12 +215,24 @@ void reset_esc(struct terminal *term)
 		fprintf(stderr, "*esc reset*\n");
 	memset(term->esc.buf, '\0', BUFSIZE);
 	term->esc.bp = term->esc.buf;
-	term->esc.state = RESET;
+	term->esc.state = STATE_RESET;
+}
+
+bool is_string_terminator(struct esc_t *esc, uint8_t ch)
+{
+	/* OSC/DCS ST: BELL or ESC \ */
+	if (ch == BEL)
+		return true;
+
+	if (ch == BACKSLASH && strlen(esc->buf) >= 2 && *(esc->bp - 2) == ESC)
+		return true;
+
+	return false;
 }
 
 bool push_esc(struct terminal *term, uint8_t ch)
 {
-	if (term->esc.bp == &term->esc.buf[BUFSIZE - 1]) { /* buffer limit */
+	if (term->esc.bp == &term->esc.buf[MAX_ESC_LENGTH - 1]) { /* buffer limit */
 		reset_esc(term);
 		return false;
 	}
@@ -208,35 +241,34 @@ bool push_esc(struct terminal *term, uint8_t ch)
 	if (term->esc.state == STATE_ESC) {
 		if ('0' <= ch && ch <= '~')
 			return true;
-		else if (' ' > ch || ch > '/')
+		else if (SPACE > ch || ch > '/')
 			reset_esc(term);
 	}
 	else if (term->esc.state == STATE_CSI) {
 		if ('@' <= ch && ch <= '~')
 			return true;
-		else if (' ' > ch || ch > '?')
+		else if (SPACE > ch || ch > '?')
 			reset_esc(term);
 	}
 	else if (term->esc.state == STATE_OSC) {
-		if ((ch == BEL)
-			|| (ch == BACKSLASH && strlen(term->esc.buf) >= 2 && *(term->esc.bp - 2) == ESC))
+		if (is_string_terminator(&term->esc, ch))
 			return true;
-		else if ((ch != ESC) && (' ' > ch || ch > '~'))
+		else if ((ch != ESC) && (ch < SPACE || ch >= DEL))
 			reset_esc(term);
 	}
 	else if (term->esc.state == STATE_DCS) {
-		if (ch == '{')
+		if (is_string_terminator(&term->esc, ch))
 			return true;
-		else if (ch != ';' && (ch < '0' || ch > '9'))
+		else if ((ch != ESC) && (ch < SPACE || ch >= DEL))
 			reset_esc(term);
 	}
 	return false;
 }
 
-void reset_ucs(struct terminal *term)
+void reset_charset(struct terminal *term)
 {
-	term->ucs.code = term->ucs.count = term->ucs.following_byte = 0;
-	term->ucs.is_valid = true;
+	term->charset.code = term->charset.count = term->charset.following_byte = 0;
+	term->charset.is_valid = true;
 }
 
 void redraw(struct terminal *term)
@@ -281,10 +313,10 @@ void reset(struct terminal *term)
 	}
 
 	reset_esc(term);
-	reset_ucs(term);
+	reset_charset(term);
 }
 
-void swap_int(int *a, int *b)
+void swap_resolution(int *a, int *b)
 {
 	int tmp;
 
@@ -293,24 +325,40 @@ void swap_int(int *a, int *b)
 	*b = tmp;
 }
 
-void term_init(struct terminal *term, struct pair res, int rotate)
+void term_init(struct terminal *term, int width, int height)
 {
-	term->width = res.x;
-	term->height = res.y;
+	int i;
+	uint32_t code, gi;
 
-	if (rotate == CLOCKWISE || rotate == COUNTER_CLOCKWISE)
-		swap_int(&term->width, &term->height);
+	term->width = width;
+	term->height = height;
 
 	term->cols = term->width / CELL_WIDTH;
 	term->lines = term->height / CELL_HEIGHT;
 
 	if (DEBUG)
 		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",
-			res.x, res.y, term->cols, term->lines);
+			width, height, term->cols, term->lines);
 
-	term->line_dirty = (bool *) emalloc(sizeof(bool) * term->lines);
-	term->tabstop = (bool *) emalloc(sizeof(bool) * term->cols);
-	term->cells = (struct cell *) emalloc(sizeof(struct cell) * term->cols * term->lines);
+	term->line_dirty = (bool *) ecalloc(sizeof(bool) * term->lines);
+	term->tabstop = (bool *) ecalloc(sizeof(bool) * term->cols);
+	term->cells = (struct cell *) ecalloc(sizeof(struct cell) * term->cols * term->lines);
+
+	/* initialize glyph map */
+	for (code = 0; code < UCS2_CHARS; code++)
+		term->glyph_map[code] = NULL;
+
+	for (gi = 0; gi < sizeof(glyphs) / sizeof(struct static_glyph_t); gi++)
+		term->glyph_map[glyphs[gi].code] = &glyphs[gi];
+
+	if (term->glyph_map[DEFAULT_CHAR] == NULL
+		|| term->glyph_map[SUBSTITUTE_HALF] == NULL
+		|| term->glyph_map[SUBSTITUTE_WIDE] == NULL)
+		fatal("cannot find DEFAULT_CHAR or SUBSTITUTE_HALF or SUBSTITUTE_HALF\n");
+
+	/* initialize drcs */
+	for (i = 0; i < DRCS_CHARSETS; i++)
+		term->drcs[i].chars = NULL;
 
 	reset(term);
 }

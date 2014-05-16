@@ -2,7 +2,6 @@
 #define _XOPEN_SOURCE 600
 #include <ctype.h>
 #include <errno.h>
-/* #include <execinfo.h> for DEBUG */
 #include <fcntl.h>
 #include <locale.h>
 #include <signal.h>
@@ -38,12 +37,16 @@ enum char_code {
 enum misc {
 	BITS_PER_BYTE = 8,
 	BUFSIZE = 1024,         /* read, esc, various buffer size */
+	MAX_ESC_LENGTH = 65535, /* limit of terminal escape sequence*/
 	SELECT_TIMEOUT = 20000, /* used by select() */
 	ESC_PARAMS = 16,        /* max parameters of csi/osc sequence */
 	COLORS = 256,           /* num of color */
 	UCS2_CHARS = 0x10000,   /* number of UCS2 glyph */
 	CTRL_CHARS = 0x20,      /* number of ctrl_func */
 	ESC_CHARS = 0x80,       /* number of esc_func */
+	DRCS_CHARSETS = 63,     /* number of charset of DRCS (according to DRCSMMv1) */
+	GLYPH_PER_CHARSET = 96, /* number of glyph of each DRCS charset */
+	BITS_PER_SIXEL = 6,     /* number of bits of a sixel */
 	DEFAULT_CHAR = SPACE,   /* used for erase char, cell_size */
 	RESET = 0x00,           /* reset for char_attr, term_mode, esc_state */
 	BRIGHT_INC = 8,         /* value used for brightening color */
@@ -86,7 +89,6 @@ enum esc_state {
 	STATE_CSI,       /* ESC [ */
 	STATE_OSC,       /* ESC ] */
 	STATE_DCS,       /* ESC P */
-	STATE_DSCS,
 };
 
 enum width_flag {
@@ -95,22 +97,12 @@ enum width_flag {
 	WIDE,
 };
 
-enum rotate_mode {
-	NORMAL = 0,
-	CLOCKWISE = 90,
-	UPSIDE_DOWN = 180,
-	COUNTER_CLOCKWISE = 270,
-};
-
-#include "glyph.h"
-
 struct tty_state {
 	struct termios *save_tm;
 	bool visible;
 	bool redraw_flag;
 	bool loop_flag;
 	bool background_draw;
-	bool lazy_draw;
 };
 
 struct pair { int x, y; };
@@ -122,7 +114,7 @@ struct cell {
 	const struct static_glyph_t *gp; /* pointer to glyph */
 	struct color_pair color;         /* color (fg, bg) */
 	uint8_t attribute;               /* bold, underscore, etc... */
-	enum width_flag width;                        /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
+	enum width_flag width;           /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
 };
 
 struct parm_t { /* for parse_arg() */
@@ -131,13 +123,13 @@ struct parm_t { /* for parse_arg() */
 };
 
 struct esc_t {
-	char buf[BUFSIZE];
+	char buf[MAX_ESC_LENGTH];
 	char *bp;
 	enum esc_state state; /* esc state */
 };
 
-struct ucs_t {
-	uint32_t code; /* UCS4: but only print UCS2 (<= U+FFFF) */
+struct charset_t {
+	uint32_t code; /* UCS4 code point but only print UCS2 (<= U+FFFF) */
 	int following_byte, count;
 	bool is_valid;
 };
@@ -148,28 +140,11 @@ struct state_t { /* for save, restore state */
 	uint8_t attribute;
 };
 
-//struct drcs_t { /* for drcs */
-	//int erase_mode;
-	//uint8_t start_char;
-//};
-
-struct terminal {
-	int fd;                  /* master fd */
-	int width, height;       /* terminal size (pixel) */
-	int cols, lines;         /* terminal size (cell) */
-	struct cell *cells;      /* pointer to each cell: cells[cols + lines * num_of_cols] */
-	struct margin scroll;    /* scroll margin */
-	struct pair cursor;      /* cursor pos (x, y) */
-	bool *line_dirty;        /* dirty flag */
-	bool *tabstop;           /* tabstop flag */
-	enum term_mode mode;     /* for set/reset mode */
-	bool wrap;               /* whether auto wrap occured or not */
-	struct state_t state;    /* for restore */
-	struct color_pair color; /* color (fg, bg) */
-	uint8_t attribute;       /* bold, underscore, etc... */
-	struct esc_t esc;        /* store escape sequence */
-	struct ucs_t ucs;        /* store UTF-8 sequence */
-	uint32_t color_palette[COLORS]; /* 256 color palette */
+struct drcs_t { /* for drcs */
+	uint8_t start_char;
+	int erase_mode;
+	//int charset_num;             /* 94 or 96 */
+	struct static_glyph_t *chars;
 };
 
 //struct sixel {
@@ -177,14 +152,34 @@ struct terminal {
 	//char *pixmap[CELL_HEIGHT]; /* size: 24bpp * cell width */
 //};
 
+struct terminal {
+	int fd;                         /* master fd */
+	int width, height;              /* terminal size (pixel) */
+	int cols, lines;                /* terminal size (cell) */
+	struct cell *cells;             /* pointer to each cell: cells[cols + lines * num_of_cols] */
+	struct margin scroll;           /* scroll margin */
+	struct pair cursor;             /* cursor pos (x, y) */
+	bool *line_dirty;               /* dirty flag */
+	bool *tabstop;                  /* tabstop flag */
+	enum term_mode mode;            /* for set/reset mode */
+	bool wrap;                      /* whether auto wrap occured or not */
+	struct state_t state;           /* for restore */
+	struct color_pair color;        /* color (fg, bg) */
+	uint8_t attribute;              /* bold, underscore, etc... */
+	struct esc_t esc;               /* store escape sequence */
+	struct charset_t charset;       /* store UTF-8 byte stream */
+	uint32_t color_palette[COLORS]; /* 256 color palette */
+	const struct static_glyph_t
+		*glyph_map[UCS2_CHARS];
+
+	struct drcs_t drcs[DRCS_CHARSETS];
+	int drcs_index;
+};
+
 struct tty_state tty = {
 	.save_tm = NULL,
 	.visible = true,
 	.redraw_flag = false,
 	.loop_flag = true,
 	.background_draw = false,
-	.lazy_draw = true,
 };
-
-#include "conf.h"  /* user configuration */
-#include "color.h" /* 256color definition */

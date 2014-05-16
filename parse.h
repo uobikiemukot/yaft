@@ -55,10 +55,7 @@ void (*csi_func[ESC_CHARS])(struct terminal * term, void *arg) = {
 	['`'] = curs_col,
 };
 
-void (*dcs_func[ESC_CHARS])(struct terminal * term, void *arg) = {
-	['{'] = decdld_header,
-};
-
+/* ctr char/esc sequence/charset function */
 void control_character(struct terminal *term, uint8_t ch)
 {
 	static const char *ctrl_char[] = {
@@ -83,7 +80,8 @@ void esc_sequence(struct terminal *term, uint8_t ch)
 	if (strlen(term->esc.buf) == 1 && esc_func[ch])
 		esc_func[ch](term, NULL);
 
-	if (ch != '[' && ch != ']')
+	/* reset for non csi/osc/dcs seqence */
+	if (ch != '[' && ch != ']' && ch != 'P')
 		reset_esc(term);
 }
 
@@ -102,6 +100,15 @@ void csi_sequence(struct terminal *term, uint8_t ch)
 		csi_func[ch](term, &parm);
 
 	reset_esc(term);
+}
+
+int is_osc_parm(int c)
+{
+	if (isdigit(c) || isalpha(c) ||
+		c == '?' || c == ':' || c == '/' || c == '#')
+		return 1;
+	else
+		return 0;
 }
 
 void osc_sequence(struct terminal *term, uint8_t ch)
@@ -140,23 +147,15 @@ void osc_sequence(struct terminal *term, uint8_t ch)
 
 void dcs_sequence(struct terminal *term, uint8_t ch)
 {
-	struct parm_t parm;
-
 	if (DEBUG)
 		fprintf(stderr, "dcs: DCS %s\n", term->esc.buf);
 
-	reset_parm(&parm);
-	parse_arg(term->esc.buf, &parm, ';', isdigit);
-	*(term->esc.bp - 1) = '\0'; /* omit final character */
+	parse_decdld_header(term);
 
-	if (dcs_func[ch])
-		dcs_func[ch](term, &parm);
-
-	if (ch != '{')
-		reset_esc(term);
+	reset_esc(term);
 }
 
-void utf8_character(struct terminal *term, uint8_t ch)
+void utf8_charset(struct terminal *term, uint8_t ch)
 {
 	if (0x80 <= ch && ch <= 0xBF) {
 		/* check illegal UTF-8 sequence
@@ -167,91 +166,92 @@ void utf8_character(struct terminal *term, uint8_t ch)
  			* 5 byte sequence: second byte following 0xF8 must be between 0x88 ~ 0xBF
  			* 6 byte sequence: second byte following 0xFC must be between 0x84 ~ 0xBF
 		*/
-		if ((term->ucs.following_byte == 0)
-			|| (term->ucs.following_byte == 1 && term->ucs.count == 0 && term->ucs.code <= 1) 
-			|| (term->ucs.following_byte == 2 && term->ucs.count == 0 && term->ucs.code == 0 && ch < 0xA0)
-			|| (term->ucs.following_byte == 3 && term->ucs.count == 0 && term->ucs.code == 0 && ch < 0x90)
-			|| (term->ucs.following_byte == 4 && term->ucs.count == 0 && term->ucs.code == 0 && ch < 0x88)
-			|| (term->ucs.following_byte == 5 && term->ucs.count == 0 && term->ucs.code == 0 && ch < 0x84))
-			term->ucs.is_valid = false;
+		if ((term->charset.following_byte == 0)
+			|| (term->charset.following_byte == 1 && term->charset.count == 0 && term->charset.code <= 1)
+			|| (term->charset.following_byte == 2 && term->charset.count == 0 && term->charset.code == 0 && ch < 0xA0)
+			|| (term->charset.following_byte == 3 && term->charset.count == 0 && term->charset.code == 0 && ch < 0x90)
+			|| (term->charset.following_byte == 4 && term->charset.count == 0 && term->charset.code == 0 && ch < 0x88)
+			|| (term->charset.following_byte == 5 && term->charset.count == 0 && term->charset.code == 0 && ch < 0x84))
+			term->charset.is_valid = false;
 
-		term->ucs.code <<= 6;
-		term->ucs.code += ch & 0x3F;
-		term->ucs.count++;
+		term->charset.code <<= 6;
+		term->charset.code += ch & 0x3F;
+		term->charset.count++;
 	}
 	else if (0xC0 <= ch && ch <= 0xDF) {
-		term->ucs.following_byte = 1;
-		term->ucs.count = 0;
-		term->ucs.code = ch & 0x1F;
+		term->charset.code = ch & 0x1F;
+		term->charset.following_byte = 1;
+		term->charset.count = 0;
 		return;
 	}
 	else if (0xE0 <= ch && ch <= 0xEF) {
-		term->ucs.following_byte = 2;
-		term->ucs.count = 0;
-		term->ucs.code = ch & 0x0F;
+		term->charset.code = ch & 0x0F;
+		term->charset.following_byte = 2;
+		term->charset.count = 0;
 		return;
 	}
 	else if (0xF0 <= ch && ch <= 0xF7) {
-		term->ucs.following_byte = 3;
-		term->ucs.count = 0;
-		term->ucs.code = ch & 0x07;
+		term->charset.code = ch & 0x07;
+		term->charset.following_byte = 3;
+		term->charset.count = 0;
 		return;
 	}
 	else if (0xF8 <= ch && ch <= 0xFB) {
-		term->ucs.following_byte = 4;
-		term->ucs.count = 0;
-		term->ucs.code = ch & 0x03;
+		term->charset.code = ch & 0x03;
+		term->charset.following_byte = 4;
+		term->charset.count = 0;
 		return;
 	}
 	else if (0xFC <= ch && ch <= 0xFD) {
-		term->ucs.following_byte = 5;
-		term->ucs.count = 0;
-		term->ucs.code = ch & 0x01;
+		term->charset.code = ch & 0x01;
+		term->charset.following_byte = 5;
+		term->charset.count = 0;
 		return;
 	}
 	else { /* 0xFE - 0xFF: not used in UTF-8 */
 		addch(term, REPLACEMENT_CHAR);
-		reset_ucs(term);
+		reset_charset(term);
 		return;
 	}
 
-	if (term->ucs.count >= term->ucs.following_byte) {
+	if (term->charset.count >= term->charset.following_byte) {
 		/*	illegal code point (ref: http://www.unicode.org/reports/tr27/tr27-4.html)
 			0xD800   ~ 0xDFFF : surrogate pair
 			0xFDD0   ~ 0xFDEF : noncharacter
 			0xnFFFE  ~ 0xnFFFF: noncharacter (n: 0x00 ~ 0x10)
 			0x110000 ~        : invalid (unicode U+0000 ~ U+10FFFF)
 		*/
-		if (!term->ucs.is_valid
-			|| (0xD800 <= term->ucs.code && term->ucs.code <= 0xDFFF)
-			|| (0xFDD0 <= term->ucs.code && term->ucs.code <= 0xFDEF)
-			|| ((term->ucs.code & 0xFFFF) == 0xFFFE || (term->ucs.code & 0xFFFF) == 0xFFFF)
-			|| (term->ucs.code > 0x10FFFF))
+		if (!term->charset.is_valid
+			|| (0xD800 <= term->charset.code && term->charset.code <= 0xDFFF)
+			|| (0xFDD0 <= term->charset.code && term->charset.code <= 0xFDEF)
+			|| ((term->charset.code & 0xFFFF) == 0xFFFE || (term->charset.code & 0xFFFF) == 0xFFFF)
+			|| (term->charset.code > 0x10FFFF))
 			addch(term, REPLACEMENT_CHAR);
 		else
-			addch(term, term->ucs.code);
+			addch(term, term->charset.code);
 
-		reset_ucs(term);
+		reset_charset(term);
 	}
 }
 
 void parse(struct terminal *term, uint8_t *buf, int size)
 {
-	uint8_t ch;
-	int i;
 	/*
 		CTRL CHARS      : 0x00 ~ 0x1F
 		ASCII(printable): 0x20 ~ 0x7E
 		CTRL CHARS(DEL) : 0x7F
 		UTF-8           : 0x80 ~ 0xFF
 	*/
+	uint8_t ch;
+	int i;
 
 	for (i = 0; i < size; i++) {
 		ch = buf[i];
 		if (term->esc.state == STATE_RESET) {
-			if (term->ucs.following_byte > 0 && (ch < 0x80 || ch > 0xBF)) { /* interrupt */
+			/* interrupted by illegal byte */
+			if (term->charset.following_byte > 0 && (ch < 0x80 || ch > 0xBF)) {
 				addch(term, REPLACEMENT_CHAR);
-				reset_ucs(term);
+				reset_charset(term);
 			}
 
 			if (ch <= 0x1F)
@@ -259,7 +259,7 @@ void parse(struct terminal *term, uint8_t *buf, int size)
 			else if (ch <= 0x7F)
 				addch(term, ch);
 			else
-				utf8_character(term, ch);
+				utf8_charset(term, ch);
 		}
 		else if (term->esc.state == STATE_ESC) {
 			if (push_esc(term, ch))
