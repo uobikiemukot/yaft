@@ -38,7 +38,7 @@ enum misc {
 	BITS_PER_BYTE = 8,
 	BUFSIZE = 1024,         /* read, esc, various buffer size */
 	MAX_ESC_LENGTH = 65535, /* limit of terminal escape sequence*/
-	SELECT_TIMEOUT = 20000, /* used by select() */
+	SELECT_TIMEOUT = 15000, /* used by select() */
 	ESC_PARAMS = 16,        /* max parameters of csi/osc sequence */
 	COLORS = 256,           /* num of color */
 	UCS2_CHARS = 0x10000,   /* number of UCS2 glyph */

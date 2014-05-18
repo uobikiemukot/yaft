@@ -4,8 +4,6 @@
 #include "color.h"
 #include "glyph.h"
 #include "util.h"
-//#include "linux.h"
-//#include "freebsd.h"
 #include "x.h"
 #include "terminal.h"
 #include "function.h"
@@ -66,10 +64,10 @@ void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 {
 	int size;
 	char buf[BUFSIZE], *customkey;
-	XKeyEvent *e = &ev->xkey;;
+	XKeyEvent *e = &ev->xkey;
 	KeySym keysym;
 
-	size = XLookupString(e, buf, BUFSIZE, &keysym, NULL);
+	size = XmbLookupString(xw->ic, e, buf, BUFSIZE, &keysym, NULL);
 	if ((customkey = keymap(keysym, e->state)))
 		ewrite(term->fd, customkey, strlen(customkey));
 	else
@@ -87,24 +85,9 @@ void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
 		term->lines = term->height / CELL_HEIGHT;
 		term->cols = term->width / CELL_WIDTH;
 
-		XFreePixmap(xw->display, xw->pixbuf);
-		xw->pixbuf = XCreatePixmap(xw->display, xw->window,
-			term->width, term->height, XDefaultDepth(xw->display, xw->screen));
-
-		free(term->line_dirty);
-		term->line_dirty = (bool *) ecalloc(sizeof(bool) * term->lines);
-
-		free(term->tabstop);
-		term->tabstop = (bool *) ecalloc(sizeof(bool) * term->cols);
-
-		free(term->cells);
-		term->cells = (struct cell *) ecalloc(sizeof(struct cell) * term->cols * term->lines);
-
 		reset(term);
 		ioctl(term->fd, TIOCSWINSZ, &(struct winsize)
 			{.ws_row = term->lines, .ws_col = term->cols, .ws_xpixel = 0, .ws_ypixel = 0});
-
-		parse(term, "\n", 1);
 	}
 }
 
@@ -122,10 +105,15 @@ void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
 {
 	extern struct tty_state tty;
 
-	if (ev->type == FocusIn)
+	if (ev->type == FocusIn) {
 		tty.visible = true;
-	else
+		XSetICFocus(xw->ic);
+	}
+	else {
 		tty.visible = false;
+		XUnsetICFocus(xw->ic);
+		XmbResetIC(xw->ic);
+	}
 
 	refresh(xw, term);
 }
@@ -138,40 +126,16 @@ static void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, 
 	[FocusOut] = xfocus,
 };
 
-void fork_and_exec(int *master, int lines, int cols)
+void fork_and_exec(int *master)
 {
-    int slave;
-    char *name = NULL;
-    pid_t pid;
+	pid_t pid;
 
-    if ((*master = posix_openpt(O_RDWR | O_NOCTTY)) < 0
-        || grantpt(*master) < 0 || unlockpt(*master) < 0
-        || (name = ptsname(*master)) == NULL)
-        error("forkpty");
+	pid = eforkpty(master, NULL, NULL, NULL);
 
-    slave = eopen(name, O_RDWR | O_NOCTTY);
-    ioctl(slave, TIOCSWINSZ, &(struct winsize)
-        {.ws_row = lines, .ws_col = cols, .ws_xpixel = 0, .ws_ypixel = 0});
-
-    pid = fork();
-    if (pid < 0)
-        error("fork");
-    else if (pid == 0) { /* child */
-        dup2(slave, STDIN_FILENO);
-        dup2(slave, STDOUT_FILENO);
-        dup2(slave, STDERR_FILENO);
-        setsid();
-        /* ioctl may fail in Mac : ref http://www.opensource.apple.com/source/Libc/Libc-825.25/util/pty.c?txt */
-        ioctl(slave, TIOCSCTTY, NULL);
-        close(slave);
-        close(*master);
-        if (setenv("TERM", term_name, 1) < 0)
-            error("setenv");
-        if (execlp(shell_cmd, shell_cmd, NULL) < 0)
-            error("execl");
+    if (pid == 0) { /* child */
+		esetenv("TERM", term_name, 1);
+		eexecvp(shell_cmd, (const char *[]){shell_cmd, NULL});
     }
-    /* parent */
-    close(slave);
 }
 
 int main()
@@ -194,7 +158,9 @@ int main()
 	term_init(&term, xw.width, xw.height);
 
 	/* fork and exec shell */
-	fork_and_exec(&term.fd, term.lines, term.cols);
+	fork_and_exec(&term.fd);
+	xresize(&xw, &term, (XEvent *) /* terminal size defined in x.h */
+		&(XConfigureEvent){.width = TERM_WIDTH, .height = TERM_HEIGHT});
 
 	/* main loop */
 	while (tty.loop_flag) {
@@ -202,7 +168,7 @@ int main()
 
 		while(XPending(xw.display)) {
 			XNextEvent(xw.display, &ev);
-			if(XFilterEvent(&ev, xw.window))
+			if (XFilterEvent(&ev, None))
 				continue;
 			if (event_func[ev.type])
 				event_func[ev.type](&xw, &term, &ev);
@@ -214,7 +180,7 @@ int main()
 				if (DEBUG)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
-				if (size == BUFSIZE) /* lazy drawing */
+				if (LAZY_DRAW && size == BUFSIZE) /* lazy drawing */
 					continue;
 				refresh(&xw, &term);
 			}

@@ -118,38 +118,15 @@ void tty_die()
 
 void fork_and_exec(int *master, int lines, int cols)
 {
-	int slave;
-	char *name = NULL;
 	pid_t pid;
 
-	if ((*master = posix_openpt(O_RDWR | O_NOCTTY)) < 0
-		|| grantpt(*master) < 0 || unlockpt(*master) < 0
-		|| (name = ptsname(*master)) == NULL)
-		error("forkpty");
+	pid = eforkpty(master, NULL, NULL,
+		&(struct winsize){.ws_row = lines, .ws_col = cols, .ws_xpixel = 0, .ws_ypixel = 0});
 
-	slave = eopen(name, O_RDWR | O_NOCTTY);
-	ioctl(slave, TIOCSWINSZ, &(struct winsize)
-		{.ws_row = lines, .ws_col = cols, .ws_xpixel = 0, .ws_ypixel = 0});
-
-	pid = fork();
-	if (pid < 0)
-		error("fork");
-	else if (pid == 0) { /* child */
-		dup2(slave, STDIN_FILENO);
-		dup2(slave, STDOUT_FILENO);
-		dup2(slave, STDERR_FILENO);
-		setsid();
-		/* ioctl may fail in Mac : ref http://www.opensource.apple.com/source/Libc/Libc-825.25/util/pty.c?txt */
-		ioctl(slave, TIOCSCTTY, NULL);
-		close(slave);
-		close(*master);
-		if (setenv("TERM", term_name, 1) < 0)
-			error("setenv");
-		if (execlp(shell_cmd, shell_cmd, NULL) < 0)
-			error("execl");
+	if (pid == 0) { /* child */
+		esetenv("TERM", term_name, 1);
+		eexecvp(shell_cmd, (const char *[]){shell_cmd, NULL});
 	}
-	/* parent */
-	close(slave);
 }
 
 void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
