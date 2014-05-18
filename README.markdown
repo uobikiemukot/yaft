@@ -6,6 +6,9 @@ Last update: Fri May 16 16:50:52 JST 2014
 ~~~
 $ git clone https://github.com/uobikiemukot/yaft
 ~~~
+or
+
+-	http://uobikiemukot.github.io/yaft/release/yaft-0.2.7.tar.gz
 
 ## features
 +	recognizes most of escape sequences of vt102 and linux console ([detail](http://uobikiemukot.github.io/yaft/escape.html))

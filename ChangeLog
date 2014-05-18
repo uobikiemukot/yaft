@@ -84,8 +84,30 @@
 			$ ./mkfont alias-file your/favorite/bdf > glyph.h
 			$ make yaft
 
+2012-11-30
+-   version 0.2.1
+-   bug fix
+    -   single CSI u (not following CSI s) causes Segmentation fault (reported by saitoha ([@kefir_]))
+
+[@kefir_]: http://saitoha.github.com/
+
+2012-12-02
+-   version 0.2.2
+-   improved UTF-8 parser (valid for [UTF-8 decoder capability and stress test])
+-   bug fix
+    -   not working glyph substitution
+
+[UTF-8 decoder capability and stress test]: http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
+
+2012-12-19
+-   version 0.2.3
+-   bug fix
+    -   wrong behavior of bce (ED, EL, DL, IL, ICH, DCH, ECH) (reported by IWAMOTO Kouichi ([@ttdoda]))
+
+[@ttdoda]: http://doda.teraterm.org/whoami.xhtm
+
 2014-03-07 haru
-	* version 0.2.1
+	* version 0.2.4
 	* conf.hにいくつかの設定を追加
 		* ROTATE = NORMAL or CLOCKWISE or COUNTER_CLOCKWISE or UPSIDE_DOWN
 		* LAZY_DRAW(データ量が多いときに描画を抑制する)を追加
@@ -93,7 +115,7 @@
 	* struct terminalのoffsetを削除
 
 2014-03-24
-	* version 0.2.2
+	* version 0.2.5
 	* BACKGROUND_DRAW, ROTATEの設定をconf.hでなく環境変数YAFTでするようにした
 	  (実行時に変更する必要がないと思われるものは相変わらずconf.hで指定)
 		* 環境変数YAFTで有効なオプション
@@ -147,7 +169,7 @@
 	* コードを色々整理した
 
 2014-05-16
-	* version 0.2.5
+	* version 0.2.6
 	* rorateオプションを消した
 	* glyph.hの書式を変更 (フォントによってはyaftのバイナリがかなり小さく)
 		* それに伴いtools/以下のソースを書き換え
@@ -160,7 +182,7 @@
 	* その他にも色々コードを整理
 
 2014-05-18
-	* version 0.2.6
+	* version 0.2.7
 	* 主にX版(yaftx)の修正
 		* ximが使えるようにした (scimのみで動作確認)
 		* 描画の処理をfb版に合わせて修正
