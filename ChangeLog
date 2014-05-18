@@ -158,3 +158,13 @@
 	* OSC/DCSはソースファイルを分離 (osc.h, dcs.h)
 	* 8bpp時にVT switchが起きてもcmapを復元していなかったのを修正
 	* その他にも色々コードを整理
+
+2014-05-18
+	* version 0.2.6
+	* 主にX版(yaftx)の修正
+		* ximが使えるようにした (scimのみで動作確認)
+		* 描画の処理をfb版に合わせて修正
+		* resizeの度にmalloc/freeをしていたのを止めた
+		* ioctl(TIOCSWINSZ)の位置おかしかったのを修正
+	* perror()の前にerrnoをちゃんと初期化するようにした (util.h)
+	* forkpty(), openpty()を書き直した (util.h)
