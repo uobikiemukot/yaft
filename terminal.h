@@ -181,7 +181,9 @@ void addch(struct terminal *term, uint32_t code)
 		*/
 		drcs_ku = (0xFF00 & code) >> 8;
 		drcs_ten = 0xFF & code;
-		fprintf(stderr, "ku:0x%.2X ten:0x%.2X\n", drcs_ku, drcs_ten);
+
+		if (DEBUG)
+			fprintf(stderr, "ku:0x%.2X ten:0x%.2X\n", drcs_ku, drcs_ten);
 
 		if ((0x40 <= drcs_ku && drcs_ku <= 0x7E)
 			&& (0x20 <= drcs_ten && drcs_ten <= 0x7F)
