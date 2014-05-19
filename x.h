@@ -23,9 +23,13 @@ struct keydef {
 
 const struct keydef key[] = {
     { XK_BackSpace, XK_NO_MOD, "\177"    },
+    { XK_Up,        Mod1Mask,  "\033\033[A"},
     { XK_Up,        XK_NO_MOD, "\033[A"  },
+    { XK_Down,      Mod1Mask,  "\033\033[B"},
     { XK_Down,      XK_NO_MOD, "\033[B"  },
+    { XK_Right,     Mod1Mask,  "\033\033[C"},
     { XK_Right,     XK_NO_MOD, "\033[C"  },
+    { XK_Left,      Mod1Mask,  "\033\033[D"},
     { XK_Left,      XK_NO_MOD, "\033[D"  },
     { XK_Begin,     XK_NO_MOD, "\033[G"  },
     { XK_Home,      XK_NO_MOD, "\033[1~" },
@@ -72,6 +76,31 @@ struct xwindow {
 	XIMStyle input_style;
 };
 
+void print_style(XIMStyle style)
+{
+    if (style & XIMPreeditCallbacks)
+        fprintf(stderr, "XIMPreeditCallbacks\n");
+    else if (style & XIMPreeditPosition)
+        fprintf(stderr, "XIMPreeditPosition\n");
+    else if (style & XIMPreeditArea)
+        fprintf(stderr, "XIMPreeditArea\n");
+    else if (style & XIMPreeditNothing)
+        fprintf(stderr, "XIMPreeditNothing\n");
+    else
+        fprintf(stderr, "XIMPreeditNone\n");
+
+    if (style & XIMStatusCallbacks)
+        fprintf(stderr, "XIMStatusCallbacks\n");
+    else if (style & XIMStatusArea)
+        fprintf(stderr, "XIMStatusArea\n");
+    else if (style & XIMStatusNothing)
+        fprintf(stderr, "XIMStatusNothing\n");
+    else
+        fprintf(stderr, "XIMStatusNone\n");
+	
+	fprintf(stderr, "\n");
+}
+
 XIMStyle select_better_style(XIMStyle im_style, XIMStyle best_style)
 {
 	XIMStyle i, b;
@@ -98,27 +127,32 @@ XIMStyle select_better_style(XIMStyle im_style, XIMStyle best_style)
 	b = best_style & preedit;
 
 	if (i != b) { /* different preedit style */
-		if (i | b | XIMPreeditCallbacks)
+		if ((i | b) & XIMPreeditCallbacks)
 			return (i == XIMPreeditCallbacks) ? im_style: best_style;
-		else if (i | b | XIMPreeditPosition)
+		else if ((i | b) & XIMPreeditPosition)
 			return (i == XIMPreeditPosition) ? im_style: best_style;
-		else if (i | b | XIMPreeditArea)
+		else if ((i | b) & XIMPreeditArea)
 			return (i == XIMPreeditArea) ? im_style: best_style;
-		else if (i | b | XIMPreeditNothing)
+		else if ((i | b) & XIMPreeditNothing)
 			return (i == XIMPreeditNothing) ? im_style: best_style;
+		else
+			return 0;
 	}
 	else { /* if preedit flags are the same, compare status flags */
 		i = im_style & status;
 		b = best_style & status;
 
-		if (i | b | XIMStatusCallbacks)
+		if ((i | b) & XIMStatusCallbacks)
 			return (i == XIMStatusCallbacks) ? im_style: best_style;
-		else if (i | b | XIMStatusArea)
+		else if ((i | b) & XIMStatusArea)
 			return (i == XIMStatusArea) ? im_style: best_style;
-		else if (i | b | XIMStatusNothing)
+		else if ((i | b) & XIMStatusNothing)
 			return (i == XIMStatusNothing) ? im_style: best_style;
+		else
+			return 0;
 	}
 }
+
 
 void im_init(struct xwindow *xw)
 {
@@ -142,8 +176,13 @@ void im_init(struct xwindow *xw)
 	XGetIMValues(xw->im, XNQueryInputStyle, &im_styles, NULL);
 	xw->input_style = 0;
 
+	if (DEBUG)
+		fprintf(stderr, "im supported styles:\n");
+
 	for (i = 0; i < im_styles->count_styles; i++) {
 		style = im_styles->supported_styles[i];
+		if (DEBUG)
+			print_style(style);
 
 		if ((style & app_styles) == style)
 			xw->input_style = select_better_style(style, xw->input_style);
@@ -153,10 +192,17 @@ void im_init(struct xwindow *xw)
 
 	XFree(im_styles);
 
+	if (DEBUG) {
+		fprintf(stderr, "input style\n");
+		print_style(xw->input_style);
+	}
+
 	/* create ic */
 	fontset = XCreateFontSet(xw->display, im_font,
 		&missing_charsets, &num_missing_charsets, &default_string);
-	list = XVaCreateNestedList(0, XNSpotLocation, &(XPoint){.x = 0, .y = 0}, XNFontSet, fontset, NULL);
+	list = XVaCreateNestedList(0, XNSpotLocation, &(XPoint){.x = 0, .y = 0},
+		XNForeground, color_list[DEFAULT_FG], XNBackground, color_list[DEFAULT_BG],
+		XNFontSet, fontset, NULL);
 
 	if ((xw->ic = XCreateIC(xw->im, XNInputStyle, xw->input_style,
 		XNPreeditAttributes, list, XNClientWindow, xw->window, NULL)) == NULL)
@@ -278,7 +324,7 @@ void set_preedit_pos(struct xwindow *xw, struct terminal *term)
 	XPoint pos;
 
 	pos.x = term->cursor.x * CELL_WIDTH;
-	pos.y = term->cursor.y * CELL_HEIGHT;
+	pos.y = (term->cursor.y + 1) * CELL_HEIGHT - 2;
 
 	list = XVaCreateNestedList(0, XNSpotLocation, &pos, NULL);
 

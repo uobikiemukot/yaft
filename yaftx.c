@@ -54,7 +54,8 @@ char *keymap(KeySym k, unsigned int state)
 
 	for(i = 0; i < length; i++) {
 		unsigned int mask = key[i].mask;
-		if(key[i].k == k && ((state & mask) == mask || (mask == XK_NO_MOD && !state)))
+		if(key[i].k == k &&
+			((state & mask) == mask || (mask == XK_NO_MOD && !state)))
 			return (char *) key[i].s;
 	}
 	return NULL;
@@ -70,8 +71,14 @@ void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	size = XmbLookupString(xw->ic, e, buf, BUFSIZE, &keysym, NULL);
 	if ((customkey = keymap(keysym, e->state)))
 		ewrite(term->fd, customkey, strlen(customkey));
-	else
+	else {
+		if (size == 1 && (e->state & Mod1Mask)) {
+			buf[1] = buf[0];
+			buf[0] = '\033';
+			size = 2;
+		}
 		ewrite(term->fd, buf, size);
+	}
 }
 
 void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
