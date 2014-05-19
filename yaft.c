@@ -88,7 +88,6 @@ void tty_init()
 		fatal("ioctl: KDSETMODE failed (maybe here is not console)");
 
 	tty.save_tm = (struct termios *) ecalloc(sizeof(struct termios));
-	set_rawmode(STDIN_FILENO, tty.save_tm);
 	ewrite(STDIN_FILENO, "\033[?25l", 6); /* make cusor invisible */
 }
 
@@ -160,6 +159,7 @@ int main()
 
 	/* fork and exec shell */
 	fork_and_exec(&term.fd, term.lines, term.cols);
+	set_rawmode(STDIN_FILENO, tty.save_tm);
 
 	/* main loop */
 	while (tty.loop_flag) {
