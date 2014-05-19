@@ -190,3 +190,10 @@
 		* ioctl(TIOCSWINSZ)の位置おかしかったのを修正
 	* perror()の前にerrnoをちゃんと初期化するようにした (util.h)
 	* forkpty(), openpty()を書き直した (util.h)
+
+2014-05-19
+	* version 0.2.8
+	* X版でMod1Mask(Alt)の修飾キーが効かなかったのを修正 (thanks to @H_Kobo)
+		* Alt + [Up/Down/Left/Right]等の特殊キーに対応
+	* XIMのinput styleの選択方法がバグってたのを修正
+	* eopenpty()でcompilerのwarningが出る箇所を修正 (util.h)
