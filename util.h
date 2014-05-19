@@ -142,7 +142,7 @@ int eopenpty(int *amaster, int *aslave, char *aname,
 	const struct termios *termp, const struct winsize *winsize)
 {
 	int master;
-	char *name;
+	char *name = NULL;
 	errno = 0;
 
 	if ((master = posix_openpt(O_RDWR | O_NOCTTY)) < 0
