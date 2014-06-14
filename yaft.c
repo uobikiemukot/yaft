@@ -4,8 +4,8 @@
 #include "color.h"
 #include "glyph.h"
 #include "util.h"
-//#include "linux.h"
-#include "freebsd.h"
+#include "linux.h"
+//#include "freebsd.h"
 #include "terminal.h"
 #include "function.h"
 #include "osc.h"
@@ -24,7 +24,7 @@ void sig_handler(int signo)
 			ioctl(STDIN_FILENO, VT_RELDISP, 1);
 			sigfillset(&sigset);
 			sigdelset(&sigset, SIGUSR1);
-			if (tty.background_draw)
+			if (BACKGROUND_DRAW)
 				tty.redraw_flag = true;
 			else
 				sigsuspend(&sigset);
@@ -61,15 +61,11 @@ void check_env(struct framebuffer *fb)
 		if ((strstr(env, "wallpaper") != NULL || strstr(env, "wall") != NULL)
 			&& fb->bpp > 1)
 			fb->wall = load_wallpaper(fb);
-
-		if (strstr(env, "background") != NULL || strstr(env, "bg") != NULL)
-			tty.background_draw = true;
 	}
 }
 
-void tty_init()
+void tty_init(struct termios *save_tm)
 {
-	extern struct tty_state tty; /* global var */
 	struct sigaction sigact;
 	struct vt_mode vtm;
 
@@ -87,11 +83,11 @@ void tty_init()
 	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
 		fatal("ioctl: KDSETMODE failed (maybe here is not console)");
 
-	tty.save_tm = (struct termios *) ecalloc(sizeof(struct termios));
+	set_rawmode(STDIN_FILENO, save_tm);
 	ewrite(STDIN_FILENO, "\033[?25l", 6); /* make cusor invisible */
 }
 
-void tty_die()
+void tty_die(struct termios *save_tm)
 {
  	/* no error handling */
 	extern struct tty_state tty; /* global var */
@@ -109,8 +105,7 @@ void tty_die()
 	ioctl(STDIN_FILENO, VT_SETMODE, &vtm);
 	ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT);
 
-	if (tty.save_tm != NULL)
-		tcsetattr(STDIN_FILENO, TCSAFLUSH, tty.save_tm);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, save_tm);
 	fflush(stdout);
 	ewrite(STDIN_FILENO, "\033[?25h", 6); /* make cursor visible */
 }
@@ -141,30 +136,36 @@ void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 int main()
 {
 	uint8_t buf[BUFSIZE];
+	int ret;
 	ssize_t size;
 	fd_set fds;
 	struct timeval tv;
 	struct framebuffer fb;
 	struct terminal term;
+	struct termios save_tm;
 
 	/* init */
 	setlocale(LC_ALL, "");
-	if (atexit(tty_die) != 0)
-		fatal("atexit failed");
-
-	tty_init();
+	tty_init(&save_tm);
 	fb_init(&fb, term.color_palette);
-	check_env(&fb);
 	term_init(&term, fb.width, fb.height);
+
+	if ((ret = setjmp(err_mgr.jmpbuf))) { /* return here if error occured */
+		tty_die(&save_tm);
+		term_die(&term);
+		fb_die(&fb);
+
+		return EXIT_FAILURE;
+	}
+	err_mgr.setjmp_called = true;
 
 	/* fork and exec shell */
 	fork_and_exec(&term.fd, term.lines, term.cols);
-	set_rawmode(STDIN_FILENO, tty.save_tm);
 
 	/* main loop */
 	while (tty.loop_flag) {
 		if (tty.redraw_flag) { 
-			/* at VT switching, need to restore cmap (8bpp mode) */
+			/* after VT switching, need to restore cmap (8bpp mode) */
 			if (fb.cmap != NULL) {
 				if (ioctl(fb.fd, FBIOPUTCMAP, fb.cmap) < 0)
 					fatal("ioctl: FBIOPUTCMAP failed");
@@ -189,13 +190,13 @@ int main()
 
 				if (LAZY_DRAW && size == BUFSIZE)
 					continue;
-				else
-					refresh(&fb, &term);
+				refresh(&fb, &term);
 			}
 		}
 	}
 
-	/* die */
+	/* normal exit */
+	tty_die(&save_tm);
 	term_die(&term);
 	fb_die(&fb);
 
