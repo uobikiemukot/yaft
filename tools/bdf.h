@@ -41,7 +41,7 @@ int pre_match(const char *buf, const char *str) {
 
 void print_bitmap(uint32_t *bitmap)
 {
-	int i, j;
+	unsigned int i, j;
 
 	for (i = 0; i < MAX_HEIGHT; i++) {
 		for (j = 1; j <= sizeof(uint32_t) * BITS_PER_BYTE; j++) {
@@ -116,7 +116,7 @@ void load_table(char *path, enum encode_t encode)
 	}
 }
 
-int read_header(char *buf, struct bdf_t *bdf, struct bdf_glyph_t *glyph)
+int read_header(char *buf, struct bdf_t *bdf)
 {
 	char *cp;
 
@@ -156,7 +156,7 @@ int read_header(char *buf, struct bdf_t *bdf, struct bdf_glyph_t *glyph)
 	return BDF_HEADER;
 }
 
-int read_char(char *buf, struct bdf_t *bdf, struct bdf_glyph_t *glyph)
+int read_char(char *buf, struct bdf_glyph_t *glyph)
 {
 	if (pre_match(buf, "BBX "))
 		sscanf(buf + strlen("BBX "), "%d %d %d %d", &glyph->bbw, &glyph->bbh, &glyph->bbx, &glyph->bby);
@@ -191,7 +191,7 @@ int read_bitmap(struct glyph_t *fonts, char *buf, struct bdf_t *bdf, struct bdf_
 
 		//fprintf(stderr, "code:%d width:%d height:%d\n", code, width, height);
 
-		if (0 <= code && code < UCS2_CHARS) {
+		if (code < UCS2_CHARS) {
 			fonts[code].width = width;
 			fonts[code].height = height;
 			fonts[code].bitmap = (uint32_t *) emalloc(sizeof(uint32_t) * fonts[code].height);
@@ -230,9 +230,9 @@ void load_bdf_glyph(struct glyph_t *fonts, char *path)
 		//fprintf(stderr, "%s\n", buf);
 
 		if (mode == BDF_HEADER)
-			mode = read_header(buf, &bdf, &glyph);
+			mode = read_header(buf, &bdf);
 		else if (mode == BDF_CHAR)
-			mode = read_char(buf, &bdf, &glyph);
+			mode = read_char(buf, &glyph);
 		else if (mode == BDF_BITMAP)
 			mode = read_bitmap(fonts, buf, &bdf, &glyph);
 	}

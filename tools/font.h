@@ -109,8 +109,7 @@ void load_alias(struct glyph_t *fonts, char *alias)
 			continue;
 
 		sscanf(buf, "%X %X", &dst, &src);
-		if (dst < 0 || dst >= UCS2_CHARS
-			|| src < 0 || src >= UCS2_CHARS)
+		if ((dst >= UCS2_CHARS) || (src >= UCS2_CHARS))
 			continue;
 
 		if (fonts[src].bitmap != NULL) {
@@ -153,7 +152,7 @@ void dump_fonts(struct glyph_t *fonts)
 	cell_height = fonts[DEFAULT_CHAR].height;
 
 	fprintf(stdout,
-		"struct static_glyph_t {\n"
+		"struct glyph_t {\n"
 		"\tuint32_t code;\n"
 		"\tuint8_t width;\n"
 		"\tuint%d_t bitmap[%d];\n"
@@ -162,7 +161,7 @@ void dump_fonts(struct glyph_t *fonts)
 	fprintf(stdout, "enum {\n\tCELL_WIDTH = %d,\n\tCELL_HEIGHT = %d\n};\n\n",
 		cell_width, cell_height);
 
-	fprintf(stdout, "static const struct static_glyph_t glyphs[] = {\n");
+	fprintf(stdout, "static const struct glyph_t glyphs[] = {\n");
 	for (i = 0; i < UCS2_CHARS; i++) {
 		width = wcwidth(i);
 
