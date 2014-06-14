@@ -17,6 +17,7 @@ or
 +	supports 256 colors (same as xterm)
 +	supports wallpaper
 +	supports DRCS (DECDLD/DRCSMMv1) (experimental)
++	supports sixel (experimental)
 
 ## recent changes
 for more detail, see [ChangeLog](http://uobikiemukot.github.io/yaft/changelog.html) (Japanese)
