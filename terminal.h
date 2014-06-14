@@ -282,12 +282,8 @@ inline bool is_string_terminator(struct esc_t *esc, uint8_t ch)
 	if (ch == BEL)
 		return true;
 
-	fprintf(stderr, "baz\n");
-
 	if (ch == BACKSLASH && (esc->bp - esc->buf) >= 2 && *(esc->bp - 2) == ESC)
 		return true;
-
-	fprintf(stderr, "qux\n");
 
 	return false;
 }
@@ -296,9 +292,6 @@ bool push_esc(struct terminal *term, uint8_t ch)
 {
 	long offset;
 
-	fprintf(stderr, "push_esc()\nstate:0x%.2X ch:0x%.2X offset:%ld\n",
-		term->esc.state, ch, term->esc.bp - term->esc.buf);
-
 	if ((term->esc.bp - term->esc.buf + 1) == term->esc.size) { /* buffer limit */
 		if (DEBUG)
 			fprintf(stderr, "escape sequence length > %d, reallocated\n", term->esc.size);
@@ -306,8 +299,6 @@ bool push_esc(struct terminal *term, uint8_t ch)
 		term->esc.buf  = erealloc(term->esc.buf, term->esc.size * 2);
 		term->esc.size *= 2;
 		term->esc.bp   = term->esc.buf + offset;
-		//reset_esc(term);
-		//return false;
 	}
 
 	/* ref: http://www.vt100.net/docs/vt102-ug/appendixd.html */
@@ -343,15 +334,11 @@ bool push_esc(struct terminal *term, uint8_t ch)
 			ESC  'P'          BEL  or ESC  '\'
 			0x1B 0x50 unknown 0x07 or 0x1B 0x5C
 		*/
-		if (is_string_terminator(&term->esc, ch)) {
-			fprintf(stderr, "foo\n");
+		if (is_string_terminator(&term->esc, ch))
 			return true;
-		}
 		else if ((ch == ESC || ch == CR || ch == LF || ch == BS || ch == HT)
-			|| (SPACE <= ch && ch <= '~')) {
-			fprintf(stderr, "bar\n");
+			|| (SPACE <= ch && ch <= '~'))
 			return false;
-		}
 	}
 
 
