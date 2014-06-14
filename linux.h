@@ -83,7 +83,7 @@ void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
 		fatal("ioctl: FBIOPUTCMAP failed");
 }
 
-inline uint32_t color2pixel(struct fb_var_screeninfo *vinfo, uint32_t color, bool similar)
+inline uint32_t color2pixel(struct fb_var_screeninfo *vinfo, uint32_t color)
 {
 	uint32_t r, g, b;
 
@@ -93,17 +93,14 @@ inline uint32_t color2pixel(struct fb_var_screeninfo *vinfo, uint32_t color, boo
 
 	/* pseudo color */
 	if (vinfo->bits_per_pixel == 8) {
-		if (similar) {                /* search similar color */
-			if (r == g && r == b) {   /* gray scale */
-				r = 24 * r / 256;
-				return 232 + r;
-			}                         /* 6x6x6 color cube */
-			r = 6 * r / 256;
-			g = 6 * g / 256;
-			b = 6 * b / 256;
-			return 16 + (r * 36) + (g * 6) + b;
-		}
-		return color; /* just return color palette index */
+		if (r == g && r == b) {   /* gray scale */
+			r = 24 * r / 256;
+			return 232 + r;
+		}                         /* 6x6x6 color cube */
+		r = 6 * r / 256;
+		g = 6 * g / 256;
+		b = 6 * b / 256;
+		return 16 + (r * 36) + (g * 6) + b;
 	}
 
 	/* direct color */
@@ -168,9 +165,12 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 	else /* non packed pixel, mono color, grayscale: not implimented */
 		fatal("unsupported framebuffer type");
 
-	for (i = 0; i < COLORS; i++) /* init color palette */
-		color_palette[i] = color2pixel(&vinfo, i, false);
-		//color_palette[i] = color_list[i];
+	for (i = 0; i < COLORS; i++) { /* init color palette */
+		if (fb->bpp == 1)
+			color_palette[i] = i;
+		else
+			color_palette[i] = color_list[i];
+	}
 
 	fb->fp = (unsigned char *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
 	fb->buf = (unsigned char *) ecalloc(1, fb->screen_size);
@@ -236,12 +236,10 @@ inline void draw_line(struct framebuffer *fb, struct terminal *term, int line)
 				/* set color palette */
 				if (gp->bitmap[glyph_height_offset] & (0x01 << (bit_shift + glyph_width_offset)))
 					pixel = term->color_palette[color.fg];
-					//pixel = color2pixel(&fb->vinfo, term->color_palette[color.fg], true);
 				else if (fb->wall && color.bg == DEFAULT_BG) /* wallpaper */
 					memcpy(&pixel, fb->wall + pos, fb->bpp);
 				else
 					pixel = term->color_palette[color.bg];
-					//pixel = color2pixel(&fb->vinfo, term->color_palette[color.bg], true);
 
 				/* update copy buffer only */
 				memcpy(fb->buf + pos, &pixel, fb->bpp);
@@ -288,7 +286,7 @@ inline void draw_sixel(struct framebuffer *fb, struct sixel_canvas_t *sc)
 			fb_pos  = (offset.x + w) * fb->bpp + (offset.y + h) * fb->line_length;
 
 			memcpy(&color, sc->data + sc_pos, sizeof(uint32_t));
-			similar = color2pixel(&fb->vinfo, color, true);
+			similar = color2pixel(&fb->vinfo, color);
 
 			memcpy(fb->buf + fb_pos, &similar, fb->bpp);
 		}
