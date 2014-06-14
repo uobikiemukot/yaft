@@ -1,5 +1,5 @@
-#CC = gcc
-CC = clang
+CC = gcc
+#CC = clang
 CFLAGS += -std=c99 -pedantic -Wall
 #-Os -s -pipe
 LDFLAGS +=
