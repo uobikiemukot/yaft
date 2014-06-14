@@ -169,7 +169,7 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 		if (fb->bpp == 1)
 			color_palette[i] = i;
 		else
-			color_palette[i] = color_list[i];
+			color_palette[i] = color2pixel(&vinfo, color_list[i]);
 	}
 
 	fb->fp = (unsigned char *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
