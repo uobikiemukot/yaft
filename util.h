@@ -3,13 +3,17 @@
 void error(char *str)
 {
 	perror(str);
-	exit(EXIT_FAILURE);
+	if (err_mgr.setjmp_called)
+		longjmp(err_mgr.jmpbuf, 1);
+	else
+		exit(EXIT_FAILURE);
 }
 
 void fatal(char *str)
 {
 	fprintf(stderr, "%s\n", str);
 	exit(EXIT_FAILURE);
+	//longjmp(jmpbuf, 2);
 }
 
 void warn(char *str)
@@ -60,12 +64,12 @@ void efclose(FILE *fp)
 		error("fclose");
 }
 
-void *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
+void *emmap(void *addr, size_t len, int prot, int flag, int fd, off_t offset)
 {
-	uint32_t *fp;
+	void *fp;
 	errno = 0;
 
-	if ((fp = (uint32_t *) mmap(0, len, prot, flag, fd, offset)) == MAP_FAILED)
+	if ((fp = mmap(addr, len, prot, flag, fd, offset)) == MAP_FAILED)
 		error("mmap");
 
 	return fp;
@@ -79,15 +83,26 @@ void emunmap(void *ptr, size_t len)
 		error("munmap");
 }
 
-void *ecalloc(size_t size)
+void *ecalloc(size_t nmemb, size_t size)
 {
-	void *p;
+	void *ptr;
 	errno = 0;
 
-	if ((p = calloc(1, size)) == NULL)
+	if ((ptr = calloc(nmemb, size)) == NULL)
 		error("calloc");
 
-	return p;
+	return ptr;
+}
+
+void *erealloc(void *ptr, size_t size)
+{
+	void *new;
+	errno = 0;
+
+	if ((new = realloc(ptr, size)) == NULL)
+		error("realloc");
+
+	return new;
 }
 
 void eselect(int max_fd, fd_set *fds, struct timeval *tv)
@@ -220,6 +235,20 @@ int eexecvp(const char *file, const char *argv[])
 	return ret;
 }
 
+long estrtol(const char *nptr, char **endptr, int base)
+{
+	long int ret;
+	errno = 0;
+
+	ret = strtol(nptr, endptr, base);
+	if (ret == LONG_MIN || ret == LONG_MAX) {
+		perror("strtol");
+		return 0;
+	}
+
+	return ret;
+}
+
 /* parse_arg functions */
 void reset_parm(struct parm_t *pt)
 {
@@ -230,31 +259,89 @@ void reset_parm(struct parm_t *pt)
 		pt->argv[i] = NULL;
 }
 
+void add_parm(struct parm_t *pt, char *cp)
+{
+	if (pt->argc >= ESC_PARAMS)
+		return;
+
+	if (DEBUG)
+		fprintf(stderr, "argv[%d]: %s\n",
+			pt->argc, (cp == NULL) ? "NULL": cp);
+
+	pt->argv[pt->argc] = cp;
+	pt->argc++;
+}
+
 void parse_arg(char *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
 {
-	int length;
-	char *cp;
+	/*
+		v..........v d           v.....v d v.....v ... d
+		(valid char) (delimiter)
+		argv[0]                  argv[1]   argv[2] ...   argv[argc - 1]
+	*/
+	size_t i, length;
+	char *cp, *vp;
+
+	if (buf == NULL)
+		return;
 
 	length = strlen(buf);
-	cp = buf;
+	if (DEBUG)
+		fprintf(stderr, "parse_arg()\nlength:%u\n", (unsigned) length);
 
-	while (cp < &buf[length]) {
-		if (*cp == delim)
+	vp = NULL;
+	for (i = 0; i < length; i++) {
+		cp = buf + i;
+
+		if (vp == NULL && is_valid(*cp))
+			vp = cp;
+
+		if (*cp == delim) {
 			*cp = '\0';
-		cp++;
-	}
-
-	cp = buf;
-	while (cp < &buf[length]) {
-		if (pt->argc < ESC_PARAMS && is_valid(*cp)) {
-			pt->argv[pt->argc] = cp;
-			pt->argc++;
+			add_parm(pt, vp);
+			vp = NULL;
 		}
 
-		while (is_valid(*cp))
-			cp++;
-
-		while (!is_valid(*cp) && cp <= &buf[length - 1])
-			cp++;
+		if (i == (length - 1) && (vp != NULL || *cp == '\0'))
+			add_parm(pt, vp);
 	}
+
+	if (DEBUG)
+		fprintf(stderr, "argc:%d\n", pt->argc);
+}
+
+/* other functions */
+uint32_t bit_reverse(uint32_t val, int bits)
+{
+	uint32_t ret = val;
+	int shift = bits - 1;
+
+	for (val >>= 1; val; val >>= 1) {
+		ret <<= 1;
+		ret |= val & 1;
+		shift--;
+	}
+
+	return ret <<= shift;
+}
+
+int my_ceil(int val, int div)
+{
+	return (val + div - 1) / div;
+}
+
+int dec2num(char *str)
+{
+	if (str == NULL)
+		return 0;
+
+	return estrtol(str, NULL, 10);
+}
+
+int hex2num(char *str)
+{
+	if (str == NULL)
+		return 0;
+
+	return estrtol(str, NULL, 16);
 }
