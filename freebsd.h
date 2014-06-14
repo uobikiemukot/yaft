@@ -25,6 +25,7 @@ struct framebuffer {
 	int bpp;              /* BYTES per pixel */
 	video_color_palette_t /* cmap for legacy framebuffer (8bpp pseudocolor) */
 		*cmap, *cmap_org;
+	video_info_t vinfo;
 };
 
 /* common functions */
@@ -32,49 +33,22 @@ char *load_wallpaper(struct framebuffer *fb)
 {
 	char *ptr;
 
-	ptr = (char *) ecalloc(fb->screen_size);
+	ptr = (char *) ecalloc(1, fb->screen_size);
 	memcpy(ptr, fb->fp, fb->screen_size);
 
 	return ptr;
 }
 
-void get_rgb(int i, struct color_t *color)
-{
-	extern const uint32_t color_list[]; /* global: see color.h */
-
-	color->r = (color_list[i] >> 16) & bit_mask[8];
-	color->g = (color_list[i] >> 8) & bit_mask[8];
-	color->b = (color_list[i] >> 0) & bit_mask[8];
-}
-
-uint32_t bit_reverse(uint32_t val, int bits)
-{
-	uint32_t ret = val;
-	int shift = bits - 1;
-
-	for (val >>= 1; val; val >>= 1) {
-			ret <<= 1;
-			ret |= val & 1;
-			shift--;
-	}
-
-	return ret <<= shift;
-}
-
 /* some functions for FreeBSD framebuffer */
-video_color_palette_t *cmap_create(video_info_t *video_info)
+void cmap_create(video_color_palette_t **cmap)
 {
-	video_color_palette_t *cmap;
-
-	cmap = (video_color_palette_t *) ecalloc(sizeof(video_color_palette_t));
-	cmap->index = 0;
-	cmap->count = COLORS;
-	cmap->red = (u_char *) ecalloc(sizeof(u_char) * COLORS);
-	cmap->green = (u_char *) ecalloc(sizeof(u_char) * COLORS);
-	cmap->blue = (u_char *) ecalloc(sizeof(u_char) * COLORS);
-	cmap->transparent = NULL;
-
-	return cmap;
+	*cmap                = (video_color_palette_t *) ecalloc(1, sizeof(video_color_palette_t));
+	(*cmap)->index       = 0;
+	(*cmap)->count       = COLORS;
+	(*cmap)->red         = (u_char *) ecalloc(COLORS, sizeof(u_char));
+	(*cmap)->green       = (u_char *) ecalloc(COLORS, sizeof(u_char));
+	(*cmap)->blue        = (u_char *) ecalloc(COLORS, sizeof(u_char));
+	(*cmap)->transparent = NULL;
 }
 
 void cmap_die(video_color_palette_t *cmap)
@@ -88,10 +62,11 @@ void cmap_die(video_color_palette_t *cmap)
 	}
 }
 
-void cmap_init(struct framebuffer *fb, video_info_t *video_info)
+void cmap_init(struct framebuffer *fb)
 {
 	int i;
-	struct color_t color;
+	uint8_t r, g, b;
+	//struct color_rgb color;
 
 	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org) < 0) { /* not fatal */
 		cmap_die(fb->cmap_org);
@@ -101,40 +76,73 @@ void cmap_init(struct framebuffer *fb, video_info_t *video_info)
 	for (i = 0; i < COLORS; i++) {
 		/* where is endian info? */
 		get_rgb(i, &color);
-		*(fb->cmap->red + i) = color.r;
+		*(fb->cmap->red + i)   = color.r;
 		*(fb->cmap->green + i) = color.g;
-		*(fb->cmap->blue + i) = color.b;
+		*(fb->cmap->blue + i)  = color.b;
 	}
 
 	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
 		fatal("ioctl: FBIOPUTCMAP failed");
 }
 
-uint32_t get_color(video_info_t *video_info, int i)
+uint32_t color2pixel(video_info_t *vinfo, uint32_t color, bool similar)
 {
+/*
 	uint32_t r, g, b;
-	struct color_t color;
+	struct color_rgb color;
 
 	if (video_info->vi_depth == 8)
 		return i;
 
-	/* where is endian info? */
-	get_rgb(i, &color);
-	r = color.r >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[0]);
-	g = color.g >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[1]);
-	b = color.b >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[2]);
+	//get_rgb(i, &color);
+	r = bit_mask[8] & (color_list[i] >> 16);
+	g = bit_mask[8] & (color_list[i] >> 8);
+	b = bit_mask[8] & (color_list[i] >> 0);
+	r = r >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[0]);
+	g = g >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[1]);
+	b = b >> (BITS_PER_BYTE - video_info->vi_pixel_fsizes[2]);
 
 	return (r << video_info->vi_pixel_fields[0])
 		+ (g << video_info->vi_pixel_fields[1])
 		+ (b << video_info->vi_pixel_fields[2]);
+*/
+	uint32_t r, g, b;
+
+	r = bit_mask[8] & (color >> 16);
+	g = bit_mask[8] & (color >> 8);
+	b = bit_mask[8] & (color >> 0);
+
+	/* pseudo color */
+	if (vinfo->vi_depth == 8) {
+		if (similar) {              /* search similar color */
+			if (r == g && r == b) { /* gray scale */
+				r = 24 * r / 256;
+				return 232 + r;
+			}                       /* 6x6x6 color cube */
+			r = 6 * r / 256;
+			g = 6 * g / 256;
+			b = 6 * b / 256;
+			return 16 + (r * 36) + (g * 6) + b;
+		}
+		return color; /* just return color palette index */
+	}
+
+	/* direct color */
+	r = r >> (BITS_PER_BYTE - vinfo->vi_pixel_fsizes[0]);
+	g = g >> (BITS_PER_BYTE - vinfo->vi_pixel_fsizes[1]);
+	b = b >> (BITS_PER_BYTE - vinfo->vi_pixel_fsizes[2]);
+
+	return (r << vinfo->vi_pixel_fields[0])
+		+ (g << vinfo->vi_pixel_fields[1])
+		+ (b << vinfo->vi_pixel_fields[2]);
 }
 
 void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 {
 	int i, video_mode;
-	char *path;
-	video_info_t video_info;
-	video_adapter_info_t video_adapter_info;
+	char *path, *env;
+	video_info_t vinfo;
+	video_adapter_info_t ainfo;
 
 	if ((path = getenv("FRAMEBUFFER")) != NULL)
 		fb->fd = eopen(path, O_RDWR);
@@ -144,40 +152,46 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 	if (ioctl(fb->fd, FBIO_GETMODE, &video_mode) < 0)
 		fatal("ioctl: FBIO_GETMODE failed");
 
-	video_info.vi_mode = video_mode;
-	if (ioctl(fb->fd, FBIO_MODEINFO, &video_info) < 0)
+	vinfo.vi_mode = video_mode;
+	if (ioctl(fb->fd, FBIO_MODEINFO, &vinfo) < 0)
 		fatal("ioctl: FBIO_MODEINFO failed");
 
-	if (ioctl(fb->fd, FBIO_ADPINFO, &video_adapter_info) < 0)
+	if (ioctl(fb->fd, FBIO_ADPINFO, &ainfo) < 0)
 		fatal("ioctl: FBIO_ADPINFO failed");
 
-	fb->width  = video_info.vi_width;
-	fb->height = video_info.vi_height;
+	fb->width  = vinfo.vi_width;
+	fb->height = vinfo.vi_height;
 
-	fb->screen_size = video_adapter_info.va_window_size;
-	fb->line_length = video_adapter_info.va_line_width;
+	fb->screen_size = ainfo.va_window_size;
+	fb->line_length = ainfo.va_line_width;
 
-	if ((video_info.vi_mem_model == V_INFO_MM_PACKED || video_info.vi_mem_model == V_INFO_MM_DIRECT)
-		&& (video_info.vi_depth == 15 || video_info.vi_depth == 16
-		|| video_info.vi_depth == 24 || video_info.vi_depth == 32)) {
+	if ((vinfo.vi_mem_model == V_INFO_MM_PACKED || vinfo.vi_mem_model == V_INFO_MM_DIRECT)
+		&& (vinfo.vi_depth == 15 || vinfo.vi_depth == 16
+		|| vinfo.vi_depth == 24 || vinfo.vi_depth == 32)) {
 		fb->cmap = fb->cmap_org = NULL;
-		fb->bpp = (video_info.vi_depth + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
+		fb->bpp = my_ceil(vinfo.vi_depth, BITS_PER_BYTE);
 	}
-	else if ((video_adapter_info.va_flags & V_ADP_PALETTE) &&
-		video_info.vi_mem_model == V_INFO_MM_PACKED && video_info.vi_depth == 8) {
-		fb->cmap = cmap_create(&video_info);
-		fb->cmap_org = cmap_create(&video_info);
-		cmap_init(fb, &video_info);
+	else if ((ainfo.va_flags & V_ADP_PALETTE) &&
+		vinfo.vi_mem_model == V_INFO_MM_PACKED && vinfo.vi_depth == 8) {
+		cmap_create(&fb->cmap);
+		cmap_create(&fb->cmap_org);
+		cmap_init(fb);
 		fb->bpp = 1;
 	}
 	else /* non packed pixel, mono color, grayscale: not implimented */
 		fatal("unsupported framebuffer type");
 
 	for (i = 0; i < COLORS; i++) /* init color palette */
-		color_palette[i] = get_color(&video_info, i);
+		color_palette[i] = color2pixel(&vinfo, i, false);
 
-	fb->fp = (char *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
-	fb->buf = (char *) ecalloc(fb->screen_size);
+	fb->fp    = (char *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
+	fb->buf   = (char *) ecalloc(1, fb->screen_size);
+	fb->vinfo = *vinfo;
+
+	fb->wall = NULL;
+	if (((env = getenv("YAFT")) != NULL)
+		&& (strstr(env, "wallpaper") != NULL || strstr(env, "wall") != NULL))
+			fb->wall = load_wallpaper(fb);
 }
 
 void fb_die(struct framebuffer *fb)
@@ -200,7 +214,7 @@ void draw_line(struct framebuffer *fb, struct terminal *term, int line)
 	uint32_t pixel;
 	struct color_pair color;
 	struct cell *cp;
-	const struct static_glyph_t *gp;
+	const struct glyph_t *gp;
 
 	for (col = term->cols - 1; col >= 0; col--) {
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
@@ -216,7 +230,7 @@ void draw_line(struct framebuffer *fb, struct terminal *term, int line)
 			|| (cp->width == WIDE && (col + 1) == term->cursor.x)
 			|| (cp->width == NEXT_TO_WIDE && (col - 1) == term->cursor.x))) {
 			color.fg = DEFAULT_BG;
-			color.bg = (!tty.visible && tty.background_draw) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
+			color.bg = (!tty.visible && BACKGROUND_DRAW) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
 		}
 
 		for (glyph_height_offset = 0; glyph_height_offset < CELL_HEIGHT; glyph_height_offset++) {
@@ -259,9 +273,43 @@ void draw_line(struct framebuffer *fb, struct terminal *term, int line)
 	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
 }
 
+void draw_sixel(struct framebuffer *fb, struct sixel_canvas_t *sc)
+{
+	int h, w, fb_pos, sc_pos;
+	uint32_t color, similar;
+	struct point_t offset;
+
+	offset.x = sc->ref_cell.x * CELL_WIDTH;
+	offset.y = sc->ref_cell.y * CELL_HEIGHT;
+
+	if (DEBUG)
+		fprintf(stderr, "offset(%d, %d) width:%d height:%d\n",
+			offset.x, offset.y, sc->width, sc->height);
+
+	for (h = 0; h < sc->max_height; h++) {
+		if ((offset.y + h) >= fb->height)
+			break;
+		for (w = 0; w < sc->max_width; w++) {
+			if ((offset.x + w) >= fb->width)
+				break;
+
+			sc_pos  = w * sizeof(uint32_t) + h * sc->line_length;
+			fb_pos  = (offset.x + w) * fb->bpp + (offset.y + h) * fb->line_length;
+
+			memcpy(&color, sc->data + sc_pos, sizeof(uint32_t));
+			similar = color2pixel(&fb->vinfo, color, true);
+
+			memcpy(fb->buf + fb_pos, &similar, fb->bpp);
+		}
+		fb_pos = offset.x * fb->bpp + (offset.y + h) * fb->line_length;
+		memcpy(fb->fp + fb_pos, fb->buf + fb_pos, sc->max_width * fb->bpp);
+	}
+}
+
 void refresh(struct framebuffer *fb, struct terminal *term)
 {
-	int line;
+	int i, line;
+	struct sixel_canvas_t *sc;
 
 	if (term->mode & MODE_CURSOR)
 		term->line_dirty[term->cursor.y] = true;
@@ -269,5 +317,11 @@ void refresh(struct framebuffer *fb, struct terminal *term)
 	for (line = 0; line < term->lines; line++) {
 		if (term->line_dirty[line])
 			draw_line(fb, term, line);
+	}
+
+	for (i = 0; i < MAX_SIXEL_CANVAS; i++) {
+		sc = &term->sixel_canvas[i];
+		if (sc->data != NULL)
+			draw_sixel(fb, sc);
 	}
 }
