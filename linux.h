@@ -91,7 +91,7 @@ inline uint32_t color2pixel(struct fb_var_screeninfo *vinfo, uint32_t color, boo
 	g = bit_mask[8] & (color >> 8);
 	b = bit_mask[8] & (color >> 0);
 
- 	/* pseudo color */
+	/* pseudo color */
 	if (vinfo->bits_per_pixel == 8) {
 		if (similar) {                /* search similar color */
 			if (r == g && r == b) {   /* gray scale */

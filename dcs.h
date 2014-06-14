@@ -218,7 +218,7 @@ inline int sixel_nl(struct sixel_canvas_t *sc)
 		and down one line of sixels:
 		http://odl.sysworks.biz/disk$vaxdocdec963/decw$book/d3qsaaa1.p67.decw$book */
 	sc->point.y += BITS_PER_SIXEL;
-	sc->point.x = 0; 
+	sc->point.x = 0;
 
 	if (sc->point.y > sc->height)
 		sc->height = sc->point.y;
@@ -344,7 +344,7 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 	if (DEBUG)
 		fprintf(stderr, "ref_cell(%d, %d) sixel_canvas_num:%d\n",
 			sc->ref_cell.x, sc->ref_cell.y, term->sixel_canvas_num);
-	
+
 	sixel_parse_data(sc, cp + 1); /* skip ';' after 'q' */
 	/* TODO: shrink image buffer */
 	if (term->mode & MODE_SIXSCR)
