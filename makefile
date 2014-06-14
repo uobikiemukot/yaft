@@ -1,5 +1,7 @@
-CC = gcc
-CFLAGS += -std=c99 -pedantic -Wall -Os -s -pipe
+#CC = gcc
+CC = clang
+CFLAGS += -std=c99 -pedantic -Wall
+#-Os -s -pipe
 LDFLAGS +=
 
 XCFLAGS += -I/usr/include/X11/
