@@ -2,6 +2,8 @@
 /*
 	Standard VGA colors
 	http://en.wikipedia.org/wiki/ANSI_escape_code
+
+	byte order: (MSB) RR GG BB (LSB)
 */
 const uint32_t color_list[256] = {
 	/* system color: 16 */
