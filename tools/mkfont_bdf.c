@@ -1,4 +1,4 @@
-#include "../common.h"
+#include "mkfont_bdf.h"
 #include "../conf.h"
 #include "font.h"
 #include "bdf.h"
@@ -27,5 +27,5 @@ int main(int argc, char *argv[])
 
 	check_fonts(fonts);
 
-	return 0;
+	return EXIT_SUCCESS;
 }
