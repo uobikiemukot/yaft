@@ -1,8 +1,9 @@
 CC = gcc
 #CC = clang
-CFLAGS += -std=c99 -pedantic -Wall -Wextra \
--Os -s -pipe
-#-Ofast -flto -s -pipe
+CFLAGS += -std=c99 -pedantic -Wall -Wextra -s -pipe \
+-Os
+#-march=native -Ofast -flto
+#-Og -pg -g -rdynamic
 LDFLAGS +=
 
 XCFLAGS += -I/usr/include/X11/
