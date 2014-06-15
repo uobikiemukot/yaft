@@ -43,25 +43,13 @@ void set_rawmode(int fd, struct termios *save_tm)
 
 	etcgetattr(fd, save_tm);
 	tm = *save_tm;
-	tm.c_iflag = tm.c_oflag = RESET;
+	tm.c_iflag = tm.c_oflag = 0;
 	tm.c_cflag &= ~CSIZE;
 	tm.c_cflag |= CS8;
 	tm.c_lflag &= ~(ECHO | ISIG | ICANON);
 	tm.c_cc[VMIN] = 1;  /* min data size (byte) */
 	tm.c_cc[VTIME] = 0; /* time out */
 	etcsetattr(fd, TCSAFLUSH, &tm);
-}
-
-void check_env(struct framebuffer *fb)
-{
-	extern struct tty_state tty; /* global var */
-	char *env;
-
-	if ((env = getenv("YAFT")) != NULL) {
-		if ((strstr(env, "wallpaper") != NULL || strstr(env, "wall") != NULL)
-			&& fb->bpp > 1)
-			fb->wall = load_wallpaper(fb);
-	}
 }
 
 void tty_init(struct termios *save_tm)
@@ -78,7 +66,7 @@ void tty_init(struct termios *save_tm)
 	vtm.mode = VT_PROCESS;
 	vtm.waitv = 0;
 	vtm.relsig = vtm.acqsig = vtm.frsig = SIGUSR1;
-	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm))
+	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm) < 0)
 		fatal("ioctl: VT_SETMODE failed (maybe here is not console)");
 	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
 		fatal("ioctl: KDSETMODE failed (maybe here is not console)");
@@ -90,7 +78,6 @@ void tty_init(struct termios *save_tm)
 void tty_die(struct termios *save_tm)
 {
  	/* no error handling */
-	extern struct tty_state tty; /* global var */
 	struct sigaction sigact;
 	struct vt_mode vtm;
 
@@ -136,7 +123,6 @@ void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 int main()
 {
 	uint8_t buf[BUFSIZE];
-	int ret;
 	ssize_t size;
 	fd_set fds;
 	struct timeval tv;
@@ -149,15 +135,6 @@ int main()
 	tty_init(&save_tm);
 	fb_init(&fb, term.color_palette);
 	term_init(&term, fb.width, fb.height);
-
-	if ((ret = setjmp(err_mgr.jmpbuf))) { /* return here if error occured */
-		tty_die(&save_tm);
-		term_die(&term);
-		fb_die(&fb);
-
-		return EXIT_FAILURE;
-	}
-	err_mgr.setjmp_called = true;
 
 	/* fork and exec shell */
 	fork_and_exec(&term.fd, term.lines, term.cols);
