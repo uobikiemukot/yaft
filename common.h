@@ -18,6 +18,8 @@
 #include <unistd.h>
 #include <wchar.h>
 
+#include "glyph.h"
+
 enum char_code {
 	/* 7 bit */
 	BEL = 0x07, BS  = 0x08, HT  = 0x09,
@@ -112,9 +114,8 @@ struct cell_t {
 	struct color_pair_t color_pair; /* color (fg, bg) */
 	uint8_t attribute;              /* bold, underscore, etc... */
 	enum glyph_width_t width;       /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
-
 	bool has_bitmap;
-	unsigned char bitmap[BYTES_PER_PIXEL * 16 * 8];
+	unsigned char bitmap[BYTES_PER_PIXEL * CELL_WIDTH * CELL_HEIGHT];
 };
 
 struct esc_t {
@@ -139,10 +140,15 @@ struct state_t {   /* for save, restore state */
 
 struct sixel_canvas_t {
 	unsigned char *bitmap;
+	struct point_t point;
 	int width, height;
 	int line_length;
-	int ratio, background;
-	struct point_t point;
+	/*
+	int ratio;
+	int background_mode;
+	uint32_t background_color;
+	uint32_t foreground_color;
+	*/
 	uint8_t color_index;
 	uint32_t color_table[COLORS];
 };
