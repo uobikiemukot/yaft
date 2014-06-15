@@ -281,7 +281,6 @@ void parse(struct terminal *term, uint8_t *buf, int size)
 
 	for (i = 0; i < size; i++) {
 		ch = buf[i];
-		//fprintf(stderr, "buf:%.2X (%c)\n", ch, ch);
 		if (term->esc.state == STATE_RESET) {
 			/* interrupted by illegal byte */
 			if (term->charset.following_byte > 0 && (ch < 0x80 || ch > 0xBF)) {
