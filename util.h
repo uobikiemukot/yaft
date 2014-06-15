@@ -3,22 +3,13 @@
 void error(char *str)
 {
 	perror(str);
-	if (err_mgr.setjmp_called)
-		longjmp(err_mgr.jmpbuf, 1);
-	else
-		exit(EXIT_FAILURE);
+	exit(EXIT_FAILURE);
 }
 
 void fatal(char *str)
 {
 	fprintf(stderr, "%s\n", str);
 	exit(EXIT_FAILURE);
-	//longjmp(jmpbuf, 2);
-}
-
-void warn(char *str)
-{
-	fprintf(stderr, "%s\n", str);
 }
 
 /* wrapper of C functions */
