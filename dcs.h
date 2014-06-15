@@ -6,7 +6,7 @@ enum {
 	LSMAX  = 100,
 };
 
-inline int sixel_bitmap(struct sixel_canvas_t *sc, uint8_t bitmap)
+inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc, uint8_t bitmap)
 {
 	int i, offset;
 
@@ -17,7 +17,7 @@ inline int sixel_bitmap(struct sixel_canvas_t *sc, uint8_t bitmap)
 			bitmap, sc->point.x, sc->point.y);
 
 	for (i = 0; i < BITS_PER_SIXEL; i++) {
-		if (bitmap & (0x01 << i))
+		if (bitmap & (0x01 << i) && offset < BYTES_PER_PIXEL * term->width * term->height)
 			memcpy(sc->bitmap + offset, &sc->color_table[sc->color_index], BYTES_PER_PIXEL);
 		offset += sc->line_length;
 	}
@@ -29,7 +29,7 @@ inline int sixel_bitmap(struct sixel_canvas_t *sc, uint8_t bitmap)
 	return 1;
 }
 
-inline int sixel_repeat(struct sixel_canvas_t *sc, char *buf)
+inline int sixel_repeat(struct terminal *term, struct sixel_canvas_t *sc, char *buf)
 {
 	int i, count;
 	size_t length;
@@ -53,7 +53,7 @@ inline int sixel_repeat(struct sixel_canvas_t *sc, char *buf)
 	if ('?' <= *cp && *cp <= '~') {
 		bitmap = bit_mask[BITS_PER_SIXEL] & (*cp - '?');
 		for (i = 0; i < count; i++)
-			sixel_bitmap(sc, bitmap);
+			sixel_bitmap(term, sc, bitmap);
 	}
 
 	return length + 1;
@@ -226,7 +226,7 @@ inline int sixel_nl(struct sixel_canvas_t *sc)
 	return 1;
 }
 
-void sixel_parse_data(struct sixel_canvas_t *sc, char *start_buf)
+void sixel_parse_data(struct terminal *term, struct sixel_canvas_t *sc, char *start_buf)
 {
 	/*
 	DECDLD sixel data
@@ -268,7 +268,7 @@ void sixel_parse_data(struct sixel_canvas_t *sc, char *start_buf)
 
 	while (cp < end_buf) {
 		if (*cp == '!')
-			size = sixel_repeat(sc, cp);
+			size = sixel_repeat(term, sc, cp);
 		else if (*cp == '"')
 			size = sixel_attr(sc, cp);
 		else if (*cp == '#')
@@ -279,7 +279,7 @@ void sixel_parse_data(struct sixel_canvas_t *sc, char *start_buf)
 			size = sixel_nl(sc);
 		else if ('?' <= *cp && *cp <= '~')  {
 			bitmap =  bit_mask[BITS_PER_SIXEL] & (*cp - '?');
-			size = sixel_bitmap(sc, bitmap);
+			size = sixel_bitmap(term, sc, bitmap);
 		}
 		else if (*cp == '\0') /* end of sixel data */
 			break;
@@ -309,8 +309,8 @@ void reset_sixel(struct sixel_canvas_t *sc)
 void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 {
 	int y, x, h, cols, lines;
+	int src_offset, dst_offset;
 	struct cell_t *cellp;
-	unsigned char *src, *dst;
 
 	cols  = my_ceil(sc->width, CELL_WIDTH);
 	lines = my_ceil(sc->height, CELL_HEIGHT);
@@ -324,9 +324,10 @@ void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 			cellp = &term->cells[term->cursor.y * term->cols + (term->cursor.x + x)];
 			cellp->has_bitmap = true;
 			for (h = 0; h < CELL_HEIGHT; h++) {
-				src = sc->bitmap + (y * CELL_HEIGHT + h) * sc->line_length + (CELL_WIDTH * x) * BYTES_PER_PIXEL;
-				dst = cellp->bitmap + h * CELL_WIDTH * BYTES_PER_PIXEL;
-				memcpy(dst, src, CELL_WIDTH * BYTES_PER_PIXEL);
+				src_offset = (y * CELL_HEIGHT + h) * sc->line_length + (CELL_WIDTH * x) * BYTES_PER_PIXEL;
+				dst_offset = h * CELL_WIDTH * BYTES_PER_PIXEL;
+				if (src_offset < BYTES_PER_PIXEL * term->width * term->height)
+					memcpy(cellp->bitmap + dst_offset, sc->bitmap + src_offset, CELL_WIDTH * BYTES_PER_PIXEL);
 			}
 		}
 		move_cursor(term, 1, 0);
@@ -378,7 +379,7 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 	reset_sixel(&sc);
 	sc.bitmap      = (unsigned char *) ecalloc(term->width * term->height, BYTES_PER_PIXEL);
 	sc.line_length = term->width * BYTES_PER_PIXEL;
-	sixel_parse_data(&sc, cp + 1); /* skip ';' after 'q' */
+	sixel_parse_data(term, &sc, cp + 1); /* skip 'q' */
 	sixel_copy2cell(term, &sc);
 	free(sc.bitmap);
 }
