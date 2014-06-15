@@ -10,6 +10,9 @@ inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc, uint8_
 {
 	int i, offset;
 
+	if (sc->point.x >= term->width || sc->point.y >= term->height)
+		return 1;
+
 	offset = sc->point.x * BYTES_PER_PIXEL + sc->point.y * sc->line_length;
 
 	if (DEBUG)
@@ -296,6 +299,9 @@ void sixel_parse_data(struct terminal *term, struct sixel_canvas_t *sc, char *st
 			size = 1;
 		cp += size;
 	}
+
+	if (DEBUG)
+		fprintf(stderr, "width:%d height:%d\n", sc->width, sc->height);
 }
 
 void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair)
@@ -317,11 +323,10 @@ void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair)
 
 	sc->color_index = 0;
 	/* copy 256 color map */
-	for (i = 0; i < COLORS; i++) {
+	for (i = 0; i < COLORS; i++)
 		//sc->color_table[i] = color_list[color_pair.fg]; /* set all palette to the same as 256 colors */
 		//sc->color_table[i] = color_list[i]; /* set all palette to the same as 256 colors */
 		sc->color_table[i] = (i == color_pair.bg) ? color_list[color_pair.fg]: color_list[i];
-	}
 
 	/* VT340 VT340 Default Color Map
 		ref: http://www.vt100.net/docs/vt3xx-gp/chapter2.html#T2-3
@@ -353,6 +358,12 @@ void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 	int y, x, h, cols, lines;
 	int src_offset, dst_offset;
 	struct cell_t *cellp;
+
+	if (sc->height > term->height)
+		sc->height = term->height;
+
+	if (sc->height == 0)
+		sc->height = BITS_PER_SIXEL;
 
 	cols  = my_ceil(sc->width, CELL_WIDTH);
 	lines = my_ceil(sc->height, CELL_HEIGHT);
