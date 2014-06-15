@@ -1,17 +1,3 @@
-#define _XOPEN_SOURCE 600
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <locale.h>
-#include <wchar.h>
-
-struct glyph_t {
-	uint8_t width, height;
-	uint32_t *bitmap;
-};
-
 void fatal(char *str)
 {
 	perror(str);
