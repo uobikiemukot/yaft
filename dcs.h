@@ -17,8 +17,15 @@ inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc, uint8_
 			bitmap, sc->point.x, sc->point.y);
 
 	for (i = 0; i < BITS_PER_SIXEL; i++) {
-		if (bitmap & (0x01 << i) && offset < BYTES_PER_PIXEL * term->width * term->height)
+		if (offset >= BYTES_PER_PIXEL * term->width * term->height)
+			break;
+
+		if (bitmap & (0x01 << i))
 			memcpy(sc->bitmap + offset, &sc->color_table[sc->color_index], BYTES_PER_PIXEL);
+		/*
+		else if (sc->background_mode == 0)
+			memcpy(sc->bitmap + offset, &sc->background_color, BYTES_PER_PIXEL);
+		*/
 		offset += sc->line_length;
 	}
 	sc->point.x++;
@@ -79,8 +86,10 @@ inline int sixel_attr(struct sixel_canvas_t *sc, char *buf)
 	if (DEBUG)
 		fprintf(stderr, "sixel_attr()\nbuf:%s\nargc:%d\n", tmp, parm.argc);
 
+	/*
 	if (parm.argc >= 2)
 		sc->ratio = dec2num(parm.argv[0]) / dec2num(parm.argv[1]);
+	*/
 
 	if (parm.argc >= 4) {
 		sc->width  = dec2num(parm.argv[2]);
@@ -88,7 +97,7 @@ inline int sixel_attr(struct sixel_canvas_t *sc, char *buf)
 	}
 
 	if (DEBUG)
-		fprintf(stderr, "ratio:%d width:%d height:%d\n", sc->ratio, sc->width, sc->height);
+		fprintf(stderr, "width:%d height:%d\n", sc->width, sc->height);
 
 	return length;
 }
@@ -289,21 +298,54 @@ void sixel_parse_data(struct terminal *term, struct sixel_canvas_t *sc, char *st
 	}
 }
 
-void reset_sixel(struct sixel_canvas_t *sc)
+void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair)
 {
+	extern const uint32_t color_list[]; /* global */
 	int i;
-
-	sc->line_length = 0;
-	sc->ratio       = 1;
-	sc->background  = 0;
 
 	sc->width   = sc->height  = 0;
 	sc->point.x	= sc->point.y = 0;
 
+	sc->line_length = 0;
+	/*
+	sc->ratio       = 1;
+
+	sc->background_mode  = 0;
+	sc->background_color = color_list[color_pair.bg];
+	sc->foreground_color = color_list[color_pair.fg];
+	*/
+
 	sc->color_index = 0;
-	for (i = 0; i < COLORS; i++)
-		sc->color_table[i] = color_list[15]; /* set all palette to bright white */
+	/* copy 256 color map */
+	for (i = 0; i < COLORS; i++) {
+		//sc->color_table[i] = color_list[color_pair.fg]; /* set all palette to the same as 256 colors */
 		//sc->color_table[i] = color_list[i]; /* set all palette to the same as 256 colors */
+		sc->color_table[i] = (i == color_pair.bg) ? color_list[color_pair.fg]: color_list[i];
+	}
+
+	/* VT340 VT340 Default Color Map
+		ref: http://www.vt100.net/docs/vt3xx-gp/chapter2.html#T2-3
+	sc->color_table[0] = 0x000000; sc->color_table[8]  = 0x1A1A1A;
+	sc->color_table[1] = 0x141450; sc->color_table[9]  = 0x21213C;
+	sc->color_table[2] = 0x500D0D; sc->color_table[10] = 0x3C1A1A;
+	sc->color_table[3] = 0x145014; sc->color_table[11] = 0x213C21;
+	sc->color_table[4] = 0x501450; sc->color_table[12] = 0x3C213C;
+	sc->color_table[5] = 0x145050; sc->color_table[13] = 0x123C3C;
+	sc->color_table[6] = 0x505014; sc->color_table[14] = 0x3C3C21;
+	sc->color_table[7] = 0x353535; sc->color_table[15] = 0x505050;
+	*/
+	/* ANSI 16color table (but unusual order)
+	sc->color_table[0] = color_list[0]; sc->color_table[8]  = color_list[8];
+	sc->color_table[1] = color_list[4]; sc->color_table[9]  = color_list[12];
+	sc->color_table[2] = color_list[1]; sc->color_table[10] = color_list[9];
+	sc->color_table[3] = color_list[2]; sc->color_table[11] = color_list[10];
+	sc->color_table[4] = color_list[5]; sc->color_table[12] = color_list[13];
+	sc->color_table[5] = color_list[6]; sc->color_table[13] = color_list[14];
+	sc->color_table[6] = color_list[3]; sc->color_table[14] = color_list[11];
+	sc->color_table[7] = color_list[7]; sc->color_table[15] = color_list[15];
+	*/
+
+	//sc->color_table[0] = color_list[color_pair.fg];
 }
 
 void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
@@ -326,8 +368,9 @@ void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 			for (h = 0; h < CELL_HEIGHT; h++) {
 				src_offset = (y * CELL_HEIGHT + h) * sc->line_length + (CELL_WIDTH * x) * BYTES_PER_PIXEL;
 				dst_offset = h * CELL_WIDTH * BYTES_PER_PIXEL;
-				if (src_offset < BYTES_PER_PIXEL * term->width * term->height)
-					memcpy(cellp->bitmap + dst_offset, sc->bitmap + src_offset, CELL_WIDTH * BYTES_PER_PIXEL);
+				if (src_offset >= BYTES_PER_PIXEL * term->width * term->height)
+					break;
+				memcpy(cellp->bitmap + dst_offset, sc->bitmap + src_offset, CELL_WIDTH * BYTES_PER_PIXEL);
 			}
 		}
 		move_cursor(term, 1, 0);
@@ -342,9 +385,9 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 		DSC P1; P2; P3; q; s...s; ST
 	parameters
 		DCS: ESC(0x1B) P (0x50) (8bit C1 character not recognized)
-		P1 : pixel aspect ratio (force 0, 2:1) (TODO: not implemented)
-		P2 : background mode (TODO: not implemented)
-			0 or 2: (default) 0 stdands for current background color
+		P1 : pixel aspect ratio (force 0, 2:1) (ignored)
+		P2 : background mode (ignored)
+			0 or 2: 0 stdands for current background color (default)
 			1     : 0 stands for remaining current color
 		P3 : horizontal grid parameter (ignored)
 		q  : final character of sixel sequence
@@ -354,6 +397,8 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 	char *cp;
 	struct parm_t parm;
 	struct sixel_canvas_t sc;
+
+	reset_sixel(&sc, term->color_pair);
 
 	/* replace final char of sixel header by NUL '\0' */
 	cp = strchr(start_buf, 'q');
@@ -368,15 +413,24 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 
 	/* set params */
 	/*
-	if (parm.argc != 3)
-		background_mode = 0;
-	else
-		background_mode = dec2num(parm.argv[1]);
+	if (parm.argc >= 1) {
+		int num = dec2num(parm.argv[0]);
+		sc.ratio =
+			(num == 0 || num == 1) ? 2:
+			(num == 2)             ? 5:
+			(num == 3 || num == 4) ? 3:
+			(num == 5 || num == 6) ? 2:
+			(7 <= num && num <= 9) ? 1:
+			2;
+	}
+	if (parm.argc >= 2) {
+		sc.background_mode = dec2num(parm.argv[1]);
+		if (sc.background_mode < 0 || sc.background_mode >= 2)
+			sc.background_mode = 0;
+	}
 	*/
 
 	/* set canvas parameters */
-	/* TODO: check whether image size is larger than display size or not */
-	reset_sixel(&sc);
 	sc.bitmap      = (unsigned char *) ecalloc(term->width * term->height, BYTES_PER_PIXEL);
 	sc.line_length = term->width * BYTES_PER_PIXEL;
 	sixel_parse_data(term, &sc, cp + 1); /* skip 'q' */
@@ -455,11 +509,10 @@ void decdld_parse_data(char *start_buf, int start_char, struct glyph_t *chars)
 	uint8_t char_num = start_char; /* start_char == 0 means SPACE(0x20) */
 	uint8_t bitmap, row = 0, column = 0;
 
-	/* TODO: must be selectable 94 or 96 here */
 	init_glyph(&chars[char_num]);
-
 	cp      = start_buf;
 	end_buf = cp + strlen(cp);
+
 	while (cp < end_buf) {
 		if ('?' <= *cp && *cp <= '~') { /* sixel bitmap */
 			if (DEBUG)
@@ -493,7 +546,7 @@ void decdld_parse_header(struct terminal *term, char *start_buf)
 		DCS : ESC (0x1B) 'P' (0x50) (DCS(8bit C1 code) is not supported)
 		Pfn : fontset (ignored)
 		Pcn : start char (0 means SPACE 0x20)
-		Pe  : erase mode (force 0)
+		Pe  : erase mode
 				0: clear selectet charset
 				1: clear only redefined glyph
 				2: clear all drcs charset
@@ -569,7 +622,7 @@ void decdld_parse_header(struct terminal *term, char *start_buf)
 		}
 	}
 
-	if (term->drcs[charset] == NULL)
+	if (term->drcs[charset] == NULL) /* always allcate 96 chars buffer */
 		term->drcs[charset] = ecalloc(GLYPH_PER_CHARSET, sizeof(struct glyph_t));
 
 	decdld_parse_data(cp + 1, start_char, term->drcs[charset]); /* skil final char */
