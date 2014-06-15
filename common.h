@@ -6,7 +6,6 @@
 #include <locale.h>
 #include <limits.h>
 #include <signal.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -18,7 +17,6 @@
 #include <termios.h>
 #include <unistd.h>
 #include <wchar.h>
-#include <setjmp.h>
 
 enum char_code {
 	/* 7 bit */
@@ -41,6 +39,8 @@ enum char_code {
 
 enum misc {
 	BITS_PER_BYTE     = 8,
+	BYTES_PER_PIXEL   = 3,
+	BITS_PER_SIXEL    = 6,       /* number of bits of a sixel */
 	BUFSIZE           = 1024,    /* read, esc, various buffer size */
 	MAX_ESC_SIZE      = 1024,    /* limit size of terminal escape sequence */
 	MAX_SIXEL_CANVAS  = 16,      /* limit size of sixel canvas */
@@ -52,18 +52,17 @@ enum misc {
 	ESC_CHARS         = 0x80,    /* number of esc_func */
 	DRCS_CHARSETS     = 63,      /* number of charset of DRCS (according to DRCSMMv1) */
 	GLYPH_PER_CHARSET = 96,      /* number of glyph of each DRCS charset */
-	BITS_PER_SIXEL    = 6,       /* number of bits of a sixel */
 	DEFAULT_CHAR      = SPACE,   /* used for erase char, cell_size */
-	RESET             = 0x00,    /* reset for char_attr, term_mode, esc_state */
 	BRIGHT_INC        = 8,       /* value used for brightening color */
 	OSC_GWREPT        = 8900,    /* OSC Ps: mode number of yaft GWREPT */
 };
 
 enum char_attr {
-	BOLD      = 1, /* brighten foreground */
-	UNDERLINE = 4,
-	BLINK     = 5, /* brighten background */
-	REVERSE   = 7,
+	ATTR_RESET     = 0,
+	ATTR_BOLD      = 1, /* brighten foreground */
+	ATTR_UNDERLINE = 4,
+	ATTR_BLINK     = 5, /* brighten background */
+	ATTR_REVERSE   = 7,
 };
 
 const uint8_t attr_mask[] = {
@@ -88,7 +87,6 @@ enum term_mode {
 	MODE_ORIGIN  = 0x01, /* origin mode: DECOM */
 	MODE_CURSOR  = 0x02, /* cursor visible: DECTCEM */
 	MODE_AMRIGHT = 0x04, /* auto wrap: DECAWM */
-	MODE_SIXSCR  = 0x08, /* sixel scrolling mode: DECSDM */
 };
 
 enum esc_state {
@@ -105,55 +103,46 @@ enum glyph_width_t {
 	WIDE,
 };
 
-struct tty_state {
-	volatile sig_atomic_t visible;
-	volatile sig_atomic_t redraw_flag;
-	volatile sig_atomic_t loop_flag;
-};
-
 struct margin { uint16_t top, bottom; };
 struct point_t { uint16_t x, y; };
-struct color_pair { uint8_t fg, bg; };
+struct color_pair_t { uint8_t fg, bg; };
 
-struct cell {
-	const struct glyph_t *gp; /* pointer to glyph */
-	struct color_pair color;  /* color (fg, bg) */
-	uint8_t attribute;        /* bold, underscore, etc... */
-	enum glyph_width_t width; /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
-};
+struct cell_t {
+	const struct glyph_t *glyphp;   /* pointer to glyph */
+	struct color_pair_t color_pair; /* color (fg, bg) */
+	uint8_t attribute;              /* bold, underscore, etc... */
+	enum glyph_width_t width;       /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
 
-struct parm_t { /* for parse_arg() */
-	int argc;
-	char *argv[ESC_PARAMS];
+	bool has_bitmap;
+	unsigned char bitmap[BYTES_PER_PIXEL * 16 * 8];
 };
 
 struct esc_t {
 	char *buf;
 	int size;
 	char *bp;
-	enum esc_state state; /* esc state */
+	enum esc_state state;
 };
 
 struct charset_t {
-	uint32_t code; /* UCS4 code point but only print UCS2 (<= U+FFFF) */
+	uint32_t code; /* UCS4 code point:
+					but only print UCS2 and DRCSMMv1 */
 	int following_byte, count;
 	bool is_valid;
 };
 
-struct state_t { /* for save, restore state */
-	enum term_mode mode;
+struct state_t {   /* for save, restore state */
 	struct point_t cursor;
-	uint8_t attribute;
+	enum term_mode mode;
+	enum char_attr attribute;
 };
 
 struct sixel_canvas_t {
-	unsigned char *data;          /* store data as 32bpp */
-	//int width, height;
+	unsigned char *bitmap;
 	int width, height;
 	int line_length;
-	int ratio;
+	int ratio, background;
 	struct point_t point;
-	struct point_t ref_cell;      /* left top cell of sixel canvas */
 	uint8_t color_index;
 	uint32_t color_table[COLORS];
 };
@@ -162,7 +151,7 @@ struct terminal {
 	int fd;                             /* master fd */
 	int width, height;                  /* terminal size (pixel) */
 	int cols, lines;                    /* terminal size (cell) */
-	struct cell *cells;                 /* pointer to each cell: cells[cols + lines * num_of_cols] */
+	struct cell_t *cells;               /* pointer to each cell: cells[cols + lines * num_of_cols] */
 	struct margin scroll;               /* scroll margin */
 	struct point_t cursor;              /* cursor pos (x, y) */
 	bool *line_dirty;                   /* dirty flag */
@@ -170,7 +159,7 @@ struct terminal {
 	enum term_mode mode;                /* for set/reset mode */
 	bool wrap_occured;                  /* whether auto wrap occured or not */
 	struct state_t state;               /* for restore */
-	struct color_pair color;            /* color (fg, bg) */
+	struct color_pair_t color_pair;     /* color (fg, bg) */
 	uint8_t attribute;                  /* bold, underscore, etc... */
 	struct charset_t charset;           /* store UTF-8 byte stream */
 	struct esc_t esc;                   /* store escape sequence */
@@ -180,23 +169,22 @@ struct terminal {
 		*glyph_map[UCS2_CHARS];         /* array of pointer to glyphs[] */
 	struct glyph_t
 		*drcs[DRCS_CHARSETS];           /* DRCS chars */
-	struct sixel_canvas_t
-		sixel_canvas[MAX_SIXEL_CANVAS]; /* drawing data of sixel */
-	int sixel_canvas_num;               /* count of sixel_palette */
 };
 
-struct err_mgr_t {
-	jmp_buf jmpbuf;
-	bool setjmp_called;
+struct parm_t { /* for parse_arg() */
+	int argc;
+	char *argv[ESC_PARAMS];
+};
+
+struct tty_state {
+	volatile sig_atomic_t visible;
+	volatile sig_atomic_t redraw_flag;
+	volatile sig_atomic_t loop_flag;
 };
 
 /* global variables */
 struct tty_state tty = {
-	.visible = true,
+	.visible     = true,
 	.redraw_flag = false,
-	.loop_flag = true,
-};
-
-struct err_mgr_t err_mgr = {
-	.setjmp_called = false,
+	.loop_flag   = true,
 };
