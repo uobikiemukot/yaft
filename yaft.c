@@ -2,7 +2,7 @@
 #include "common.h"
 #include "conf.h"
 #include "color.h"
-#include "glyph.h"
+//#include "glyph.h"
 #include "util.h"
 #include "linux.h"
 //#include "freebsd.h"
