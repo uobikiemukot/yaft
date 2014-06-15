@@ -59,7 +59,7 @@ void restore_state(struct terminal *term)
 		term->mode |= MODE_ORIGIN;
 	else
 		term->mode &= ~MODE_ORIGIN;
-	term->cursor = term->state.cursor;
+	term->cursor    = term->state.cursor;
 	term->attribute = term->state.attribute;
 }
 
@@ -328,9 +328,9 @@ void set_attr(struct terminal *term, struct parm_t *parm)
 	int i, num;
 
 	if (parm->argc == 0) {
-		term->attribute = RESET;
-		term->color.fg = DEFAULT_FG;
-		term->color.bg = DEFAULT_BG;
+		term->attribute = ATTR_RESET;
+		term->color_pair.fg = DEFAULT_FG;
+		term->color_pair.bg = DEFAULT_BG;
 		return;
 	}
 
@@ -338,38 +338,38 @@ void set_attr(struct terminal *term, struct parm_t *parm)
 		num = dec2num(parm->argv[i]);
 
 		if (num == 0) {                    /* reset all attribute and color */
-			term->attribute = RESET;
-			term->color.fg = DEFAULT_FG;
-			term->color.bg = DEFAULT_BG;
+			term->attribute = ATTR_RESET;
+			term->color_pair.fg = DEFAULT_FG;
+			term->color_pair.bg = DEFAULT_BG;
 		}
 		else if (1 <= num && num <= 7)     /* set attribute */
 			term->attribute |= attr_mask[num];
 		else if (21 <= num && num <= 27)   /* reset attribute */
 			term->attribute &= ~attr_mask[num - 20];
 		else if (30 <= num && num <= 37)   /* set foreground */
-			term->color.fg = (num - 30);
+			term->color_pair.fg = (num - 30);
 		else if (num == 38) {              /* set 256 color to foreground */
 			if ((i + 2) < parm->argc && dec2num(parm->argv[i + 1]) == 5) {
-				term->color.fg = dec2num(parm->argv[i + 2]);
+				term->color_pair.fg = dec2num(parm->argv[i + 2]);
 				i += 2;
 			}
 		}
 		else if (num == 39)                /* reset foreground */
-			term->color.fg = DEFAULT_FG;
+			term->color_pair.fg = DEFAULT_FG;
 		else if (40 <= num && num <= 47)   /* set background */
-			term->color.bg = (num - 40);
+			term->color_pair.bg = (num - 40);
 		else if (num == 48) {              /* set 256 color to background */
 			if ((i + 2) < parm->argc && dec2num(parm->argv[i + 1]) == 5) {
-				term->color.bg = dec2num(parm->argv[i + 2]);
+				term->color_pair.bg = dec2num(parm->argv[i + 2]);
 				i += 2;
 			}
 		}
 		else if (num == 49)                /* reset background */
-			term->color.bg = DEFAULT_BG;
+			term->color_pair.bg = DEFAULT_BG;
 		else if (90 <= num && num <= 97)   /* set bright foreground */
-			term->color.fg = (num - 90) + BRIGHT_INC;
+			term->color_pair.fg = (num - 90) + BRIGHT_INC;
 		else if (100 <= num && num <= 107) /* set bright background */
-			term->color.bg = (num - 100) + BRIGHT_INC;
+			term->color_pair.bg = (num - 100) + BRIGHT_INC;
 	}
 }
 
@@ -397,11 +397,8 @@ void set_mode(struct terminal *term, struct parm_t *parm)
 
 	for (i = 0; i < parm->argc; i++) {
 		mode = dec2num(parm->argv[i]);
-		if (*(term->esc.buf + 1) != '?') {
-			if (mode == 80)
-				term->mode |= MODE_SIXSCR;
-			continue;
-		}
+		if (*(term->esc.buf + 1) != '?')
+			continue; /* not supported */
 
 		if (mode == 6) { /* private mode */
 			term->mode |= MODE_ORIGIN;
@@ -421,11 +418,8 @@ void reset_mode(struct terminal *term, struct parm_t *parm)
 
 	for (i = 0; i < parm->argc; i++) {
 		mode = dec2num(parm->argv[i]);
-		if (*(term->esc.buf + 1) != '?') {
-			if (mode == 80)
-				term->mode &= ~MODE_SIXSCR;
-			continue;
-		}
+		if (*(term->esc.buf + 1) != '?')
+			continue; /* not supported */
 
 		if (mode == 6) { /* private mode */
 			term->mode &= ~MODE_ORIGIN;
