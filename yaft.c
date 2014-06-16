@@ -1,5 +1,5 @@
 /* See LICENSE for licence details. */
-#include "common.h"
+#include "yaft.h"
 #include "conf.h"
 #include "color.h"
 #include "util.h"
@@ -13,25 +13,27 @@
 
 void sig_handler(int signo)
 {
+	extern struct tty_state tty; /* global */
 	sigset_t sigset;
 
 	if (signo == SIGCHLD)
 		tty.loop_flag = false;
 	else if (signo == SIGUSR1) {
 		if (tty.visible) {
-			tty.visible = false;
 			ioctl(STDIN_FILENO, VT_RELDISP, 1);
-			sigfillset(&sigset);
-			sigdelset(&sigset, SIGUSR1);
+			tty.visible = false;
 			if (BACKGROUND_DRAW)
 				tty.redraw_flag = true;
-			else
+			else {
+				sigfillset(&sigset);
+				sigdelset(&sigset, SIGUSR1);
 				sigsuspend(&sigset);
+			}
 		}
 		else {
-			tty.visible = true;
-			tty.redraw_flag = true;
 			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
+			tty.visible     = true;
+			tty.redraw_flag = true;
 		}
 	}
 }
@@ -46,7 +48,7 @@ void set_rawmode(int fd, struct termios *save_tm)
 	tm.c_cflag &= ~CSIZE;
 	tm.c_cflag |= CS8;
 	tm.c_lflag &= ~(ECHO | ISIG | ICANON);
-	tm.c_cc[VMIN] = 1;  /* min data size (byte) */
+	tm.c_cc[VMIN]  = 1; /* min data size (byte) */
 	tm.c_cc[VTIME] = 0; /* time out */
 	etcsetattr(fd, TCSAFLUSH, &tm);
 }
@@ -58,15 +60,16 @@ void tty_init(struct termios *save_tm)
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = sig_handler;
-	sigact.sa_flags = SA_RESTART;
+	sigact.sa_flags   = SA_RESTART;
 	esigaction(SIGCHLD, &sigact, NULL);
 	esigaction(SIGUSR1, &sigact, NULL);
 
-	vtm.mode = VT_PROCESS;
-	vtm.waitv = 0;
+	vtm.mode   = VT_PROCESS;
+	vtm.waitv  = 0;
 	vtm.relsig = vtm.acqsig = vtm.frsig = SIGUSR1;
 	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm) < 0)
 		fatal("ioctl: VT_SETMODE failed (maybe here is not console)");
+
 	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
 		fatal("ioctl: KDSETMODE failed (maybe here is not console)");
 
@@ -85,8 +88,8 @@ void tty_die(struct termios *save_tm)
 	sigaction(SIGCHLD, &sigact, NULL);
 	sigaction(SIGUSR1, &sigact, NULL);
 
-	vtm.mode = VT_AUTO;
-	vtm.waitv = 0;
+	vtm.mode   = VT_AUTO;
+	vtm.waitv  = 0;
 	vtm.relsig = vtm.acqsig = vtm.frsig = 0;
 	ioctl(STDIN_FILENO, VT_SETMODE, &vtm);
 	ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT);
@@ -114,9 +117,9 @@ void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
 	FD_ZERO(fds);
 	FD_SET(stdin, fds);
 	FD_SET(master, fds);
-	tv->tv_sec = 0;
+	tv->tv_sec  = 0;
 	tv->tv_usec = SELECT_TIMEOUT;
-	eselect(master + 1, fds, tv);
+	eselect(master + 1, fds, NULL, NULL, tv);
 }
 
 int main()
