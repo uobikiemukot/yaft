@@ -15,9 +15,9 @@ typedef unsigned long   u_long;
 
 /* some structs for FreeBSD */
 struct framebuffer {
-	char *fp;             /* pointer of framebuffer(read only) */
-	char *wall;           /* buffer for wallpaper */
-	char *buf;            /* copy of framebuffer */
+	unsigned char *fp;    /* pointer of framebuffer(read only) */
+	unsigned char *wall;  /* buffer for wallpaper */
+	unsigned char *buf;   /* copy of framebuffer */
 	int fd;               /* file descriptor of framebuffer */
 	int width, height;    /* display resolution */
 	long screen_size;     /* screen data size (byte) */
@@ -29,11 +29,11 @@ struct framebuffer {
 };
 
 /* common functions */
-char *load_wallpaper(struct framebuffer *fb)
+unsigned char *load_wallpaper(struct framebuffer *fb)
 {
-	char *ptr;
+	unsigned char *ptr;
 
-	ptr = (char *) ecalloc(1, fb->screen_size);
+	ptr = (unsigned char *) ecalloc(1, fb->screen_size);
 	memcpy(ptr, fb->fp, fb->screen_size);
 
 	return ptr;
@@ -164,8 +164,8 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 	for (i = 0; i < COLORS; i++) /* init color palette */
 		color_palette[i] = (fb->bpp == 1) ? (uint32_t) i: color2pixel(&vinfo, color_list[i]);
 
-	fb->fp    = (char *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
-	fb->buf   = (char *) ecalloc(1, fb->screen_size);
+	fb->fp    = (unsigned char *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
+	fb->buf   = (unsigned char *) ecalloc(1, fb->screen_size);
 	fb->wall  = (WALLPAPER && fb->bpp > 1) ? load_wallpaper(fb): NULL;
 	fb->vinfo = vinfo;
 }
@@ -187,7 +187,7 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 {
 	int pos, size, bit_shift, margin_right;
 	int col, w, h, src_offset, dst_offset;
-	uint32_t pixel, color;
+	uint32_t pixel, color = 0;
 	struct color_pair_t color_pair;
 	struct cell_t *cellp;
 	const struct glyph_t *glyphp;
@@ -195,7 +195,7 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 	for (col = term->cols - 1; col >= 0; col--) {
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
-		/* get cell color and glyph */
+		/* target cell */
 		cellp = &term->cells[col + line * term->cols];
 
 		/* draw sixel bitmap */
@@ -215,7 +215,7 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 
 		/* get color and glyph */
 		color_pair = cellp->color_pair;
-		glyphp = cellp->glyphp;
+		glyphp     = cellp->glyphp;
 
 		/* check wide character or not */
 		bit_shift = (cellp->width == WIDE) ? CELL_WIDTH: 0;
