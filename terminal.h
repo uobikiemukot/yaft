@@ -34,18 +34,10 @@ void copy_cell(struct terminal *term, int dst_y, int dst_x, int src_y, int src_x
 	}
 }
 
-inline void swap_color_pair(struct color_pair_t *color_pair)
-{
-	int tmp;
-
-	tmp            = color_pair->fg;
-	color_pair->fg = color_pair->bg;
-	color_pair->bg = tmp;
-}
-
 int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
 {
 	struct cell_t cell, *cellp;
+	uint8_t color_tmp;
 
 	cell.glyphp = glyphp;
 
@@ -54,8 +46,11 @@ int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
 	cell.color_pair.bg = (term->attribute & attr_mask[ATTR_BLINK] && term->color_pair.bg <= 7) ?
 		term->color_pair.bg + BRIGHT_INC: term->color_pair.bg;
 
-	if (term->attribute & attr_mask[ATTR_REVERSE])
-		swap_color_pair(&cell.color_pair);
+	if (term->attribute & attr_mask[ATTR_REVERSE]) {
+		color_tmp          = cell.color_pair.fg;
+		cell.color_pair.fg = cell.color_pair.bg;
+		cell.color_pair.bg = color_tmp;
+	}
 
 	cell.attribute  = term->attribute;
 	cell.width      = glyphp->width;
@@ -183,7 +178,8 @@ const struct glyph_t *drcsch(struct terminal *term, uint32_t code)
 		&& (term->drcs[ku - 0x40] != NULL))
 		return &term->drcs[ku - 0x40][ten - 0x20]; /* sub each offset */
 	else {
-		fprintf(stderr, "drcs char not found\n");
+		if (DEBUG)
+			fprintf(stderr, "drcs char not found\n");
 		return term->glyph_map[SUBSTITUTE_HALF];
 	}
 }
@@ -233,18 +229,6 @@ void reset_esc(struct terminal *term)
 	term->esc.state = STATE_RESET;
 }
 
-inline bool is_string_terminator(struct esc_t *esc, uint8_t ch)
-{
-	/* OSC/DCS ST: BELL or ESC \ */
-	if (ch == BEL)
-		return true;
-
-	if (ch == BACKSLASH && (esc->bp - esc->buf) >= 2 && *(esc->bp - 2) == ESC)
-		return true;
-
-	return false;
-}
-
 bool push_esc(struct terminal *term, uint8_t ch)
 {
 	long offset;
@@ -291,7 +275,8 @@ bool push_esc(struct terminal *term, uint8_t ch)
 			ESC  'P'          BEL  or ESC  '\'
 			0x1B 0x50 unknown 0x07 or 0x1B 0x5C
 		*/
-		if (is_string_terminator(&term->esc, ch))
+		if (ch == BEL || (ch == BACKSLASH
+			&& (term->esc.bp - term->esc.buf) >= 2 && *(term->esc.bp - 2) == ESC))
 			return true;
 		else if ((ch == ESC || ch == CR || ch == LF || ch == BS || ch == HT)
 			|| (SPACE <= ch && ch <= '~'))
