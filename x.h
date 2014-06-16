@@ -256,7 +256,7 @@ void xw_die(struct xwindow *xw)
 	XCloseDisplay(xw->display);
 }
 
-void draw_line(struct xwindow *xw, struct terminal *term, int line)
+static inline void draw_line(struct xwindow *xw, struct terminal *term, int line)
 {
 	int bit_shift, margin_right;
 	int col, w, h;
