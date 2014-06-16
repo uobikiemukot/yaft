@@ -34,7 +34,7 @@ void eclose(int fd)
 		error("close");
 }
 
-FILE *efopen(char *path, char *mode)
+FILE *efopen(const char *path, char *mode)
 {
 	FILE *fp;
 	errno = 0;
@@ -96,19 +96,19 @@ void *erealloc(void *ptr, size_t size)
 	return new;
 }
 
-void eselect(int max_fd, fd_set *fds, struct timeval *tv)
+void eselect(int max_fd, fd_set *readfds, fd_set *writefds, fd_set *errorfds, struct timeval *tv)
 {
 	errno = 0;
 
-	if (select(max_fd, fds, NULL, NULL, tv) < 0) {
+	if (select(max_fd, readfds, writefds, errorfds, tv) < 0) {
 		if (errno == EINTR)
-			eselect(max_fd, fds, tv);
+			eselect(max_fd, readfds, writefds, errorfds, tv);
 		else
 			error("select");
 	}
 }
 
-void ewrite(int fd, void *buf, int size)
+void ewrite(int fd, const void *buf, int size)
 {
 	int ret;
 	errno = 0;
@@ -143,7 +143,6 @@ void etcsetattr(int fd, int action, const struct termios *tm)
 		error("tcgetattr");
 }
 
-
 int eopenpty(int *amaster, int *aslave, char *aname,
 	const struct termios *termp, const struct winsize *winsize)
 {
@@ -157,7 +156,7 @@ int eopenpty(int *amaster, int *aslave, char *aname,
 		error("openpty");
 
 	*amaster = master;
-	*aslave = eopen(name,  O_RDWR | O_NOCTTY);
+	*aslave  = eopen(name,  O_RDWR | O_NOCTTY);
 
 	if (aname)
 		aname = NULL; /* we don't use this value */
@@ -179,7 +178,7 @@ pid_t eforkpty(int *amaster, char *name,
 		return -1;
 
 	errno = 0;
-	pid = fork();
+	pid   = fork();
 
 	if (pid < 0)
 		error("fork");
@@ -246,13 +245,13 @@ void reset_parm(struct parm_t *pt)
 	int i;
 
 	pt->argc = 0;
-	for (i = 0; i < ESC_PARAMS; i++)
+	for (i = 0; i < MAX_ARGS; i++)
 		pt->argv[i] = NULL;
 }
 
 void add_parm(struct parm_t *pt, char *cp)
 {
-	if (pt->argc >= ESC_PARAMS)
+	if (pt->argc >= MAX_ARGS)
 		return;
 
 	if (DEBUG)
