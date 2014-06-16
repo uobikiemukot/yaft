@@ -93,10 +93,10 @@ static inline uint32_t color2pixel(struct fb_var_screeninfo *vinfo, uint32_t col
 
 	/* pseudo color */
 	if (vinfo->bits_per_pixel == 8) {
-		if (r == g && r == b) {   /* 24 gray scale */
+		if (r == g && r == b) { /* 24 gray scale */
 			r = 24 * r / COLORS;
 			return 232 + r;
-		}                         /* 6x6x6 color cube */
+		}                       /* 6x6x6 color cube */
 		r = 6 * r / COLORS;
 		g = 6 * g / COLORS;
 		b = 6 * b / COLORS;
