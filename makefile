@@ -1,13 +1,15 @@
 CC = gcc
 #CC = clang
-CFLAGS += -std=c99 -pedantic -Wall -Wextra \
--Os -s -pipe
+CFLAGS = -std=c99 -pedantic -Wall -Wextra \
+-O3 -s -pipe
 #-march=native -Ofast -flto -s -pipe
 #-Og -pg -g -rdynamic
-LDFLAGS +=
+LDFLAGS =
 
-XCFLAGS += -I/usr/include/X11/
-XLDFLAGS += -lX11
+XCFLAGS = -std=c99 -pedantic -Wall -Wextra -I/usr/include/X11/ \
+-O3 -s -pipe
+#-Og -pg -g -rdynamic
+XLDFLAGS = -lX11
 
 HDR = *.h
 DST = yaft
