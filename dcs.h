@@ -6,18 +6,18 @@ enum {
 	LSMAX  = 100,
 };
 
-inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc, uint8_t bitmap)
+static inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc, uint8_t bitmap)
 {
 	int i, offset;
+
+	if (DEBUG)
+		fprintf(stderr, "sixel_bitmap()\nbitmap:%.2X point(%d, %d)\n",
+			bitmap, sc->point.x, sc->point.y);
 
 	if (sc->point.x >= term->width || sc->point.y >= term->height)
 		return 1;
 
 	offset = sc->point.x * BYTES_PER_PIXEL + sc->point.y * sc->line_length;
-
-	if (DEBUG)
-		fprintf(stderr, "sixel_bitmap()\nbitmap:%.2X point(%d, %d)\n",
-			bitmap, sc->point.x, sc->point.y);
 
 	for (i = 0; i < BITS_PER_SIXEL; i++) {
 		if (offset >= BYTES_PER_PIXEL * term->width * term->height)
@@ -25,10 +25,7 @@ inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc, uint8_
 
 		if (bitmap & (0x01 << i))
 			memcpy(sc->bitmap + offset, &sc->color_table[sc->color_index], BYTES_PER_PIXEL);
-		/*
-		else if (sc->background_mode == 0)
-			memcpy(sc->bitmap + offset, &sc->background_color, BYTES_PER_PIXEL);
-		*/
+
 		offset += sc->line_length;
 	}
 	sc->point.x++;
@@ -39,7 +36,7 @@ inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc, uint8_
 	return 1;
 }
 
-inline int sixel_repeat(struct terminal *term, struct sixel_canvas_t *sc, char *buf)
+static inline int sixel_repeat(struct terminal *term, struct sixel_canvas_t *sc, char *buf)
 {
 	int i, count;
 	size_t length;
@@ -69,7 +66,7 @@ inline int sixel_repeat(struct terminal *term, struct sixel_canvas_t *sc, char *
 	return length + 1;
 }
 
-inline int sixel_attr(struct sixel_canvas_t *sc, char *buf)
+static inline int sixel_attr(struct sixel_canvas_t *sc, char *buf)
 {
 	char *cp, tmp[BUFSIZE];
 	size_t length;
@@ -86,26 +83,19 @@ inline int sixel_attr(struct sixel_canvas_t *sc, char *buf)
 	reset_parm(&parm);
 	parse_arg(tmp, &parm, ';', isdigit);
 
-	if (DEBUG)
-		fprintf(stderr, "sixel_attr()\nbuf:%s\nargc:%d\n", tmp, parm.argc);
-
-	/*
-	if (parm.argc >= 2)
-		sc->ratio = dec2num(parm.argv[0]) / dec2num(parm.argv[1]);
-	*/
-
 	if (parm.argc >= 4) {
 		sc->width  = dec2num(parm.argv[2]);
 		sc->height = dec2num(parm.argv[3]);
 	}
 
 	if (DEBUG)
-		fprintf(stderr, "width:%d height:%d\n", sc->width, sc->height);
+		fprintf(stderr, "sixel_attr()\nbuf:%s\nwidth:%d height:%d\n",
+			tmp, sc->width, sc->height);
 
 	return length;
 }
 
-inline uint32_t hue2rgb(int n1, int n2, int hue)
+static inline uint32_t hue2rgb(int n1, int n2, int hue)
 {
 	if (hue < 0)
 		hue += HUEMAX;
@@ -123,7 +113,7 @@ inline uint32_t hue2rgb(int n1, int n2, int hue)
 		return n1;
 }
 
-inline uint32_t hls2rgb(int hue, int lum, int sat)
+static inline uint32_t hls2rgb(int hue, int lum, int sat)
 {
 	uint32_t r, g, b;
 	int magic1, magic2;
@@ -145,7 +135,7 @@ inline uint32_t hls2rgb(int hue, int lum, int sat)
 	return (r << 16) + (g << 8) + b;
 }
 
-inline int sixel_color(struct sixel_canvas_t *sc, char *buf)
+static inline int sixel_color(struct sixel_canvas_t *sc, char *buf)
 {
 	char *cp, tmp[BUFSIZE];
 	int index, type;
@@ -162,37 +152,34 @@ inline int sixel_color(struct sixel_canvas_t *sc, char *buf)
 	strncpy(tmp, buf + 1, length - 1); /* skip '#' */
 	*(tmp + length - 1) = '\0';
 
-	if (DEBUG)
-		fprintf(stderr, "sixel_color()\nbuf:%s length:%u\n", tmp, (unsigned) length);
-
 	reset_parm(&parm);
 	parse_arg(tmp, &parm, ';', isdigit);
 
+	if (parm.argc < 1)
+		return length;
+
+	index = dec2num(parm.argv[0]);
+	if (index < 0)
+		index = 0;
+	else if (index >= COLORS)
+		index = COLORS - 1;
+
 	if (DEBUG)
-		fprintf(stderr, "argc:%d\n", parm.argc);
+		fprintf(stderr, "sixel_color()\nbuf:%s length:%u\nindex:%d\n",
+			tmp, (unsigned) length, index);
 
 	if (parm.argc == 1) { /* select color */
-		index = dec2num(parm.argv[0]);
 		sc->color_index = index;
-
-		if (DEBUG)
-			fprintf(stderr, "select color:%d\n", index);
-
 		return length;
 	}
 
 	if (parm.argc != 5)
 		return length;
 
-	index = dec2num(parm.argv[0]);
 	type  = dec2num(parm.argv[1]);
 	v1    = dec2num(parm.argv[2]);
 	v2    = dec2num(parm.argv[3]);
 	v3    = dec2num(parm.argv[4]);
-
-	if (DEBUG)
-		fprintf(stderr, "index:%d type:%d v1:%u v2:%u v3:%u\n",
-			index, type, v1, v2, v3);
 
 	if (type == 1) /* HLS */
 		color = hls2rgb(v1, v2, v3);
@@ -204,14 +191,15 @@ inline int sixel_color(struct sixel_canvas_t *sc, char *buf)
 	}
 
 	if (DEBUG)
-		fprintf(stderr, "color:0x%.8X\n", color);
+		fprintf(stderr, "type:%d v1:%u v2:%u v3:%u color:0x%.8X\n",
+			type, v1, v2, v3, color);
 
 	sc->color_table[index] = color;
 
 	return length;
 }
 
-inline int sixel_cr(struct sixel_canvas_t *sc)
+static inline int sixel_cr(struct sixel_canvas_t *sc)
 {
 	if (DEBUG)
 		fprintf(stderr, "sixel_cr()\n");
@@ -221,7 +209,7 @@ inline int sixel_cr(struct sixel_canvas_t *sc)
 	return 1;
 }
 
-inline int sixel_nl(struct sixel_canvas_t *sc)
+static inline int sixel_nl(struct sixel_canvas_t *sc)
 {
 	if (DEBUG)
 		fprintf(stderr, "sixel_nl()\n");
@@ -272,9 +260,6 @@ void sixel_parse_data(struct terminal *term, struct sixel_canvas_t *sc, char *st
 	char *cp, *end_buf;
 	uint8_t bitmap;
 
-	if (DEBUG)
-		fprintf(stderr, "sixel_parse_data()\n");
-
 	cp = start_buf;
 	end_buf = cp + strlen(start_buf);
 
@@ -301,7 +286,7 @@ void sixel_parse_data(struct terminal *term, struct sixel_canvas_t *sc, char *st
 	}
 
 	if (DEBUG)
-		fprintf(stderr, "width:%d height:%d\n", sc->width, sc->height);
+		fprintf(stderr, "sixel_parse_data()\nwidth:%d height:%d\n", sc->width, sc->height);
 }
 
 void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair)
@@ -309,19 +294,13 @@ void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair)
 	extern const uint32_t color_list[]; /* global */
 	int i;
 
-	sc->width   = sc->height  = 0;
-	sc->point.x	= sc->point.y = 0;
-
+	sc->width   = 1;
+	sc->height  = 6;
+	sc->point.x	= 0;
+	sc->point.y = 0;
 	sc->line_length = 0;
-	/*
-	sc->ratio       = 1;
-
-	sc->background_mode  = 0;
-	sc->background_color = color_list[color_pair.bg];
-	sc->foreground_color = color_list[color_pair.fg];
-	*/
-
 	sc->color_index = 0;
+
 	/* copy 256 color map */
 	for (i = 0; i < COLORS; i++)
 		//sc->color_table[i] = color_list[color_pair.fg]; /* set all palette to the same as 256 colors */
@@ -349,8 +328,6 @@ void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair)
 	sc->color_table[6] = color_list[3]; sc->color_table[14] = color_list[11];
 	sc->color_table[7] = color_list[7]; sc->color_table[15] = color_list[15];
 	*/
-
-	//sc->color_table[0] = color_list[color_pair.fg];
 }
 
 void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
@@ -361,9 +338,6 @@ void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 
 	if (sc->height > term->height)
 		sc->height = term->height;
-
-	if (sc->height == 0)
-		sc->height = BITS_PER_SIXEL;
 
 	cols  = my_ceil(sc->width, CELL_WIDTH);
 	lines = my_ceil(sc->height, CELL_HEIGHT);
@@ -422,25 +396,6 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 	reset_parm(&parm);
 	parse_arg(start_buf, &parm, ';', isdigit);
 
-	/* set params */
-	/*
-	if (parm.argc >= 1) {
-		int num = dec2num(parm.argv[0]);
-		sc.ratio =
-			(num == 0 || num == 1) ? 2:
-			(num == 2)             ? 5:
-			(num == 3 || num == 4) ? 3:
-			(num == 5 || num == 6) ? 2:
-			(7 <= num && num <= 9) ? 1:
-			2;
-	}
-	if (parm.argc >= 2) {
-		sc.background_mode = dec2num(parm.argv[1]);
-		if (sc.background_mode < 0 || sc.background_mode >= 2)
-			sc.background_mode = 0;
-	}
-	*/
-
 	/* set canvas parameters */
 	sc.bitmap      = (unsigned char *) ecalloc(term->width * term->height, BYTES_PER_PIXEL);
 	sc.line_length = term->width * BYTES_PER_PIXEL;
@@ -449,7 +404,7 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 	free(sc.bitmap);
 }
 
-inline void decdld_bitmap(struct glyph_t *glyph, uint8_t bitmap, uint8_t row, uint8_t column)
+static inline void decdld_bitmap(struct glyph_t *glyph, uint8_t bitmap, uint8_t row, uint8_t column)
 {
 	/*
 			  MSB        LSB (glyph_t bitmap order, padding at MSB side)
@@ -493,7 +448,7 @@ inline void decdld_bitmap(struct glyph_t *glyph, uint8_t bitmap, uint8_t row, ui
 	}
 }
 
-inline void init_glyph(struct glyph_t *glyph)
+static inline void init_glyph(struct glyph_t *glyph)
 {
 	int i;
 
@@ -533,16 +488,16 @@ void decdld_parse_data(char *start_buf, int start_char, struct glyph_t *chars)
 			decdld_bitmap(&chars[char_num], bitmap, row, column);
 			column++;
 		}
-		else if (*cp == ';') {          /* next char */
+		else if (*cp == ';') { /* next char */
 			row = column = 0;
 			char_num++;
 			init_glyph(&chars[char_num]);
 		}
-		else if (*cp == '/') {          /* sixel nl+cr */
+		else if (*cp == '/') { /* sixel nl+cr */
 			row++;
 			column = 0;
 		}
-		else if (*cp == '\0')           /* end of DECDLD sequence */
+		else if (*cp == '\0')  /* end of DECDLD sequence */
 			break;
 		cp++;
 	}
