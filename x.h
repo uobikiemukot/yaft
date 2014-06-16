@@ -225,7 +225,7 @@ void xw_init(struct xwindow *xw)
 		fatal("X does not support locale\n");
 
 	if (XSetLocaleModifiers("") == NULL)
-		warn("cannot set locale modifiers");
+		fatal("cannot set locale modifiers");
 
 	xw->screen = DefaultScreen(xw->display);
 	xw->window = XCreateSimpleWindow(xw->display, DefaultRootWindow(xw->display),
@@ -259,10 +259,11 @@ void xw_die(struct xwindow *xw)
 void draw_line(struct xwindow *xw, struct terminal *term, int line)
 {
 	int bit_shift, margin_right;
-	int col, glyph_width_offset, glyph_height_offset;
-	struct color_pair color;
-	struct cell *cp;
-	const struct static_glyph_t *gp;
+	int col, w, h;
+	uint32_t color = 0;
+	struct color_pair_t color_pair;
+	struct cell_t *cellp;
+	const struct glyph_t *glyphp;
 
 	/* at first, fill all pixels of line in backgournd color */
 	XSetForeground(xw->display, xw->gc, color_list[DEFAULT_BG]);
@@ -271,43 +272,58 @@ void draw_line(struct xwindow *xw, struct terminal *term, int line)
 	for (col = term->cols - 1; col >= 0; col--) {
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
-		/* get cell color and glyph */
-		cp = &term->cells[col + line * term->cols];
-		color = cp->color;
-		gp = cp->gp;
+		/* target cell */
+		cellp = &term->cells[col + line * term->cols];
+
+		/* draw sixel bitmap */
+		if (cellp->has_bitmap) {
+			for (h = 0; h < CELL_HEIGHT; h++) {
+				for (w = 0; w < CELL_WIDTH; w++) {
+					memcpy(&color, cellp->bitmap + BYTES_PER_PIXEL * (h * CELL_WIDTH + w), BYTES_PER_PIXEL);
+
+					if (color_list[DEFAULT_BG] != color) {
+						XSetForeground(xw->display, xw->gc, color);
+						XDrawPoint(xw->display, xw->pixbuf, xw->gc,
+							col * CELL_WIDTH + w, line * CELL_HEIGHT + h);
+					}
+				}
+			}
+			continue;
+		}
+
+		/* get color and glyph */
+		color_pair = cellp->color_pair;
+		glyphp     = cellp->glyphp;
+
+		/* check wide character or not */
+		bit_shift = (cellp->width == WIDE) ? CELL_WIDTH: 0;
 
 		/* check cursor positon */
 		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
 			&& (col == term->cursor.x
-			|| (cp->width == WIDE && (col + 1) == term->cursor.x)
-			|| (cp->width == NEXT_TO_WIDE && (col - 1) == term->cursor.x))) {
-			color.fg = DEFAULT_BG;
-			color.bg = (!tty.visible && tty.background_draw) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
+			|| (cellp->width == WIDE && (col + 1) == term->cursor.x)
+			|| (cellp->width == NEXT_TO_WIDE && (col - 1) == term->cursor.x))) {
+			color_pair.fg = DEFAULT_BG;
+			color_pair.bg = (!tty.visible && BACKGROUND_DRAW) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
 		}
 
-		for (glyph_height_offset = 0; glyph_height_offset < CELL_HEIGHT; glyph_height_offset++) {
+		for (h = 0; h < CELL_HEIGHT; h++) {
 			/* if UNDERLINE attribute on, swap bg/fg */
-			if ((glyph_height_offset == (CELL_HEIGHT - 1)) && (cp->attribute & attr_mask[UNDERLINE]))
-				color.bg = color.fg;
+			if ((h == (CELL_HEIGHT - 1)) && (cellp->attribute & attr_mask[ATTR_UNDERLINE]))
+				color_pair.bg = color_pair.fg;
 
-			for (glyph_width_offset = 0; glyph_width_offset < CELL_WIDTH; glyph_width_offset++) {
-				/* check wide character or not */
-				if (cp->width == WIDE)
-					bit_shift = glyph_width_offset + CELL_WIDTH;
-				else
-					bit_shift = glyph_width_offset;
-
+			for (w = 0; w < CELL_WIDTH; w++) {
 				/* set color palette */
-				if (gp->bitmap[glyph_height_offset] & (0x01 << bit_shift))
-					XSetForeground(xw->display, xw->gc, color_list[color.fg]);
-				else if (color.bg != DEFAULT_BG)
-					XSetForeground(xw->display, xw->gc, color_list[color.bg]);
+				if (glyphp->bitmap[h] & (0x01 << (bit_shift + w)))
+					XSetForeground(xw->display, xw->gc, color_list[color_pair.fg]);
+				else if (color_pair.bg != DEFAULT_BG)
+					XSetForeground(xw->display, xw->gc, color_list[color_pair.bg]);
 				else /* already draw */
 					continue;
 
 				/* update copy buffer */
-				XDrawPoint(xw->display, xw->pixbuf, xw->gc, term->width - 1 - margin_right - glyph_width_offset,
-					line * CELL_HEIGHT + glyph_height_offset);
+				XDrawPoint(xw->display, xw->pixbuf, xw->gc,
+					term->width - 1 - margin_right - w, line * CELL_HEIGHT + h);
 			}
 		}
 	}
