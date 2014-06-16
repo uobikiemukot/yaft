@@ -1,8 +1,7 @@
 /* See LICENSE for licence details. */
-#include "common.h"
+#include "yaft.h"
 #include "conf.h"
 #include "color.h"
-#include "glyph.h"
 #include "util.h"
 #include "x.h"
 #include "terminal.h"
@@ -11,23 +10,23 @@
 #include "dcs.h"
 #include "parse.h"
 
-void handler(int signo)
+void sig_handler(int signo)
 {
 	if (signo == SIGCHLD)
 		tty.loop_flag = false;
 }
 
-void tty_init()
+void sig_set()
 {
 	struct sigaction sigact;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
-	sigact.sa_handler = handler;
-	sigact.sa_flags = SA_RESTART;
+	sigact.sa_handler = sig_handler;
+	sigact.sa_flags   = SA_RESTART;
 	esigaction(SIGCHLD, &sigact, NULL);
 }
 
-void tty_die()
+void sig_reset()
 {
  	/* no error handling */
 	struct sigaction sigact;
@@ -41,9 +40,9 @@ void check_fds(fd_set *fds, struct timeval *tv, int master)
 {
 	FD_ZERO(fds);
 	FD_SET(master, fds);
-	tv->tv_sec = 0;
+	tv->tv_sec  = 0;
 	tv->tv_usec = SELECT_TIMEOUT;
-	eselect(master + 1, fds, tv);
+	eselect(master + 1, fds, NULL, NULL, tv);
 }
 
 char *keymap(KeySym k, unsigned int state)
@@ -84,13 +83,14 @@ void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
 {
 	XConfigureEvent *e = &ev->xconfigure;
+	(void ) xw; /* unused */
 
 	if (e->width != term->width || e->height != term->height) {
-		term->width = e->width;
+		term->width  = e->width;
 		term->height = e->height;
 
+		term->cols  = term->width / CELL_WIDTH;
 		term->lines = term->height / CELL_HEIGHT;
-		term->cols = term->width / CELL_WIDTH;
 
 		reset(term);
 		ioctl(term->fd, TIOCSWINSZ, &(struct winsize)
@@ -126,11 +126,11 @@ void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
 }
 
 static void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, XEvent *ev) = {
-	[KeyPress] = xkeypress,
+	[KeyPress]        = xkeypress,
 	[ConfigureNotify] = xresize,
-	[Expose] = xredraw,
-	[FocusIn] = xfocus,
-	[FocusOut] = xfocus,
+	[Expose]          = xredraw,
+	[FocusIn]         = xfocus,
+	[FocusOut]        = xfocus,
 };
 
 void fork_and_exec(int *master)
@@ -157,10 +157,7 @@ int main()
 
 	/* init */
 	setlocale(LC_ALL, "");
-	if (atexit(tty_die) != 0)
-		fatal("atexit failed");
-
-	tty_init();
+	sig_set();
 	xw_init(&xw);
 	term_init(&term, xw.width, xw.height);
 
@@ -197,6 +194,7 @@ int main()
 	/* die */
 	term_die(&term);
 	xw_die(&xw);
+	sig_reset();
 
 	return EXIT_SUCCESS;
 }
