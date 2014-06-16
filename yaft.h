@@ -25,29 +25,19 @@ enum char_code {
 	BEL = 0x07, BS  = 0x08, HT  = 0x09,
 	LF  = 0x0A, VT  = 0x0B, FF  = 0x0C,
 	CR  = 0x0D, ESC = 0x1B, DEL = 0x7F,
-	/* 8 bit: not supported */
-	/*
-	IND   = 0x84, NEL = 0x85, HTS = 0x88, RI  = 0x8D,
-	SS2   = 0x8E, SS3 = 0x8F, DCS = 0x90, SOS = 0x98,
-	DECID = 0x9A, CSI = 0x9B, ST  = 0x9C, OSC = 0x9D,
-	PM    = 0x9E, APC = 0x9F,
-	*/
 	/* others */
 	SPACE     = 0x20,
 	BACKSLASH = 0x5C,
-	//IDEOGRAPHIC_SPACE = 0x3000,
-	//REPLACEMENT_CHARACTER = 0xFFFD,
 };
 
 enum misc {
+	BUFSIZE           = 1024,    /* read, esc, various buffer size */
 	BITS_PER_BYTE     = 8,
 	BYTES_PER_PIXEL   = 3,
 	BITS_PER_SIXEL    = 6,       /* number of bits of a sixel */
-	BUFSIZE           = 1024,    /* read, esc, various buffer size */
 	MAX_ESC_SIZE      = 1024,    /* limit size of terminal escape sequence */
-	MAX_SIXEL_CANVAS  = 16,      /* limit size of sixel canvas */
 	SELECT_TIMEOUT    = 15000,   /* used by select() */
-	ESC_PARAMS        = 16,      /* max parameters of csi/osc sequence */
+	MAX_ARGS          = 16,      /* max parameters of csi/osc sequence */
 	COLORS            = 256,     /* num of color */
 	UCS2_CHARS        = 0x10000, /* number of UCS2 glyph */
 	CTRL_CHARS        = 0x20,    /* number of ctrl_func */
@@ -143,12 +133,6 @@ struct sixel_canvas_t {
 	struct point_t point;
 	int width, height;
 	int line_length;
-	/*
-	int ratio;
-	int background_mode;
-	uint32_t background_color;
-	uint32_t foreground_color;
-	*/
 	uint8_t color_index;
 	uint32_t color_table[COLORS];
 };
@@ -179,7 +163,7 @@ struct terminal {
 
 struct parm_t { /* for parse_arg() */
 	int argc;
-	char *argv[ESC_PARAMS];
+	char *argv[MAX_ARGS];
 };
 
 struct tty_state {
