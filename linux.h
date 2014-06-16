@@ -83,7 +83,7 @@ void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
 		fatal("ioctl: FBIOPUTCMAP failed");
 }
 
-inline uint32_t color2pixel(struct fb_var_screeninfo *vinfo, uint32_t color)
+static inline uint32_t color2pixel(struct fb_var_screeninfo *vinfo, uint32_t color)
 {
 	uint32_t r, g, b;
 
@@ -93,13 +93,13 @@ inline uint32_t color2pixel(struct fb_var_screeninfo *vinfo, uint32_t color)
 
 	/* pseudo color */
 	if (vinfo->bits_per_pixel == 8) {
-		if (r == g && r == b) {   /* gray scale */
-			r = 24 * r / 256;
+		if (r == g && r == b) {   /* 24 gray scale */
+			r = 24 * r / COLORS;
 			return 232 + r;
 		}                         /* 6x6x6 color cube */
-		r = 6 * r / 256;
-		g = 6 * g / 256;
-		b = 6 * b / 256;
+		r = 6 * r / COLORS;
+		g = 6 * g / COLORS;
+		b = 6 * b / COLORS;
 		return 16 + (r * 36) + (g * 6) + b;
 	}
 
@@ -187,7 +187,7 @@ void fb_die(struct framebuffer *fb)
 	eclose(fb->fd);
 }
 
-inline void draw_line(struct framebuffer *fb, struct terminal *term, int line)
+static inline void draw_line(struct framebuffer *fb, struct terminal *term, int line)
 {
 	int pos, size, bit_shift, margin_right;
 	int col, w, h, src_offset, dst_offset;
