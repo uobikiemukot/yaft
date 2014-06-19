@@ -64,6 +64,14 @@ const struct keydef key[] = {
     kcbt=\E[Z,kmous=\E[M,kspd=^Z,
 */
 
+struct paste_t {
+	Atom target;
+	struct point_t begin, end, current;
+	int prev;
+	bool copy_cursor_visible;
+	char *str;
+};
+
 struct xwindow {
     Display *display;
     Window window;
@@ -74,6 +82,7 @@ struct xwindow {
 	XIM im;
 	XIC ic;
 	XIMStyle input_style;
+	struct paste_t paste;
 };
 
 void print_style(XIMStyle style)
@@ -153,14 +162,13 @@ XIMStyle select_better_style(XIMStyle im_style, XIMStyle best_style)
 	}
 }
 
-
 void im_init(struct xwindow *xw)
 {
 	int i;
+	long im_event_mask;
 	int num_missing_charsets = 0;
 	char **missing_charsets;
 	char *default_string;
-	long im_event_mask;
 	XFontSet fontset;
 	XVaNestedList list;
 	XIMStyles *im_styles;
@@ -197,7 +205,6 @@ void im_init(struct xwindow *xw)
 		print_style(xw->input_style);
 	}
 
-	/* create ic */
 	fontset = XCreateFontSet(xw->display, im_font,
 		&missing_charsets, &num_missing_charsets, &default_string);
 	list = XVaCreateNestedList(0, XNSpotLocation, &(XPoint){.x = 0, .y = 0},
@@ -207,13 +214,26 @@ void im_init(struct xwindow *xw)
 	if ((xw->ic = XCreateIC(xw->im, XNInputStyle, xw->input_style,
 		XNPreeditAttributes, list, XNClientWindow, xw->window, NULL)) == NULL)
 		fatal("couldn't create ic");
-
 	XFree(list);
 
 	XGetICValues(xw->ic, XNFilterEvents, &im_event_mask, NULL);
 	XSelectInput(xw->display, xw->window, im_event_mask
-		| FocusChangeMask | ExposureMask | KeyPressMask | StructureNotifyMask);
+		| FocusChangeMask | ExposureMask | KeyPressMask | StructureNotifyMask
+		| PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
 	XSetICFocus(xw->ic);
+}
+
+void init_paste(struct xwindow *xw)
+{
+	struct paste_t *paste = &xw->paste;
+
+	paste->begin.x   = paste->begin.y   = 0;
+	paste->end.x     = paste->end.y     = 0;
+	paste->current.x = paste->current.y = 0;
+	paste->prev = -1;
+
+	paste->copy_cursor_visible = false;
+	paste->str = NULL;
 }
 
 void xw_init(struct xwindow *xw)
@@ -242,7 +262,13 @@ void xw_init(struct xwindow *xw)
 	xw->pixbuf = XCreatePixmap(xw->display, xw->window,
 		xw->width, xw->height, XDefaultDepth(xw->display, xw->screen));
 
+	xw->paste.target = XInternAtom(xw->display, "UTF8_STRING", 0);
+	if(xw->paste.target == None)
+		xw->paste.target = XA_STRING;
+
+	init_paste(xw);
 	im_init(xw);
+
 	XMapWindow(xw->display, xw->window);
 }
 
@@ -256,14 +282,34 @@ void xw_die(struct xwindow *xw)
 	XCloseDisplay(xw->display);
 }
 
+static inline void draw_sixel(struct xwindow *xw, int line, int col, struct cell_t *cellp)
+{
+	int w, h;
+	uint32_t color = 0;
+
+	for (h = 0; h < CELL_HEIGHT; h++) {
+		for (w = 0; w < CELL_WIDTH; w++) {
+			memcpy(&color, cellp->bitmap + BYTES_PER_PIXEL * (h * CELL_WIDTH + w), BYTES_PER_PIXEL);
+
+			if (color_list[DEFAULT_BG] != color) {
+				XSetForeground(xw->display, xw->gc, color);
+				XDrawPoint(xw->display, xw->pixbuf, xw->gc,
+					col * CELL_WIDTH + w, line * CELL_HEIGHT + h);
+			}
+		}
+	}
+}
+
 static inline void draw_line(struct xwindow *xw, struct terminal *term, int line)
 {
 	int bit_shift, margin_right;
-	int col, w, h;
-	uint32_t color = 0;
+	int col, w, h, begin, current, pos;
+	uint8_t color_tmp;
 	struct color_pair_t color_pair;
 	struct cell_t *cellp;
 	const struct glyph_t *glyphp;
+
+	struct paste_t *paste = &xw->paste;
 
 	/* at first, fill all pixels of line in backgournd color */
 	XSetForeground(xw->display, xw->gc, color_list[DEFAULT_BG]);
@@ -272,22 +318,10 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 	for (col = term->cols - 1; col >= 0; col--) {
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
-		/* target cell */
-		cellp = &term->cells[col + line * term->cols];
-
 		/* draw sixel bitmap */
+		cellp = &term->cells[col + line * term->cols];
 		if (cellp->has_bitmap) {
-			for (h = 0; h < CELL_HEIGHT; h++) {
-				for (w = 0; w < CELL_WIDTH; w++) {
-					memcpy(&color, cellp->bitmap + BYTES_PER_PIXEL * (h * CELL_WIDTH + w), BYTES_PER_PIXEL);
-
-					if (color_list[DEFAULT_BG] != color) {
-						XSetForeground(xw->display, xw->gc, color);
-						XDrawPoint(xw->display, xw->pixbuf, xw->gc,
-							col * CELL_WIDTH + w, line * CELL_HEIGHT + h);
-					}
-				}
-			}
+			draw_sixel(xw, line, col, cellp);
 			continue;
 		}
 
@@ -305,6 +339,19 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 			|| (cellp->width == NEXT_TO_WIDE && (col - 1) == term->cursor.x))) {
 			color_pair.fg = DEFAULT_BG;
 			color_pair.bg = (!tty.visible && BACKGROUND_DRAW) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
+		}
+
+		/* show copy area */
+		if (paste->copy_cursor_visible) {
+			pos     = col + line * term->cols;
+			begin   = paste->begin.x + paste->begin.y * term->cols;
+			current = paste->current.x + paste->current.y * term->cols;
+
+			if (pos == begin || pos == current) {
+				color_tmp     = color_pair.fg;
+				color_pair.fg = color_pair.bg;
+				color_pair.bg = color_tmp;
+			}
 		}
 
 		for (h = 0; h < CELL_HEIGHT; h++) {
