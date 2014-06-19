@@ -377,6 +377,9 @@ void term_init(struct terminal *term, int width, int height)
 	for (i = 0; i < DRCS_CHARSETS; i++)
 		term->drcs[i] = NULL;
 
+	/* allocate sixel buffer */
+	term->sixel.bitmap = (unsigned char *) ecalloc(BYTES_PER_PIXEL, width * height);
+
 	reset(term);
 }
 
@@ -392,4 +395,6 @@ void term_die(struct terminal *term)
 	for (i = 0; i < DRCS_CHARSETS; i++)
 		if (term->drcs[i] != NULL)
 			free(term->drcs[i]);
+
+	free(term->sixel.bitmap);
 }
