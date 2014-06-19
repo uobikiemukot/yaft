@@ -1,17 +1,17 @@
 CC ?= gcc
 #CC ?= clang
 
-CFLAGS ?= -std=c99 -pedantic -Wall -Wextra -O3 -s -pipe
+CFLAGS  ?= -std=c99 -pedantic -Wall -Wextra -O3 -s -pipe
 LDFLAGS ?=
 
-XCFLAGS ?= -std=c99 -pedantic -Wall -Wextra -I/usr/include/X11/ -O3 -s -pipe
+XCFLAGS  ?= -std=c99 -pedantic -Wall -Wextra -I/usr/include/X11/ -O3 -s -pipe
 XLDFLAGS ?= -lX11
 
 HDR = *.h
 DST = yaft
 SRC = yaft.c
 DESTDIR =
-PREFIX = $(DESTDIR)/usr
+PREFIX  = $(DESTDIR)/usr
 
 all: $(DST)
 
@@ -33,8 +33,9 @@ yaftx: yaftx.c $(HDR)
 install:
 	mkdir -p $(PREFIX)/share/terminfo
 	tic -o $(PREFIX)/share/terminfo info/yaft.src
-	install -Dm755 {./,$(PREFIX)/bin/}yaft
-	install -Dm755 {./,$(PREFIX)/bin/}yaft_wall
+	mkdir -p $(PREFIX)/bin/
+	install -m755 ./yaft $(PREFIX)/bin/yaft
+	install -m755 ./yaft_wall $(PREFIX)/bin/yaft_wall
 
 uninstall:
 	rm -rf $(PREFIX)/bin/yaft
