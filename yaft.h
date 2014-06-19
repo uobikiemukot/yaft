@@ -102,7 +102,7 @@ struct color_pair_t { uint8_t fg, bg; };
 struct cell_t {
 	const struct glyph_t *glyphp;   /* pointer to glyph */
 	struct color_pair_t color_pair; /* color (fg, bg) */
-	uint8_t attribute;              /* bold, underscore, etc... */
+	enum char_attr attribute;       /* bold, underscore, etc... */
 	enum glyph_width_t width;       /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
 	bool has_bitmap;
 	unsigned char bitmap[BYTES_PER_PIXEL * CELL_WIDTH * CELL_HEIGHT];
@@ -150,7 +150,7 @@ struct terminal {
 	bool wrap_occured;                  /* whether auto wrap occured or not */
 	struct state_t state;               /* for restore */
 	struct color_pair_t color_pair;     /* color (fg, bg) */
-	uint8_t attribute;                  /* bold, underscore, etc... */
+	enum char_attr attribute;           /* bold, underscore, etc... */
 	struct charset_t charset;           /* store UTF-8 byte stream */
 	struct esc_t esc;                   /* store escape sequence */
 	uint32_t color_palette[COLORS];     /* 256 color palette */
@@ -159,6 +159,8 @@ struct terminal {
 		*glyph_map[UCS2_CHARS];         /* array of pointer to glyphs[] */
 	struct glyph_t
 		*drcs[DRCS_CHARSETS];           /* DRCS chars */
+
+	struct sixel_canvas_t sixel;
 };
 
 struct parm_t { /* for parse_arg() */
@@ -170,11 +172,13 @@ struct tty_state {
 	volatile sig_atomic_t visible;
 	volatile sig_atomic_t redraw_flag;
 	volatile sig_atomic_t loop_flag;
+	volatile sig_atomic_t lazy_draw;
 };
 
 /* global variables */
 struct tty_state tty = {
-	.visible     = true,
-	.redraw_flag = false,
-	.loop_flag   = true,
+	.visible      = true,
+	.redraw_flag  = false,
+	.loop_flag    = true,
+	.lazy_draw    = false,
 };
