@@ -125,12 +125,195 @@ void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	refresh(xw, term);
 }
 
+void xbpress(struct xwindow *xw, struct terminal *term, XEvent *ev)
+{
+	struct paste_t *paste = &xw->paste;
+
+	if (ev->xbutton.button == Button1) { /* select start */
+		init_paste(xw);
+		paste->begin.x = ev->xbutton.x / CELL_WIDTH;
+		paste->begin.y = ev->xbutton.y / CELL_HEIGHT;
+		paste->copy_cursor_visible = true;
+		term->line_dirty[paste->begin.y] = true;
+		refresh(xw, term);
+
+		if (DEBUG)
+			fprintf(stderr, "copy begin (x, y) (%d, %d)\n",
+				paste->begin.x, paste->begin.y);
+	}
+}
+
+char *copy_cell2str(struct terminal *term,
+	struct point_t begin, struct point_t end)
+{
+	int i, num;
+	char *cp, *buf;
+	size_t size;
+	struct cell_t *cellp;
+	wchar_t code;
+
+	num = (end.x + end.y * term->cols) - (begin.x + begin.y * term->cols);
+	if (num < 0) {
+		cellp = &term->cells[end.y * term->cols + end.x];
+		num *= -1;
+	}
+	else
+		cellp = &term->cells[begin.y * term->cols + begin.x];
+
+	buf = ecalloc(num + 1, 3); /* Unicode BMP: max 3 bytes per character */
+	cp  = buf;
+
+	for (i = 0; i <= num; i++) {
+		if ((cellp + i)->width == NEXT_TO_WIDE || (cellp + i)->has_bitmap)
+			continue;
+
+		code = (cellp + i)->glyphp->code;
+		if (DEBUG)
+			fprintf(stderr, "num:%d code:%u\n", i, code);
+
+		if (0 <= code && code < UCS2_CHARS) {
+			size = wcrtomb(cp, code, NULL);
+			cp   += size;
+		}
+	}
+
+	return buf;
+}
+
+void xbrelease(struct xwindow *xw, struct terminal *term, XEvent *ev)
+{
+	Atom clipboard;
+	struct paste_t *paste = &xw->paste;
+
+	if (ev->xbutton.button == Button1) { /* select end */
+		paste->end.x = ev->xbutton.x / CELL_WIDTH;
+		paste->end.y = ev->xbutton.y / CELL_HEIGHT;
+
+		paste->copy_cursor_visible = false;
+		term->line_dirty[paste->begin.y] = true;
+		term->line_dirty[paste->end.y]   = true;
+
+		if (DEBUG)
+			fprintf(stderr, "copy end (x, y) (%d, %d)\n",
+				paste->end.x, paste->end.y);
+
+		free(paste->str);
+		paste->str = copy_cell2str(term, paste->begin, paste->end);
+		clipboard = XInternAtom(xw->display, "CLIPBOARD", 0);
+		XSetSelectionOwner(xw->display, XA_PRIMARY, xw->window, ev->xbutton.time);
+		XSetSelectionOwner(xw->display, clipboard, xw->window, ev->xbutton.time);
+	}
+	else if (ev->xbutton.button == Button2) { /* paste */
+		clipboard = XInternAtom(xw->display, "CLIPBOARD", 0);
+		XConvertSelection(xw->display, clipboard, paste->target,
+			XA_PRIMARY, xw->window, ev->xbutton.time);
+	}
+}
+
+void xselnotify(struct xwindow *xw, struct terminal *term, XEvent *ev)
+{
+	int format;
+	unsigned long nitems, ofs, rem;
+	uint8_t *data;
+	Atom type;
+
+	(void) ev; /* unused */
+
+	ofs = 0;
+	do {
+		if (XGetWindowProperty(xw->display, xw->window, XA_PRIMARY, ofs, BUFSIZE / 4,
+			False, AnyPropertyType, &type, &format, &nitems, &rem, &data))
+			return;
+
+		ewrite(term->fd, (uint8_t *) data, nitems * format / 8);
+		XFree(data);
+
+		ofs += nitems * format / 32;
+	} while (rem > 0);
+}
+
+void xselreq(struct xwindow *xw, struct terminal *term, XEvent *ev)
+{
+	XSelectionRequestEvent *xsre;
+	XSelectionEvent xev;
+	Atom xa_targets, string;
+	struct paste_t *paste = &xw->paste;
+
+	(void) term; /* unused */
+
+	xsre = (XSelectionRequestEvent *) ev;
+	xev.type = SelectionNotify;
+	xev.requestor = xsre->requestor;
+	xev.selection = xsre->selection;
+	xev.target = xsre->target;
+	xev.time = xsre->time;
+	/* reject */
+	xev.property = None;
+
+	xa_targets = XInternAtom(xw->display, "TARGETS", 0);
+	if(xsre->target == xa_targets) {
+		/* respond with the supported type */
+		string = paste->target;
+		XChangeProperty(xsre->display, xsre->requestor, xsre->property,
+				XA_ATOM, 32, PropModeReplace, (uint8_t *) &string, 1);
+		xev.property = xsre->property;
+	} else if(xsre->target == paste->target && paste->str != NULL) {
+		XChangeProperty(xsre->display, xsre->requestor, xsre->property,
+				xsre->target, 8, PropModeReplace, (uint8_t *) paste->str, strlen(paste->str));
+		xev.property = xsre->property;
+	}
+
+	/* all done, send a notification to the listener */
+	if(!XSendEvent(xsre->display, xsre->requestor, True, 0, (XEvent *) &xev))
+		fprintf(stderr, "Error sending SelectionNotify event\n");
+}
+
+/*
+void xselclear(struct xwindow *xw, struct terminal *term, XEvent *ev)
+{
+	(void) xw;
+	(void) term;
+	(void) ev;
+	struct paste_t *paste = &xw->paste;
+
+	term->line_dirty[paste->begin.y] = true;
+	term->line_dirty[paste->end.y]   = true;
+	refresh(xw, term);
+}
+*/
+
+void xmove(struct xwindow *xw, struct terminal *term, XEvent *ev)
+{
+	struct paste_t *paste = &xw->paste;
+
+	if (paste->copy_cursor_visible) {
+		paste->current.x = ev->xmotion.x / CELL_WIDTH;
+		paste->current.y = ev->xmotion.y / CELL_HEIGHT;
+
+		if (paste->prev != -1)
+			term->line_dirty[paste->prev] = true;
+		term->line_dirty[paste->current.y] = true;
+
+		refresh(xw, term);
+
+		paste->prev = paste->current.y;
+	}
+}
+
 static void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, XEvent *ev) = {
-	[KeyPress]        = xkeypress,
-	[ConfigureNotify] = xresize,
-	[Expose]          = xredraw,
-	[FocusIn]         = xfocus,
-	[FocusOut]        = xfocus,
+	[KeyPress]         = xkeypress,
+	[ConfigureNotify]  = xresize,
+	[Expose]           = xredraw,
+	[FocusIn]          = xfocus,
+	[FocusOut]         = xfocus,
+	[ButtonRelease]    = xbrelease,
+	[ButtonPress]      = xbpress,
+	[SelectionNotify]  = xselnotify,
+	[SelectionRequest] = xselreq,
+	[MotionNotify]     = xmove,
+	/*
+	[SelectionClear]   = xselclear,
+	*/
 };
 
 void fork_and_exec(int *master)
@@ -168,8 +351,6 @@ int main()
 
 	/* main loop */
 	while (tty.loop_flag) {
-		check_fds(&fds, &tv, term.fd);
-
 		while(XPending(xw.display)) {
 			XNextEvent(xw.display, &ev);
 			if (XFilterEvent(&ev, None))
@@ -178,6 +359,7 @@ int main()
 				event_func[ev.type](&xw, &term, &ev);
 		}
 
+		check_fds(&fds, &tv, term.fd);
 		if (FD_ISSET(term.fd, &fds)) {
 			size = read(term.fd, buf, BUFSIZE);
 			if (size > 0) {
