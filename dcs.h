@@ -289,36 +289,34 @@ void sixel_parse_data(struct terminal *term, struct sixel_canvas_t *sc, char *st
 		fprintf(stderr, "sixel_parse_data()\nwidth:%d height:%d\n", sc->width, sc->height);
 }
 
-void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair)
+void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair, int width, int height)
 {
 	extern const uint32_t color_list[]; /* global */
 	int i;
+
+	memset(sc->bitmap, 0, BYTES_PER_PIXEL * width * height);
 
 	sc->width   = 1;
 	sc->height  = 6;
 	sc->point.x	= 0;
 	sc->point.y = 0;
-	sc->line_length = 0;
+	sc->line_length = BYTES_PER_PIXEL * width;
 	sc->color_index = 0;
 
-	/* copy 256 color map */
-	for (i = 0; i < COLORS; i++)
-		//sc->color_table[i] = color_list[color_pair.fg]; /* set all palette to the same as 256 colors */
-		//sc->color_table[i] = color_list[i]; /* set all palette to the same as 256 colors */
-		sc->color_table[i] = (i == color_pair.bg) ? color_list[color_pair.fg]: color_list[i];
-
+	/* 0 - 15: use vt340 or ansi color map */
 	/* VT340 VT340 Default Color Map
 		ref: http://www.vt100.net/docs/vt3xx-gp/chapter2.html#T2-3
-	sc->color_table[0] = 0x000000; sc->color_table[8]  = 0x1A1A1A;
-	sc->color_table[1] = 0x141450; sc->color_table[9]  = 0x21213C;
-	sc->color_table[2] = 0x500D0D; sc->color_table[10] = 0x3C1A1A;
-	sc->color_table[3] = 0x145014; sc->color_table[11] = 0x213C21;
-	sc->color_table[4] = 0x501450; sc->color_table[12] = 0x3C213C;
-	sc->color_table[5] = 0x145050; sc->color_table[13] = 0x123C3C;
-	sc->color_table[6] = 0x505014; sc->color_table[14] = 0x3C3C21;
-	sc->color_table[7] = 0x353535; sc->color_table[15] = 0x505050;
 	*/
-	/* ANSI 16color table (but unusual order)
+	sc->color_table[0] = 0x000000; sc->color_table[8]  = 0x424242;
+	sc->color_table[1] = 0x3333CC; sc->color_table[9]  = 0x545499;
+	sc->color_table[2] = 0xCC2121; sc->color_table[10] = 0x994242;
+	sc->color_table[3] = 0x33CC33; sc->color_table[11] = 0x549954;
+	sc->color_table[4] = 0xCC33CC; sc->color_table[12] = 0x995499;
+	sc->color_table[5] = 0x33CCCC; sc->color_table[13] = 0x549999;
+	sc->color_table[6] = 0xCCCC33; sc->color_table[14] = 0x999954;
+	sc->color_table[7] = 0x878787; sc->color_table[15] = 0xCCCCCC;
+
+	/* ANSI 16color table (but unusual order corresponding vt340 color map)
 	sc->color_table[0] = color_list[0]; sc->color_table[8]  = color_list[8];
 	sc->color_table[1] = color_list[4]; sc->color_table[9]  = color_list[12];
 	sc->color_table[2] = color_list[1]; sc->color_table[10] = color_list[9];
@@ -328,6 +326,13 @@ void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair)
 	sc->color_table[6] = color_list[3]; sc->color_table[14] = color_list[11];
 	sc->color_table[7] = color_list[7]; sc->color_table[15] = color_list[15];
 	*/
+	/* change palette 0, because its often the same color as terminal background */
+	sc->color_table[0] = color_list[color_pair.fg];
+
+	/* 16 - 255: use xterm 256 color palette */
+	/* copy 256 color map */
+	for (i = 16; i < COLORS; i++)
+		sc->color_table[i] = color_list[i];
 }
 
 void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
@@ -381,9 +386,6 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 	*/
 	char *cp;
 	struct parm_t parm;
-	struct sixel_canvas_t sc;
-
-	reset_sixel(&sc, term->color_pair);
 
 	/* replace final char of sixel header by NUL '\0' */
 	cp = strchr(start_buf, 'q');
@@ -397,11 +399,9 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 	parse_arg(start_buf, &parm, ';', isdigit);
 
 	/* set canvas parameters */
-	sc.bitmap      = (unsigned char *) ecalloc(term->width * term->height, BYTES_PER_PIXEL);
-	sc.line_length = term->width * BYTES_PER_PIXEL;
-	sixel_parse_data(term, &sc, cp + 1); /* skip 'q' */
-	sixel_copy2cell(term, &sc);
-	free(sc.bitmap);
+	reset_sixel(&term->sixel, term->color_pair, term->width, term->height);
+	sixel_parse_data(term, &term->sixel, cp + 1); /* skip 'q' */
+	sixel_copy2cell(term, &term->sixel);
 }
 
 static inline void decdld_bitmap(struct glyph_t *glyph, uint8_t bitmap, uint8_t row, uint8_t column)
