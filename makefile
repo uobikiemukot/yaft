@@ -23,11 +23,11 @@ mkfont_bdf: tools/mkfont_bdf.c tools/font.h tools/bdf.h
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 $(DST): $(SRC) $(HDR)
-	./mkfont_bdf table/alias fonts/milkjf_k16.bdf fonts/milkjf_8x16.bdf fonts/milkjf_8x16r.bdf > glyph.h
+	./mkfont_bdf table/alias fonts/milkjf_k16.bdf fonts/milkjf_8x16r.bdf fonts/milkjf_8x16.bdf > glyph.h
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 yaftx: yaftx.c $(HDR)
-	./mkfont_bdf table/alias fonts/milkjf_k16.bdf fonts/milkjf_8x16.bdf fonts/milkjf_8x16r.bdf > glyph.h
+	./mkfont_bdf table/alias fonts/milkjf_k16.bdf fonts/milkjf_8x16r.bdf fonts/milkjf_8x16.bdf > glyph.h
 	$(CC) -o $@ $< $(XCFLAGS) $(XLDFLAGS)
 
 install:
