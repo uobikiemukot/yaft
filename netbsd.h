@@ -72,7 +72,7 @@ void cmap_die(struct wsdisplay_cmap *cmap)
 void cmap_update(int fd, struct wsdisplay_cmap *cmap)
 {
 	if (cmap) {
-		if (ioctl(fb->fd, WSDISPLAYIO_PUTCMAP, cmap))
+		if (ioctl(fd, WSDISPLAYIO_PUTCMAP, cmap))
 			fatal("ioctl: WSDISPLAYIO_PUTCMAP failed");
 	}
 }
