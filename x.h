@@ -8,6 +8,9 @@
 
 #define XK_NO_MOD UINT_MAX
 
+/* shell */
+const char *shell_cmd = "/bin/bash";
+
 static const char *im_font = "-*-*-medium-r-*-*-16-*-*-*-*-*-*-*";
 
 enum x_misc { /* default terminal size */
@@ -302,7 +305,7 @@ static inline void draw_sixel(struct xwindow *xw, int line, int col, struct cell
 
 static inline void draw_line(struct xwindow *xw, struct terminal *term, int line)
 {
-	int bit_shift, margin_right;
+	int bdf_padding, glyph_width, margin_right;
 	int col, w, h, begin, current, pos;
 	uint8_t color_tmp;
 	struct color_pair_t color_pair;
@@ -330,7 +333,10 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 		glyphp     = cellp->glyphp;
 
 		/* check wide character or not */
-		bit_shift = (cellp->width == WIDE) ? CELL_WIDTH: 0;
+		glyph_width = (cellp->width == HALF) ? CELL_WIDTH: CELL_WIDTH * 2;
+		bdf_padding = my_ceil(glyph_width, BITS_PER_BYTE) * BITS_PER_BYTE - glyph_width;
+		if (cellp->width == WIDE)
+			bdf_padding += CELL_WIDTH;
 
 		/* check cursor positon */
 		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
@@ -361,7 +367,7 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 
 			for (w = 0; w < CELL_WIDTH; w++) {
 				/* set color palette */
-				if (glyphp->bitmap[h] & (0x01 << (bit_shift + w)))
+				if (glyphp->bitmap[h] & (0x01 << (bdf_padding + w)))
 					XSetForeground(xw->display, xw->gc, color_list[color_pair.fg]);
 				else if (color_pair.bg != DEFAULT_BG)
 					XSetForeground(xw->display, xw->gc, color_list[color_pair.bg]);
