@@ -2,29 +2,35 @@
 
 Last update: Thu Jul 10 20:07:09 JST 2014
 
-yaft is simple framebuffer terminal for minimalist.
-This software developed to replace linux console.
+## description
 
-Most defferent points are supporting UTF-8 encoding (with embedded font) and 256 color mode.
-yaft requires minimal dependency, what you need for build is only make and gcc (or clang).
+yaft is simple framebuffer terminal emulator for minimalist (living without X).
+This software is being developed to replace Linux console for personal use.
 
-Main target is linux console, but yaft supports some other framebuffer platform (freebsd console and netbsd wscons).
+Most defferent point is supporting UTF-8 encoding (with embedded fonts) and 256 color mode.
+yaft requires minimal dependency, what you need for build is only make and gcc (or bmake and clang).
+
+Main target is Linux console, but yaft supports some other framebuffer platform, FreeBSD console and NetBSD wscons (experimental).
 And there are other (non framebuffer) ports, yaftx (X Window System) and yaft-android (Android).
 
 ## download
+
+(up-to-date)
 
 ~~~
 $ git clone https://github.com/uobikiemukot/yaft
 ~~~
 or
 
+(maybe something old)
+
 -	http://uobikiemukot.github.io/yaft/release/yaft-0.2.7.tar.gz
 
 ## features
 
-+	recognizes most of escape sequences of vt102 and linux console ([detail](http://uobikiemukot.github.io/yaft/escape.html))
++	recognizes most of escape sequences of vt102 and Linux console ([detail](http://uobikiemukot.github.io/yaft/escape.html))
 +	supports various framebuffer types (8/15/16/24/32bpp)
-+	supports (only) UTF-8 encoding
++	supports (only) UTF-8 encoding with embedded fonts
 +	supports 256 colors (same as xterm)
 +	supports wallpaper
 +	supports DRCS (DECDLD/DRCSMMv1) (experimental)
@@ -32,18 +38,13 @@ or
 
 ## configuration
 
-if you want to change configuration, rewrite conf.h
-(non linux user should change include file in yaft.c) 
+If you want to change configuration, rewrite conf.h
 
-### path and terminal name
-
-+	static char *fb_path   = "/dev/fb0";           /* defined in linux.h, freebsd.h, netbsd.h */
-+	static char *shell_cmd = "/bin/bash";          /* defined in linux.h, freebsd.h, netbsd.h, x.h */
-+	static char *term_name = "TERM=yaft-256color";
+(non Linux user should change include file in yaft.c)
 
 ### color
 
-the value is an index of color_list[] in color.h
+the value is an index of color_list[] (see color.h)
 
 +	DEFAULT_FG = 7,
 +	DEFAULT_BG = 0,
@@ -52,14 +53,21 @@ the value is an index of color_list[] in color.h
 
 ### misc
 
-+	DEBUG            = false,  /* write dump of input to stdout, debug message to stderr */
 +	TABSTOP          = 8,      /* hardware tabstop */
 +	LAZY_DRAW        = false,  /* don't draw when input data size is larger than BUFSIZE (experimental) */
-+	BACKGROUND_DRAW  = false,  /* always draw even if vt is not active (linux console only) */
++	BACKGROUND_DRAW  = false,  /* always draw even if vt is not active (maybe linux console only) */
 +	WALLPAPER        = false,  /* copy framebuffer before startup, and use it as wallpaper */
-+	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph(single width): U+FFFD (REPLACEMENT CHARACTER)) */
++	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph(single width): U+0020 (SPACE)) */
 +	SUBSTITUTE_WIDE  = 0x3013, /* used for missing glyph(double width): U+3013 (GETA MARK) */
-+	REPLACEMENT_CHAR = 0x0020, /* used for malformed UTF-8 sequence   : U+FFFD (REPLACEMENT CHARACTER)  */
++	REPLACEMENT_CHAR = 0x0020, /* used for malformed UTF-8 sequence   : U+0020 (SPACE)  */
+
+### path and terminal name
+
+FreeBSD, NetBSD user must change fb_path (mybe also shell_cmd)
+
++	static char *term_name = "TERM=yaft-256color";
++	static char *fb_path   = "/dev/fb0";
++	static char *shell_cmd = "/bin/bash";
 
 ## environment variable
 
@@ -70,6 +78,7 @@ $ FRAMEBUFFER="/dev/fb1" yaft # use another framebuffer device
 ## install
 
 please check makefile and LANG environment variable before make
+
 (yaft uses wcwidth in libc for calculating glyph width)
 
 ~~~
@@ -77,6 +86,8 @@ please check makefile and LANG environment variable before make
 $ make
 # make install
 ~~~
+
+terminfo/termcap is found in info/ directory
 
 ## usage
 
