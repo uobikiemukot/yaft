@@ -5,6 +5,7 @@
 #include "util.h"
 #include "linux.h"
 //#include "freebsd.h"
+//#include "netbsd.h"
 #include "terminal.h"
 #include "function.h"
 #include "osc.h"
@@ -36,6 +37,13 @@ void sig_handler(int signo)
 			tty.redraw_flag = true;
 		}
 	}
+	else if (signo == SIGALRM) {
+		if (tty.lazy_draw) {
+			fprintf(stderr, "catch alarm\n");
+			tty.redraw_flag = true;
+			tty.lazy_draw   = false;
+		}
+	}
 }
 
 void set_rawmode(int fd, struct termios *save_tm)
@@ -63,6 +71,7 @@ void tty_init(struct termios *save_tm)
 	sigact.sa_flags   = SA_RESTART;
 	esigaction(SIGCHLD, &sigact, NULL);
 	esigaction(SIGUSR1, &sigact, NULL);
+	esigaction(SIGALRM, &sigact, NULL);
 
 	vtm.mode   = VT_PROCESS;
 	vtm.waitv  = 0;
@@ -87,6 +96,7 @@ void tty_die(struct termios *save_tm)
 	sigact.sa_handler = SIG_DFL;
 	sigaction(SIGCHLD, &sigact, NULL);
 	sigaction(SIGUSR1, &sigact, NULL);
+	sigaction(SIGALRM, &sigact, NULL);
 
 	vtm.mode   = VT_AUTO;
 	vtm.waitv  = 0;
@@ -102,9 +112,10 @@ void tty_die(struct termios *save_tm)
 void fork_and_exec(int *master, int lines, int cols)
 {
 	pid_t pid;
+	struct winsize ws = {.ws_row = lines, .ws_col = cols,
+		.ws_xpixel = 0, .ws_ypixel = 0};
 
-	pid = eforkpty(master, NULL, NULL,
-		&(struct winsize){.ws_row = lines, .ws_col = cols, .ws_xpixel = 0, .ws_ypixel = 0});
+	pid = eforkpty(master, NULL, NULL, &ws);
 
 	if (pid == 0) { /* child */
 		esetenv("TERM", term_name, 1);
@@ -112,10 +123,10 @@ void fork_and_exec(int *master, int lines, int cols)
 	}
 }
 
-void check_fds(fd_set *fds, struct timeval *tv, int stdin, int master)
+void check_fds(fd_set *fds, struct timeval *tv, int input, int master)
 {
 	FD_ZERO(fds);
-	FD_SET(stdin, fds);
+	FD_SET(input, fds);
 	FD_SET(master, fds);
 	tv->tv_sec  = 0;
 	tv->tv_usec = SELECT_TIMEOUT;
@@ -144,11 +155,8 @@ int main()
 	/* main loop */
 	while (tty.loop_flag) {
 		if (tty.redraw_flag) { 
-			/* after VT switching, need to restore cmap (8bpp mode) */
-			if (fb.cmap != NULL) {
-				if (ioctl(fb.fd, FBIOPUTCMAP, fb.cmap) < 0)
-					fatal("ioctl: FBIOPUTCMAP failed");
-			}
+			/* after VT switching, need to restore cmap (in 8bpp mode) */
+			cmap_update(fb.fd, fb.cmap);
 			redraw(&term);
 			refresh(&fb, &term);
 			tty.redraw_flag = false;
@@ -167,9 +175,13 @@ int main()
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
 
-				if (LAZY_DRAW && size == BUFSIZE)
+				if (LAZY_DRAW && size == BUFSIZE) {
+					tty.lazy_draw = true;
+					ualarm(100000, 0);
 					continue;
+				}
 				refresh(&fb, &term);
+				tty.lazy_draw = false;
 			}
 		}
 	}
