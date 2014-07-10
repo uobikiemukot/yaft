@@ -220,10 +220,12 @@ void reset_esc(struct terminal *term)
 	if (DEBUG)
 		fprintf(stderr, "*esc reset*\n");
 
+	/*
 	if (term->esc.size > MAX_ESC_SIZE) {
 		term->esc.buf  = erealloc(term->esc.buf, MAX_ESC_SIZE);
 		term->esc.size = MAX_ESC_SIZE;
 	}
+	*/
 
 	term->esc.bp = term->esc.buf;
 	term->esc.state = STATE_RESET;
@@ -235,7 +237,7 @@ bool push_esc(struct terminal *term, uint8_t ch)
 
 	if ((term->esc.bp - term->esc.buf + 1) == term->esc.size) { /* buffer limit */
 		if (DEBUG)
-			fprintf(stderr, "escape sequence length > %d, reallocated\n", term->esc.size);
+			fprintf(stderr, "escape sequence length >= %d, term.esc.buf reallocated\n", term->esc.size);
 		offset = term->esc.bp - term->esc.buf;
 		term->esc.buf  = erealloc(term->esc.buf, term->esc.size * 2);
 		term->esc.size *= 2;
