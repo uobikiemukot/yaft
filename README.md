@@ -39,7 +39,6 @@ or
 ## configuration
 
 If you want to change configuration, rewrite conf.h
-
 (non Linux user should change include file in yaft.c)
 
 ### color
@@ -75,10 +74,9 @@ FreeBSD, NetBSD user must change fb_path (mybe also shell_cmd)
 $ FRAMEBUFFER="/dev/fb1" yaft # use another framebuffer device
 ~~~
 
-## install
+## build and install (yaft)
 
 please check makefile and LANG environment variable before make
-
 (yaft uses wcwidth in libc for calculating glyph width)
 
 ~~~
@@ -86,6 +84,16 @@ please check makefile and LANG environment variable before make
 $ make
 # make install
 ~~~
+
+## build and install (yaftx)
+
+~~~
+$ make yaftx
+~~~
+
+pelase install manually
+
+## terminfo/termcap
 
 terminfo/termcap is found in info/ directory
 
