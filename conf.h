@@ -1,14 +1,11 @@
 /* See LICENSE for licence details. */
-/* framubuffer device */
-const char *fb_path = "/dev/fb0";
-//const char *fb_path = "/dev/tty"; /* for FreeBSD */
 
-/* shell */
-const char *shell_cmd = "/bin/bash";
-//const char *shell_cmd = "/bin/csh"; /* for FreeBSD */
+/* framubuffer device, shell command
+	are defined in fb/{linux.h,freebsd.h,netbsd.h}
+	please check include file in yaft.c */
 
 /* TERM value */
-const char *term_name = "yaft-256color"; /* default TERM */
+const char *term_name = "yaft-256color";
 
 /* color: index number of color_palette[] (see color.h) */
 enum {
@@ -22,10 +19,10 @@ enum {
 enum {
 	DEBUG            = false,  /* write dump of input to stdout, debug message to stderr */
 	TABSTOP          = 8,      /* hardware tabstop */
-	LAZY_DRAW        = true,   /* don't draw when input data size is larger than BUFSIZE */
-	BACKGROUND_DRAW  = false,  /* always draw even if vt is not active */
-	WALLPAPER        = false,
-	SUBSTITUTE_HALF  = 0x20,   /* used for missing glyph(single width)  : U+20   (SPACE) */
+	LAZY_DRAW        = false,  /* don't draw when input data size is larger than BUFSIZE */
+	BACKGROUND_DRAW  = false,   /* always draw even if vt is not active */
+	WALLPAPER        = false,   /* copy framebuffer before startup, and use it as wallpaper */
+	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph(single width): U+FFFD (REPLACEMENT CHARACTER)) */
 	SUBSTITUTE_WIDE  = 0x3013, /* used for missing glyph(double width): U+3013 (GETA MARK) */
-	REPLACEMENT_CHAR = 0x20,   /* used for malformed UTF-8 sequence     : U+20   (SPACE)  */
+	REPLACEMENT_CHAR = 0x0020, /* used for malformed UTF-8 sequence   : U+FFFD (REPLACEMENT CHARACTER)  */
 };
