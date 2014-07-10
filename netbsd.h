@@ -1,25 +1,26 @@
 /* See LICENSE for licence details. */
 
 /* _XOPEN_SOURCE >= 600 invalidates __BSD_VISIBLE
-	so define some types manually */
+        so define some types manually */
+typedef unsigned char   unchar;
 typedef unsigned char   u_char;
-typedef unsigned short  u_short;
+typedef unsigned short  ushort;
 typedef unsigned int    u_int;
 typedef unsigned long   u_long;
 
-#include <machine/param.h>
-#include <sys/consio.h>
-#include <sys/fbio.h>
-#include <sys/kbio.h>
-#include <sys/types.h>
+#include  <sys/param.h>
+#include  <dev/wscons/wsdisplay_usl_io.h>
+#include  <dev/wscons/wsconsio.h>
+#include  <dev/wscons/wsksymdef.h>
 
 /* framubuffer device */
-const char *fb_path = "/dev/tty"; /* for FreeBSD */
+const char *fb_path = "/dev/ttyE0"; /* for NetBSD */
+//const char *fb_path = "/dev/ttyC0"; /* for OpenBSD */
 
 /* shell */
-const char *shell_cmd = "/bin/csh"; /* for FreeBSD */
+const char *shell_cmd = "/bin/csh"; /* for NetBSD */
 
-/* some structs for FreeBSD */
+/* some structs for NetBSD */
 struct framebuffer {
 	unsigned char *fp;    /* pointer of framebuffer(read only) */
 	unsigned char *wall;  /* buffer for wallpaper */
@@ -29,9 +30,9 @@ struct framebuffer {
 	long screen_size;     /* screen data size (byte) */
 	int line_length;      /* line length (byte) */
 	int bpp;              /* BYTES per pixel */
-	video_color_palette_t /* cmap for legacy framebuffer (8bpp pseudocolor) */
+	struct wsdisplay_cmap /* cmap for legacy framebuffer (8bpp pseudocolor) */
 		*cmap, *cmap_org;
-	video_info_t vinfo;
+	struct wsdisplayio_fbinfo vinfo;
 };
 
 /* common functions */
@@ -45,34 +46,34 @@ unsigned char *load_wallpaper(struct framebuffer *fb)
 	return ptr;
 }
 
-/* some functions for FreeBSD framebuffer */
-void cmap_create(video_color_palette_t **cmap)
+/* some functions for NetBSD framebuffer */
+void cmap_create(struct wsdisplay_cmap **cmap)
 {
-	*cmap                = (video_color_palette_t *) ecalloc(1, sizeof(video_color_palette_t));
+	*cmap                = (struct wsdisplay_cmap *) ecalloc(1, sizeof(struct wsdisplay_cmap));
 	(*cmap)->index       = 0;
 	(*cmap)->count       = COLORS;
 	(*cmap)->red         = (u_char *) ecalloc(COLORS, sizeof(u_char));
 	(*cmap)->green       = (u_char *) ecalloc(COLORS, sizeof(u_char));
 	(*cmap)->blue        = (u_char *) ecalloc(COLORS, sizeof(u_char));
-	(*cmap)->transparent = NULL;
+	//(*cmap)->transparent = NULL;
 }
 
-void cmap_die(video_color_palette_t *cmap)
+void cmap_die(struct wsdisplay_cmap *cmap)
 {
 	if (cmap) {
 		free(cmap->red);
 		free(cmap->green);
 		free(cmap->blue);
-		free(cmap->transparent);
+		//free(cmap->transparent);
 		free(cmap);
 	}
 }
 
-void cmap_update(int fd, video_color_palette_t *cmap)
+void cmap_update(int fd, struct wsdisplay_cmap *cmap)
 {
 	if (cmap) {
-		if (ioctl(fd, FBIOPUTCMAP, cmap))
-			fatal("ioctl: FBIOPUTCMAP failed");
+		if (ioctl(fb->fd, WSDISPLAYIO_PUTCMAP, cmap))
+			fatal("ioctl: WSDISPLAYIO_PUTCMAP failed");
 	}
 }
 
@@ -82,7 +83,7 @@ void cmap_init(struct framebuffer *fb)
 	int i;
 	u_char r, g, b;
 
-	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org)) { /* not fatal */
+	if (ioctl(fb->fd, WSDISPLAYIO_GETCMAP, fb->cmap_org)) { /* not fatal */
 		cmap_die(fb->cmap_org);
 		fb->cmap_org = NULL;
 	}
@@ -101,7 +102,7 @@ void cmap_init(struct framebuffer *fb)
 	cmap_update(fb->fd, fb->cmap);
 }
 
-static inline uint32_t color2pixel(video_info_t *vinfo, uint32_t color)
+static inline uint32_t color2pixel(struct wsdisplayio_fbinfo *vinfo, uint32_t color)
 {
 	uint32_t r, g, b;
 
@@ -110,7 +111,7 @@ static inline uint32_t color2pixel(video_info_t *vinfo, uint32_t color)
 	b = bit_mask[8] & (color >> 0);
 
 	/* pseudo color */
-	if (vinfo->vi_depth == 8) {
+	if (vinfo->fbi_pixeltype == WSFB_CI) {
 		if (r == g && r == b) { /* 24 gray scale */
 			r = 24 * r / COLORS;
 			return 232 + r;
@@ -122,59 +123,56 @@ static inline uint32_t color2pixel(video_info_t *vinfo, uint32_t color)
 	}
 
 	/* direct color */
-	r = r >> (BITS_PER_BYTE - vinfo->vi_pixel_fsizes[0]);
-	g = g >> (BITS_PER_BYTE - vinfo->vi_pixel_fsizes[1]);
-	b = b >> (BITS_PER_BYTE - vinfo->vi_pixel_fsizes[2]);
+	r = r >> (BITS_PER_BYTE - vinfo->fbi_subtype.fbi_rgbmasks.red_size);
+	g = g >> (BITS_PER_BYTE - vinfo->fbi_subtype.fbi_rgbmasks.green_size);
+	b = b >> (BITS_PER_BYTE - vinfo->fbi_subtype.fbi_rgbmasks.blue_size);
 
-	return (r << vinfo->vi_pixel_fields[0])
-		+ (g << vinfo->vi_pixel_fields[1])
-		+ (b << vinfo->vi_pixel_fields[2]);
+	return (r << vinfo->fbi_subtype.fbi_rgbmasks.red_offset)
+		+ (g << vinfo->fbi_subtype.fbi_rgbmasks.green_offset)
+		+ (b << vinfo->fbi_subtype.fbi_rgbmasks.blue_offset);
 }
 
 void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 {
-	int i, video_mode;
+	int i;
 	char *path;
-	video_info_t vinfo;
-	video_adapter_info_t ainfo;
+	struct wsdisplay_fbinfo finfo;
+	struct wsdisplayio_fbinfo vinfo;
 
 	if ((path = getenv("FRAMEBUFFER")) != NULL)
 		fb->fd = eopen(path, O_RDWR);
 	else
 		fb->fd = eopen(fb_path, O_RDWR);
 
-	if (ioctl(fb->fd, FBIO_GETMODE, &video_mode))
-		fatal("ioctl: FBIO_GETMODE failed");
+	if (ioctl(fb->fd, WSDISPLAYIO_GINFO, &finfo))
+		fatal("ioctl: WSDISPLAYIO_GINFO failed");
 
-	vinfo.vi_mode = video_mode;
-	if (ioctl(fb->fd, FBIO_MODEINFO, &vinfo))
-		fatal("ioctl: FBIO_MODEINFO failed");
+	if (ioctl(fb->fd, WSDISPLAYIO_GET_FBINFO, &vinfo))
+		fatal("ioctl: WSDISPLAYIO_GET_FBINFO failed");
 
-	if (ioctl(fb->fd, FBIO_ADPINFO, &ainfo))
-		fatal("ioctl: FBIO_ADPINFO failed");
+	fb->width  = finfo.width;
+	fb->height = finfo.height;
+	fb->line_length = vinfo.fbi_stride;
+	fb->screen_size = vinfo.fbi_fbsize;
 
-	fb->width  = vinfo.vi_width;
-	fb->height = vinfo.vi_height;
-	fb->screen_size = ainfo.va_window_size;
-	fb->line_length = ainfo.va_line_width;
-
-	if ((vinfo.vi_mem_model == V_INFO_MM_PACKED || vinfo.vi_mem_model == V_INFO_MM_DIRECT)
-		&& (vinfo.vi_depth == 15 || vinfo.vi_depth == 16
-		|| vinfo.vi_depth == 24 || vinfo.vi_depth == 32)) {
+	if (vinfo.fbi_pixeltype == WSFB_RGB) {
 		fb->cmap = fb->cmap_org = NULL;
-		fb->bpp = my_ceil(vinfo.vi_depth, BITS_PER_BYTE);
+		fb->bpp = my_ceil(vinfo.fbi_bitsperpixel, BITS_PER_BYTE);
 	}
-	else if ((ainfo.va_flags & V_ADP_PALETTE) &&
-		vinfo.vi_mem_model == V_INFO_MM_PACKED && vinfo.vi_depth == 8) {
+	else if (vinfo.fbi_pixeltype == WSFB_CI) {
 		cmap_create(&fb->cmap);
 		cmap_create(&fb->cmap_org);
 		cmap_init(fb);
-		fb->bpp = 1;
+		fb->bpp = my_ceil(vinfo.fbi_bitsperpixel, BITS_PER_BYTE);
 	}
 	else /* non packed pixel, mono color, grayscale: not implimented */
 		fatal("unsupported framebuffer type");
 
-	for (i = 0; i < COLORS; i++) /* init color palette */
+	//if (DEBUG)
+		fprintf(stderr, "pixeltype:%d bitsperpixel:%d\n",
+			vinfo.fbi_pixeltype, vinfo.fbi_bitsperpixel);
+
+	for (i = 0; i < COLORS; i++) // init color palette
 		color_palette[i] = (fb->bpp == 1) ? (uint32_t) i: color2pixel(&vinfo, color_list[i]);
 
 	fb->fp    = (unsigned char *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
@@ -187,7 +185,7 @@ void fb_die(struct framebuffer *fb)
 {
 	cmap_die(fb->cmap);
 	if (fb->cmap_org) {
-		ioctl(fb->fd, FBIOPUTCMAP, fb->cmap_org); /* not fatal */
+		ioctl(fb->fd, WSDISPLAYIO_PUTCMAP, fb->cmap_org); /* not fatal */
 		cmap_die(fb->cmap_org);
 	}
 	free(fb->buf);
@@ -198,7 +196,7 @@ void fb_die(struct framebuffer *fb)
 
 static inline void draw_line(struct framebuffer *fb, struct terminal *term, int line)
 {
-	int pos, size, bdf_padding, glyph_width, margin_right;
+	int pos, size, bit_shift, margin_right;
 	int col, w, h, src_offset, dst_offset;
 	uint32_t pixel, color = 0;
 	struct color_pair_t color_pair;
@@ -231,10 +229,7 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 		glyphp     = cellp->glyphp;
 
 		/* check wide character or not */
-		glyph_width = (cellp->width == HALF) ? CELL_WIDTH: CELL_WIDTH * 2;
-		bdf_padding = my_ceil(glyph_width, BITS_PER_BYTE) * BITS_PER_BYTE - glyph_width;
-		if (cellp->width == WIDE)
-			bdf_padding += CELL_WIDTH;
+		bit_shift = (cellp->width == WIDE) ? CELL_WIDTH: 0;
 
 		/* check cursor positon */
 		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
@@ -255,7 +250,7 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 					+ (line * CELL_HEIGHT + h) * fb->line_length;
 
 				/* set color palette */
-				if (glyphp->bitmap[h] & (0x01 << (bdf_padding + w)))
+				if (glyphp->bitmap[h] & (0x01 << (bit_shift + w)))
 					pixel = term->color_palette[color_pair.fg];
 				else if (fb->wall && color_pair.bg == DEFAULT_BG) /* wallpaper */
 					memcpy(&pixel, fb->wall + pos, fb->bpp);

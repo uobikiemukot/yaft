@@ -3,6 +3,12 @@
 #include <linux/vt.h>
 #include <linux/kd.h>
 
+/* framubuffer device */
+const char *fb_path = "/dev/fb0";
+
+/* shell */
+const char *shell_cmd = "/bin/bash";
+
 /* struct for Linux */
 struct framebuffer {
 	unsigned char *fp;               /* pointer of framebuffer (read only) */
@@ -51,13 +57,21 @@ void cmap_die(struct fb_cmap *cmap)
 	}
 }
 
+void cmap_update(int fd, struct fb_cmap *cmap)
+{
+	if (cmap) {
+		if (ioctl(fd, FBIOPUTCMAP, cmap))
+			fatal("ioctl: FBIOPUTCMAP failed");
+	}
+}
+
 void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
 {
 	extern const uint32_t color_list[]; /* global */
 	int i;
 	uint16_t r, g, b;
 
-	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org) < 0) { /* not fatal */
+	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org)) { /* not fatal */
 		cmap_die(fb->cmap_org);
 		fb->cmap_org = NULL;
 	}
@@ -79,8 +93,7 @@ void cmap_init(struct framebuffer *fb, struct fb_var_screeninfo *vinfo)
 			bit_mask[16] & bit_reverse(b, 16): b;
 	}
 
-	if (ioctl(fb->fd, FBIOPUTCMAP, fb->cmap) < 0)
-		fatal("ioctl: FBIOPUTCMAP failed");
+	cmap_update(fb->fd, fb->cmap);
 }
 
 static inline uint32_t color2pixel(struct fb_var_screeninfo *vinfo, uint32_t color)
@@ -133,10 +146,10 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 	else
 		fb->fd = eopen(fb_path, O_RDWR);
 
-	if (ioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo) < 0)
+	if (ioctl(fb->fd, FBIOGET_FSCREENINFO, &finfo))
 		fatal("ioctl: FBIOGET_FSCREENINFO failed");
 
-	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo) < 0)
+	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo))
 		fatal("ioctl: FBIOGET_VSCREENINFO failed");
 
 	/* check screen offset and initialize because linux console change this */
@@ -189,7 +202,7 @@ void fb_die(struct framebuffer *fb)
 
 static inline void draw_line(struct framebuffer *fb, struct terminal *term, int line)
 {
-	int pos, size, bit_shift, margin_right;
+	int pos, size, bdf_padding, glyph_width, margin_right;
 	int col, w, h, src_offset, dst_offset;
 	uint32_t pixel, color = 0;
 	struct color_pair_t color_pair;
@@ -222,7 +235,10 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 		glyphp     = cellp->glyphp;
 
 		/* check wide character or not */
-		bit_shift = (cellp->width == WIDE) ? CELL_WIDTH: 0;
+		glyph_width = (cellp->width == HALF) ? CELL_WIDTH: CELL_WIDTH * 2;
+		bdf_padding = my_ceil(glyph_width, BITS_PER_BYTE) * BITS_PER_BYTE - glyph_width;
+		if (cellp->width == WIDE)
+			bdf_padding += CELL_WIDTH;
 
 		/* check cursor positon */
 		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
@@ -243,7 +259,7 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 					+ (line * CELL_HEIGHT + h) * fb->line_length;
 
 				/* set color palette */
-				if (glyphp->bitmap[h] & (0x01 << (bit_shift + w)))
+				if (glyphp->bitmap[h] & (0x01 << (bdf_padding + w)))
 					pixel = term->color_palette[color_pair.fg];
 				else if (fb->wall && color_pair.bg == DEFAULT_BG) /* wallpaper */
 					memcpy(&pixel, fb->wall + pos, fb->bpp);
