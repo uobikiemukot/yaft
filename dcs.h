@@ -407,7 +407,7 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 static inline void decdld_bitmap(struct glyph_t *glyph, uint8_t bitmap, uint8_t row, uint8_t column)
 {
 	/*
-			  MSB        LSB (glyph_t bitmap order, padding at MSB side)
+			  MSB        LSB (glyph_t bitmap order, padding at LSB side)
 				  -> column
 	sixel bit0 ->........
 	sixel bit1 ->........
