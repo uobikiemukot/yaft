@@ -13,6 +13,9 @@ yaft requires minimal dependency, what you need for build is only make and gcc (
 Main target is Linux console, but yaft supports some other framebuffer platform, FreeBSD console and NetBSD wscons (experimental).
 And there are other (non framebuffer) ports, yaftx (X Window System) and yaft-android (Android).
 
+This repository includes yaft, yaft-freebsd, yaft-netbsd and yaftx.
+yaft-android is found [here](https://github.com/uobikiemukot/yaft-android).
+
 ## download
 
 (up-to-date)
@@ -39,7 +42,6 @@ or
 ## configuration
 
 If you want to change configuration, rewrite conf.h
-(non Linux user should change include file in yaft.c)
 
 ### color
 
@@ -52,17 +54,15 @@ the value is an index of color_list[] (see color.h)
 
 ### misc
 
++	DEBUG            = false,  /* write dump of input to stdout, debug message to stderr */
 +	TABSTOP          = 8,      /* hardware tabstop */
-+	LAZY_DRAW        = false,  /* don't draw when input data size is larger than BUFSIZE (experimental) */
 +	BACKGROUND_DRAW  = false,  /* always draw even if vt is not active (maybe linux console only) */
-+	WALLPAPER        = false,  /* copy framebuffer before startup, and use it as wallpaper */
++	WALLPAPER        = false,  /* copy framebuffer before startup, and use it as wallpaper (console only) */
 +	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph(single width): U+0020 (SPACE)) */
 +	SUBSTITUTE_WIDE  = 0x3013, /* used for missing glyph(double width): U+3013 (GETA MARK) */
 +	REPLACEMENT_CHAR = 0x0020, /* used for malformed UTF-8 sequence   : U+0020 (SPACE)  */
 
-### path and terminal name
-
-FreeBSD, NetBSD user must change fb_path (mybe also shell_cmd)
+### terminal name and path
 
 +	static char *term_name = "TERM=yaft-256color";
 +	static char *fb_path   = "/dev/fb0";
@@ -91,7 +91,7 @@ $ make
 $ make yaftx
 ~~~
 
-pelase install manually
+please install manually
 
 ## terminfo/termcap
 
@@ -109,7 +109,14 @@ for displaying wallpaper, you can use yaft_wall script (it requires [fbv])
 $ yaft_wall /path/to/wallpaper.jpg
 ~~~
 
+or you can use [idump]
+
+~~~
+$ idump /path/to/wallpaper.jpg; yaft
+~~~
+
 [fbv]: http://www.eclis.ch/fbv/
+[idump]: https://github.com/uobikiemukot/idump
 
 ## screenshot
 
