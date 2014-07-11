@@ -1,7 +1,6 @@
 /* See LICENSE for licence details. */
 #include "yaft.h"
 #include "conf.h"
-#include "color.h"
 #include "util.h"
 #include "x.h"
 #include "terminal.h"
@@ -14,6 +13,8 @@ void sig_handler(int signo)
 {
 	if (signo == SIGCHLD)
 		tty.loop_flag = false;
+	else if (signo == SIGWINCH)
+		tty.window_resized = true;
 }
 
 void sig_set()
@@ -24,6 +25,7 @@ void sig_set()
 	sigact.sa_handler = sig_handler;
 	sigact.sa_flags   = SA_RESTART;
 	esigaction(SIGCHLD, &sigact, NULL);
+	esigaction(SIGWINCH, &sigact, NULL);
 }
 
 void sig_reset()
@@ -34,6 +36,7 @@ void sig_reset()
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = SIG_DFL;
 	sigaction(SIGCHLD, &sigact, NULL);
+	sigaction(SIGWINCH, &sigact, NULL);
 }
 
 void check_fds(fd_set *fds, struct timeval *tv, int master)
@@ -83,6 +86,12 @@ void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
 {
 	XConfigureEvent *e = &ev->xconfigure;
+	struct winsize ws;
+
+	if (DEBUG)
+		fprintf(stderr, "term.width:%d term.height:%d width:%d height:%d\n",
+			term->width, term->height, e->width, e->height);
+
 	(void ) xw; /* unused */
 
 	if (e->width != term->width || e->height != term->height) {
@@ -92,9 +101,13 @@ void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
 		term->cols  = term->width / CELL_WIDTH;
 		term->lines = term->height / CELL_HEIGHT;
 
-		reset(term);
-		ioctl(term->fd, TIOCSWINSZ, &(struct winsize)
-			{.ws_row = term->lines, .ws_col = term->cols, .ws_xpixel = 0, .ws_ypixel = 0});
+		ws.ws_row = term->lines;
+		ws.ws_col = term->cols;
+		ws.ws_xpixel = ws.ws_ypixel + 0;
+
+		//reset(term);
+		refresh(xw, term);
+		ioctl(term->fd, TIOCSWINSZ, &ws);
 	}
 }
 
@@ -300,7 +313,7 @@ void xmove(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
-static void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, XEvent *ev) = {
+void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, XEvent *ev) = {
 	[KeyPress]         = xkeypress,
 	[ConfigureNotify]  = xresize,
 	[Expose]           = xredraw,
@@ -336,7 +349,9 @@ int main()
 	struct timeval tv;
 	struct xwindow xw;
 	struct terminal term;
+	struct winsize ws;
 	XEvent ev;
+	XConfigureEvent confev;
 
 	/* init */
 	setlocale(LC_ALL, "");
@@ -346,11 +361,24 @@ int main()
 
 	/* fork and exec shell */
 	fork_and_exec(&term.fd);
-	xresize(&xw, &term, (XEvent *) /* terminal size defined in x.h */
-		&(XConfigureEvent){.width = TERM_WIDTH, .height = TERM_HEIGHT});
+	confev.width  = TERM_WIDTH;
+	confev.height = TERM_HEIGHT;
+	xresize(&xw, &term, (XEvent *) &confev); /* terminal size defined in x.h */
 
 	/* main loop */
 	while (tty.loop_flag) {
+		if (tty.window_resized) {
+			ioctl(term.fd, TIOCGWINSZ, &ws);
+			if (DEBUG)
+				fprintf(stderr, "window resized! cols:%d lines:%d\n", ws.ws_col, ws.ws_row);
+			term.cols   = ws.ws_col;
+			term.lines  = ws.ws_row;
+			term.width  = ws.ws_col * CELL_WIDTH;
+			term.height = ws.ws_row * CELL_HEIGHT;
+			reset(&term);
+			tty.window_resized = false;
+		}
+
 		while(XPending(xw.display)) {
 			XNextEvent(xw.display, &ev);
 			if (XFilterEvent(&ev, None))
@@ -366,8 +394,6 @@ int main()
 				if (DEBUG)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
-				if (LAZY_DRAW && size == BUFSIZE) /* lazy drawing */
-					continue;
 				refresh(&xw, &term);
 			}
 		}
