@@ -168,24 +168,24 @@ void dcs_sequence(struct terminal *term, uint8_t ch)
 	/* check DCS header */
 	cp = term->esc.buf + 1; /* skip P */
 	while (cp < term->esc.bp) {
-		if (*cp == '{' || *cp == 'q') /* DECDLD or sixel */
+		if (*cp == '{' || *cp == 'q')      /* DECDLD or sixel */
 			break;
-		else if (('0' <= *cp && *cp <= '9') || *cp == ';')
-			;                         /* valid DCS header */
-		else                          /* invalid sequence */
-			goto dcs_header_error;
+		else if (*cp == ';'                /* valid DCS header */
+			|| ('0' <= *cp && *cp <= '9'))
+			;
+		else                               /* invalid sequence */
+			cp = term->esc.bp;
 		cp++;
 	}
-	if (cp == (term->esc.bp - 1)) /* header only or cannot find final char */
-		goto dcs_header_error;
 
-	/* parse DCS header */
-	if (*cp == 'q')
-		sixel_parse_header(term, term->esc.buf + 1);
-	else if (*cp == '{')
-		decdld_parse_header(term, term->esc.buf + 1);
+	if (cp != term->esc.bp) { /* header only or cannot find final char */
+		/* parse DCS header */
+		if (*cp == 'q')
+			sixel_parse_header(term, term->esc.buf + 1);
+		else if (*cp == '{')
+			decdld_parse_header(term, term->esc.buf + 1);
+	}
 
-dcs_header_error:
 	reset_esc(term);
 }
 
