@@ -220,13 +220,6 @@ void reset_esc(struct terminal *term)
 	if (DEBUG)
 		fprintf(stderr, "*esc reset*\n");
 
-	/*
-	if (term->esc.size > MAX_ESC_SIZE) {
-		term->esc.buf  = erealloc(term->esc.buf, MAX_ESC_SIZE);
-		term->esc.size = MAX_ESC_SIZE;
-	}
-	*/
-
 	term->esc.bp = term->esc.buf;
 	term->esc.state = STATE_RESET;
 }
@@ -235,7 +228,7 @@ bool push_esc(struct terminal *term, uint8_t ch)
 {
 	long offset;
 
-	if ((term->esc.bp - term->esc.buf + 1) == term->esc.size) { /* buffer limit */
+	if ((term->esc.bp - term->esc.buf) >= term->esc.size) { /* buffer limit */
 		if (DEBUG)
 			fprintf(stderr, "escape sequence length >= %d, term.esc.buf reallocated\n", term->esc.size);
 		offset = term->esc.bp - term->esc.buf;
@@ -360,8 +353,8 @@ void term_init(struct terminal *term, int width, int height)
 	term->tabstop    = (bool *) ecalloc(term->cols, sizeof(bool));
 	term->cells      = (struct cell_t *) ecalloc(term->cols * term->lines, sizeof(struct cell_t));
 
-	term->esc.buf  = (char *) ecalloc(1, MAX_ESC_SIZE);
-	term->esc.size = MAX_ESC_SIZE;
+	term->esc.buf  = (char *) ecalloc(1, ESCSEQ_SIZE);
+	term->esc.size = ESCSEQ_SIZE;
 
 	/* initialize glyph map */
 	for (code = 0; code < UCS2_CHARS; code++)
@@ -380,7 +373,7 @@ void term_init(struct terminal *term, int width, int height)
 		term->drcs[i] = NULL;
 
 	/* allocate sixel buffer */
-	term->sixel.bitmap = (unsigned char *) ecalloc(BYTES_PER_PIXEL, width * height);
+	term->sixel.bitmap = (uint8_t *) ecalloc(width * height, BYTES_PER_PIXEL);
 
 	reset(term);
 }
