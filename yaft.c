@@ -1,11 +1,16 @@
 /* See LICENSE for licence details. */
 #include "yaft.h"
 #include "conf.h"
-#include "color.h"
 #include "util.h"
-//#include "linux.h"
-#include "freebsd.h"
-//#include "netbsd.h"
+
+#if defined(__linux__)
+	#include "linux.h"
+#elif defined(__FreeBSD__)
+	#include "freebsd.h"
+#elif defined(__OpenBSD__) || defined(__NetBSD__)
+	#include "netbsd.h"
+#endif
+
 #include "terminal.h"
 #include "function.h"
 #include "osc.h"
@@ -37,13 +42,6 @@ void sig_handler(int signo)
 			tty.redraw_flag = true;
 		}
 	}
-	else if (signo == SIGALRM) {
-		if (tty.lazy_draw) {
-			fprintf(stderr, "catch alarm\n");
-			tty.redraw_flag = true;
-			tty.lazy_draw   = false;
-		}
-	}
 }
 
 void set_rawmode(int fd, struct termios *save_tm)
@@ -71,15 +69,14 @@ void tty_init(struct termios *save_tm)
 	sigact.sa_flags   = SA_RESTART;
 	esigaction(SIGCHLD, &sigact, NULL);
 	esigaction(SIGUSR1, &sigact, NULL);
-	esigaction(SIGALRM, &sigact, NULL);
 
 	vtm.mode   = VT_PROCESS;
 	vtm.waitv  = 0;
 	vtm.relsig = vtm.acqsig = vtm.frsig = SIGUSR1;
-	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm) < 0)
+	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm))
 		fatal("ioctl: VT_SETMODE failed (maybe here is not console)");
 
-	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS) < 0)
+	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS))
 		fatal("ioctl: KDSETMODE failed (maybe here is not console)");
 
 	set_rawmode(STDIN_FILENO, save_tm);
@@ -96,7 +93,6 @@ void tty_die(struct termios *save_tm)
 	sigact.sa_handler = SIG_DFL;
 	sigaction(SIGCHLD, &sigact, NULL);
 	sigaction(SIGUSR1, &sigact, NULL);
-	sigaction(SIGALRM, &sigact, NULL);
 
 	vtm.mode   = VT_AUTO;
 	vtm.waitv  = 0;
@@ -174,14 +170,7 @@ int main()
 				if (DEBUG)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
-
-				if (LAZY_DRAW && size == BUFSIZE) {
-					tty.lazy_draw = true;
-					ualarm(100000, 0);
-					continue;
-				}
 				refresh(&fb, &term);
-				tty.lazy_draw = false;
 			}
 		}
 	}
