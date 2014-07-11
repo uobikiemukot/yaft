@@ -13,18 +13,11 @@ typedef unsigned long   u_long;
 #include  <dev/wscons/wsconsio.h>
 #include  <dev/wscons/wsksymdef.h>
 
-/* framubuffer device */
-const char *fb_path = "/dev/ttyE0"; /* for NetBSD */
-//const char *fb_path = "/dev/ttyC0"; /* for OpenBSD */
-
-/* shell */
-const char *shell_cmd = "/bin/csh"; /* for NetBSD */
-
 /* some structs for NetBSD */
 struct framebuffer {
-	unsigned char *fp;    /* pointer of framebuffer(read only) */
-	unsigned char *wall;  /* buffer for wallpaper */
-	unsigned char *buf;   /* copy of framebuffer */
+	uint8_t *fp;          /* pointer of framebuffer(read only) */
+	uint8_t *wall;        /* buffer for wallpaper */
+	uint8_t *buf;         /* copy of framebuffer */
 	int fd;               /* file descriptor of framebuffer */
 	int width, height;    /* display resolution */
 	long screen_size;     /* screen data size (byte) */
@@ -36,11 +29,11 @@ struct framebuffer {
 };
 
 /* common functions */
-unsigned char *load_wallpaper(struct framebuffer *fb)
+uint8_t *load_wallpaper(struct framebuffer *fb)
 {
-	unsigned char *ptr;
+	uint8_t *ptr;
 
-	ptr = (unsigned char *) ecalloc(1, fb->screen_size);
+	ptr = (uint8_t *) ecalloc(1, fb->screen_size);
 	memcpy(ptr, fb->fp, fb->screen_size);
 
 	return ptr;
@@ -55,7 +48,6 @@ void cmap_create(struct wsdisplay_cmap **cmap)
 	(*cmap)->red         = (u_char *) ecalloc(COLORS, sizeof(u_char));
 	(*cmap)->green       = (u_char *) ecalloc(COLORS, sizeof(u_char));
 	(*cmap)->blue        = (u_char *) ecalloc(COLORS, sizeof(u_char));
-	//(*cmap)->transparent = NULL;
 }
 
 void cmap_die(struct wsdisplay_cmap *cmap)
@@ -64,7 +56,6 @@ void cmap_die(struct wsdisplay_cmap *cmap)
 		free(cmap->red);
 		free(cmap->green);
 		free(cmap->blue);
-		//free(cmap->transparent);
 		free(cmap);
 	}
 }
@@ -168,15 +159,15 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 	else /* non packed pixel, mono color, grayscale: not implimented */
 		fatal("unsupported framebuffer type");
 
-	//if (DEBUG)
+	if (DEBUG)
 		fprintf(stderr, "pixeltype:%d bitsperpixel:%d\n",
 			vinfo.fbi_pixeltype, vinfo.fbi_bitsperpixel);
 
 	for (i = 0; i < COLORS; i++) // init color palette
 		color_palette[i] = (fb->bpp == 1) ? (uint32_t) i: color2pixel(&vinfo, color_list[i]);
 
-	fb->fp    = (unsigned char *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
-	fb->buf   = (unsigned char *) ecalloc(1, fb->screen_size);
+	fb->fp    = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
+	fb->buf   = (uint8_t *) ecalloc(1, fb->screen_size);
 	fb->wall  = (WALLPAPER && fb->bpp > 1) ? load_wallpaper(fb): NULL;
 	fb->vinfo = vinfo;
 }
