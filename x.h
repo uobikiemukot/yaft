@@ -1,5 +1,4 @@
 /* See LICENSE for licence details. */
-#include <limits.h> /* UINT_MAX */
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -8,13 +7,10 @@
 
 #define XK_NO_MOD UINT_MAX
 
-/* shell */
-const char *shell_cmd = "/bin/bash";
-
 static const char *im_font = "-*-*-medium-r-*-*-16-*-*-*-*-*-*-*";
 
-enum x_misc { /* default terminal size */
-    TERM_WIDTH = 640,
+enum { /* default terminal size */
+    TERM_WIDTH  = 640,
     TERM_HEIGHT = 384,
 };
 
@@ -22,6 +18,7 @@ struct keydef {
 	KeySym k;
 	unsigned int mask;
 	char s[BUFSIZE];
+	//char *s;
 };
 
 const struct keydef key[] = {
@@ -176,6 +173,7 @@ void im_init(struct xwindow *xw)
 	XVaNestedList list;
 	XIMStyles *im_styles;
 	XIMStyle app_styles, style;
+	XPoint xpoint = {.x = 0, .y = 0};
 
 	if ((xw->im = XOpenIM(xw->display, NULL, NULL, NULL)) == NULL)
 		fatal("couldn't open input method");
@@ -204,14 +202,15 @@ void im_init(struct xwindow *xw)
 	XFree(im_styles);
 
 	if (DEBUG) {
-		fprintf(stderr, "input style\n");
+		fprintf(stderr, "input style:\n");
 		print_style(xw->input_style);
 	}
 
 	fontset = XCreateFontSet(xw->display, im_font,
 		&missing_charsets, &num_missing_charsets, &default_string);
-	list = XVaCreateNestedList(0, XNSpotLocation, &(XPoint){.x = 0, .y = 0},
-		XNForeground, color_list[DEFAULT_FG], XNBackground, color_list[DEFAULT_BG],
+	list = XVaCreateNestedList(0, XNSpotLocation, &xpoint,
+		XNForeground, color_list[DEFAULT_FG],
+		XNBackground, color_list[DEFAULT_BG],
 		XNFontSet, fontset, NULL);
 
 	if ((xw->ic = XCreateIC(xw->im, XNInputStyle, xw->input_style,
@@ -241,6 +240,9 @@ void init_paste(struct xwindow *xw)
 
 void xw_init(struct xwindow *xw)
 {
+	XTextProperty xtext = {.value = (unsigned char *) "yaftx",
+		.encoding = XA_STRING, .format = 8, .nitems = 5};
+
 	if ((xw->display = XOpenDisplay(NULL)) == NULL)
 		fatal("XOpenDisplay failed");
 
@@ -253,10 +255,8 @@ void xw_init(struct xwindow *xw)
 	xw->screen = DefaultScreen(xw->display);
 	xw->window = XCreateSimpleWindow(xw->display, DefaultRootWindow(xw->display),
 		0, 0, TERM_WIDTH, TERM_HEIGHT, 0, color_list[DEFAULT_FG], color_list[DEFAULT_BG]);
+	XSetWMProperties(xw->display, xw->window, &xtext, NULL, NULL, 0, NULL, NULL, NULL);
 
-	XSetWMProperties(xw->display, xw->window, &(XTextProperty)
-		{.value = (unsigned char *) "yaftx", .encoding = XA_STRING, .format = 8, .nitems = 5},
-		NULL, NULL, 0, NULL, NULL, NULL);
 	xw->gc = XCreateGC(xw->display, xw->window, 0, NULL);
 	XSetGraphicsExposures(xw->display, xw->gc, False);
 
