@@ -14,6 +14,17 @@ typedef unsigned long   u_long;
 #include  <dev/wscons/wsksymdef.h>
 
 /* some structs for NetBSD */
+enum fbtype_t {
+	FBTYPE_RGB = 0,
+	FBTYPE_INDEX,
+};
+
+enum {
+	BPP15 = 15,
+	BPP16 = 16,
+	BPP24 = 24,
+	BPP32 = 32,
+};
 
 struct bitfield_t {
 	uint8_t offset, length;
@@ -23,7 +34,7 @@ struct fbinfo_t {
 	struct bitfield_t red;
 	struct bitfield_t green;
 	struct bitfield_t blue;
-	int pixeltype;
+	enum fbtype_t fbtype;
 };
 
 struct framebuffer {
@@ -37,15 +48,7 @@ struct framebuffer {
 	int bytes_per_pixel;  /* BYTES per pixel */
 	struct wsdisplay_cmap /* cmap for legacy framebuffer (8bpp pseudocolor) */
 		*cmap, *cmap_org;
-	//struct wsdisplayio_fbinfo vinfo;
 	struct fbinfo_t vinfo;
-};
-
-enum {
-	BPP15 = 15,
-	BPP16 = 16,
-	BPP24 = 24,
-	BPP32 = 32,
 };
 
 const struct fbinfo_t bpp_table[] = {
@@ -137,7 +140,7 @@ static inline uint32_t color2pixel(struct fbinfo_t *vinfo, uint32_t color)
 	b = bit_mask[8] & (color >> 0);
 
 	/* pseudo color */
-	if (vinfo->pixeltype == WSFB_CI) {
+	if (vinfo->fbtype == FBTYPE_INDEX) {
 		if (r == g && r == b) { /* 24 gray scale */
 			r = 24 * r / COLORS;
 			return 232 + r;
@@ -156,15 +159,6 @@ static inline uint32_t color2pixel(struct fbinfo_t *vinfo, uint32_t color)
 	return (r << vinfo->red.offset)
 		+ (g << vinfo->green.offset)
 		+ (b << vinfo->blue.offset);
-	/*
-	r = r >> (BITS_PER_BYTE - vinfo->fbi_subtype.fbi_rgbmasks.red_size);
-	g = g >> (BITS_PER_BYTE - vinfo->fbi_subtype.fbi_rgbmasks.green_size);
-	b = b >> (BITS_PER_BYTE - vinfo->fbi_subtype.fbi_rgbmasks.blue_size);
-
-	return (r << vinfo->fbi_subtype.fbi_rgbmasks.red_offset)
-		+ (g << vinfo->fbi_subtype.fbi_rgbmasks.green_offset)
-		+ (b << vinfo->fbi_subtype.fbi_rgbmasks.blue_offset);
-	*/
 }
 
 void fb_init(struct framebuffer *fb, uint32_t *color_palette)
@@ -172,7 +166,6 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 	int i, orig_mode, mode;
 	char *path;
 	struct wsdisplay_fbinfo finfo;
-	//struct wsdisplayio_fbinfo vinfo;
 
 	if ((path = getenv("FRAMEBUFFER")) != NULL)
 		fb->fd = eopen(path, O_RDWR);
@@ -204,50 +197,20 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 	if (finfo.depth == 15 || finfo.depth == 16
 		|| finfo.depth == 24 || finfo.depth == 32) {
 		fb->cmap = fb->cmap_org = NULL;
-		fb->vinfo.pixeltype = WSFB_RGB;
+		fb->vinfo.fbtype = FBTYPE_RGB;
 	}
 	else if (finfo.depth == 8) {
 		cmap_create(&fb->cmap, COLORS);
 		cmap_create(&fb->cmap_org, finfo.cmsize);
 		cmap_init(fb);
-		fb->vinfo.pixeltype = WSFB_CI;
+		fb->vinfo.fbtype = FBTYPE_INDEX;
 	}
 	else
 		fatal("unsupported framebuffer type");
 
-
 	if (DEBUG)
 		fprintf(stderr, "cmsize:%d depth:%d width:%d height:%d line_length:%d\n",
 			finfo.cmsize, finfo.depth, finfo.width, finfo.height, fb->line_length);
-
-	/*
-	if (ioctl(fb->fd, WSDISPLAYIO_GET_FBINFO, &vinfo)) {
-		fprintf(stderr, "ioctl: WSDISPLAYIO_GET_FBINFO failed");
-		goto fb_init_error;
-	}
-
-	fb->width  = finfo.width;
-	fb->height = finfo.height;
-	fb->line_length = vinfo.fbi_stride;
-	fb->screen_size = vinfo.fbi_fbsize;
-
-	if (vinfo.fbi_pixeltype == WSFB_RGB) {
-		fb->cmap = fb->cmap_org = NULL;
-		fb->bytes_per_pixel = my_ceil(vinfo.fbi_bitsperpixel, BITS_PER_BYTE);
-	}
-	else if (vinfo.fbi_pixeltype == WSFB_CI) {
-		cmap_create(&fb->cmap);
-		cmap_create(&fb->cmap_org);
-		cmap_init(fb);
-		fb->bytes_per_pixel = my_ceil(vinfo.fbi_bitsperpixel, BITS_PER_BYTE);
-	}
-	else // non packed pixel, mono color, grayscale: not implimented
-		fatal("unsupported framebuffer type");
-
-	if (DEBUG)
-		fprintf(stderr, "pixeltype:%d bitsperpixel:%d\n",
-			vinfo.fbi_pixeltype, vinfo.fbi_bitsperpixel);
-	*/
 
 	for (i = 0; i < COLORS; i++) // init color palette
 		color_palette[i] = (fb->bytes_per_pixel == 1) ? (uint32_t) i: color2pixel(&fb->vinfo, color_list[i]);
