@@ -7,8 +7,10 @@
 	#include "linux.h"
 #elif defined(__FreeBSD__)
 	#include "freebsd.h"
-#elif defined(__OpenBSD__) || defined(__NetBSD__)
+#elif defined(__NetBSD__)
 	#include "netbsd.h"
+#elif defined(__OpenBSD__)
+	#include "openbsd.h"
 #endif
 
 #include "terminal.h"
