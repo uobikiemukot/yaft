@@ -45,7 +45,7 @@ If you want to change configuration, rewrite conf.h
 
 ### color
 
-the value is an index of color_list[] (see color.h)
+this value is an index of color_list (see color.h)
 
 +	DEFAULT_FG = 7,
 +	DEFAULT_BG = 0,
