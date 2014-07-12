@@ -375,7 +375,8 @@ int main()
 			term.lines  = ws.ws_row;
 			term.width  = ws.ws_col * CELL_WIDTH;
 			term.height = ws.ws_row * CELL_HEIGHT;
-			reset(&term);
+			//reset(&term);
+			refresh(&xw, &term);
 			tty.window_resized = false;
 		}
 
