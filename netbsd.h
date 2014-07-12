@@ -183,15 +183,12 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 		goto fb_init_error;
 	}
 
-	if (ioctl(fb->fd, WSDISPLAYIO_LINEBYTES, &fb->line_length)) {
-		fprintf(stderr, "ioctl: WSDISPLAYIO_LINEBYTES failed");
-		goto fb_init_error;
-	}
-
 	fb->width  = finfo.width;
 	fb->height = finfo.height;
-	fb->screen_size = fb->height * fb->line_length;
 	fb->bytes_per_pixel = my_ceil(finfo.depth, BITS_PER_BYTE);
+
+	fb->line_length = fb->width * fb->bytes_per_pixel;
+	fb->screen_size = fb->height * fb->line_length;
 	fb->vinfo = bpp_table[finfo.depth];
 
 	if (finfo.depth == 15 || finfo.depth == 16
@@ -212,7 +209,7 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 		fprintf(stderr, "cmsize:%d depth:%d width:%d height:%d line_length:%d\n",
 			finfo.cmsize, finfo.depth, finfo.width, finfo.height, fb->line_length);
 
-	for (i = 0; i < COLORS; i++) // init color palette
+	for (i = 0; i < COLORS; i++) /* init color palette */
 		color_palette[i] = (fb->bytes_per_pixel == 1) ? (uint32_t) i: color2pixel(&fb->vinfo, color_list[i]);
 
 	fb->fp    = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
