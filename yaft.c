@@ -141,9 +141,9 @@ int main()
 
 	/* init */
 	setlocale(LC_ALL, "");
-	tty_init(&save_tm);
 	fb_init(&fb, term.color_palette);
 	term_init(&term, fb.width, fb.height);
+	tty_init(&save_tm);
 
 	/* fork and exec shell */
 	fork_and_exec(&term.fd, term.lines, term.cols);
