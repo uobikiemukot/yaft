@@ -10,7 +10,7 @@ This software is being developed to replace Linux console for personal use.
 Most defferent point is supporting UTF-8 encoding (with embedded fonts) and 256 color mode.
 yaft requires minimal dependency, what you need for build is only make and gcc (or bmake and clang).
 
-Main target is Linux console, but yaft supports some other framebuffer platform, FreeBSD console and NetBSD wscons (experimental).
+Main target is Linux console, but yaft supports some other framebuffer platform, FreeBSD console and NetBSD/OpenBSD wscons (experimental).
 And there are other (non framebuffer) ports, yaftx (X Window System) and yaft-android (Android).
 
 This repository includes yaft, yaft-freebsd, yaft-netbsd and yaftx.
