@@ -26,7 +26,7 @@ void usage()
 		"yaft (yet another framebuffer terminal)\n\n"
 		"usage: just type 'yaft'\n\n"
 		"command line option:\n"
-		"\tnone (see below)\n\n"
+		"\t-h or -help: show this help\n\n"
 		"compile time configuration:\n"
 		"\trewrite conf.h before build\n\n"
 		"enviroment variables:\n"
