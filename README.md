@@ -74,7 +74,7 @@ you can use tools/mkfont_bdf to create glyph.h
 
 usage: tools/mkfont_bdf ALIAS_FILE BDF1 BDF2 BDF3 ... > glyph.h
 
--	ALIAS_FILE: fonts substitution rule file (see table/alias)
+-	ALIAS_FILE: glyph substitution rule file (see table/alias)
 -	BDF1, BDF2, BDF3...:
 	+	yaft supports only "monospace" bdf font (not supports pcf, please use [pcf2bdf])
 	+	yaft doesn't support bold fonts (yaft just brightens color at bold attribute)
@@ -113,6 +113,7 @@ please check makefile and LANG environment variable before make
 ($ export LANG=en_US.UTF-8)
 $ make
 # make install
+(or install manually)
 ~~~
 
 ## build and install (yaftx)
