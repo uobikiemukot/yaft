@@ -167,11 +167,11 @@ struct parm_t { /* for parse_arg() */
 	char *argv[MAX_ARGS];
 };
 
-struct tty_state {
-	volatile sig_atomic_t visible;
-	volatile sig_atomic_t redraw_flag;
-	volatile sig_atomic_t loop_flag;
-	volatile sig_atomic_t window_resized;
+struct tty_state { /* this variables changed at catching signals */
+	volatile sig_atomic_t visible;        /* SIGUSR1: vt is active or not */
+	volatile sig_atomic_t redraw_flag;    /* SIGUSR1: vt activated */
+	volatile sig_atomic_t loop_flag;      /* SIGCHLD: child process (shell) is alive or not */
+	volatile sig_atomic_t window_resized; /* SIGWINCH: only used for yaftx */
 };
 
 /* global variables */
