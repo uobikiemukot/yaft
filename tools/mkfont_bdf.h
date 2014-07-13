@@ -1,6 +1,7 @@
 /* See LICENSE for licence details. */
 #define _XOPEN_SOURCE 600
 #include <ctype.h>
+#include <errno.h>
 #include <locale.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -40,6 +41,12 @@ enum encode_t {
 	*/
 	ISO8859,
 	ISO10646
+};
+
+enum glyph_width_t {
+	NEXT_TO_WIDE = 0,
+	HALF,
+	WIDE,
 };
 
 struct glyph_t {

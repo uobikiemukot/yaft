@@ -7,6 +7,7 @@ void fatal(char *str)
 FILE *efopen(char *path, char *mode)
 {
 	FILE *fp;
+	errno = 0;
 
 	if ((fp = fopen(path, mode)) == NULL) {
 		fprintf(stderr, "cannot open \"%s\"\n", path);
@@ -17,17 +18,21 @@ FILE *efopen(char *path, char *mode)
 
 void efclose(FILE *fp)
 {
+	errno = 0;
+
 	if (fclose(fp) < 0)
 		fatal("fclose");
 }
 
-void *emalloc(size_t size)
+void *ecalloc(size_t nmemb, size_t size)
 {
-	void *p;
+	void *ptr;
+	errno = 0;
 
-	if ((p = calloc(1, size)) == NULL)
+	if ((ptr = calloc(nmemb, size)) == NULL)
 		fatal("calloc");
-	return p;
+
+	return ptr;
 }
 
 /* for yaft original font format: not used
@@ -111,6 +116,13 @@ void load_alias(struct glyph_t *fonts, char *alias)
 	efclose(fp);
 }
 
+void set_empty_glyph(struct glyph_t *fonts, uint32_t code, enum glyph_width_t wide)
+{
+	fonts[code].width  = fonts[DEFAULT_CHAR].width * wide;
+	fonts[code].height = fonts[DEFAULT_CHAR].height;
+	fonts[code].bitmap = (uint32_t *) ecalloc(fonts[DEFAULT_CHAR].height, sizeof(uint32_t));
+}
+
 void check_fonts(struct glyph_t *fonts)
 {
 	if (fonts[DEFAULT_CHAR].bitmap == NULL) {
@@ -119,13 +131,18 @@ void check_fonts(struct glyph_t *fonts)
 	}
 
 	if (fonts[SUBSTITUTE_HALF].bitmap == NULL) {
-		fprintf(stderr, "half substitute glyph(U+%.4X) not found\n", SUBSTITUTE_HALF);
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "half substitute glyph(U+%.4X) not found, use empty glyph\n", SUBSTITUTE_HALF);
+		set_empty_glyph(fonts, SUBSTITUTE_HALF, HALF);
 	}
 
 	if (fonts[SUBSTITUTE_WIDE].bitmap == NULL) {
-		fprintf(stderr, "wide substitute glyph(U+%.4X) not found\n", SUBSTITUTE_WIDE);
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "wide substitute glyph(U+%.4X) not found, use empty glyph\n", SUBSTITUTE_WIDE);
+		set_empty_glyph(fonts, SUBSTITUTE_WIDE, WIDE);
+	}
+
+	if (fonts[REPLACEMENT_CHAR].bitmap == NULL) {
+		fprintf(stderr, "replacement glyph(U+%.4X) not found, use empty glyph\n", REPLACEMENT_CHAR);
+		set_empty_glyph(fonts, REPLACEMENT_CHAR, HALF);
 	}
 }
 

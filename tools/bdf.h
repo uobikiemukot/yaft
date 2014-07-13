@@ -157,7 +157,7 @@ int read_bitmap(struct glyph_t *fonts, char *buf, struct bdf_t *bdf, struct bdf_
 		if (code < UCS2_CHARS) {
 			fonts[code].width = width;
 			fonts[code].height = height;
-			fonts[code].bitmap = (uint32_t *) emalloc(sizeof(uint32_t) * fonts[code].height);
+			fonts[code].bitmap = (uint32_t *) ecalloc(fonts[code].height, sizeof(uint32_t));
 
 			for (i = 0; i < fonts[code].height; i++)
 				fonts[code].bitmap[i] = glyph->bitmap[i];

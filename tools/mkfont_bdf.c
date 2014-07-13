@@ -23,9 +23,9 @@ int main(int argc, char *argv[])
 
 	load_alias(fonts, argv[1]);
 
-	dump_fonts(fonts);
-
 	check_fonts(fonts);
+
+	dump_fonts(fonts);
 
 	return EXIT_SUCCESS;
 }
