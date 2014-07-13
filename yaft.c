@@ -4,20 +4,46 @@
 #include "util.h"
 
 #if defined(__linux__)
-	#include "linux.h"
+	#include "fb/linux.h"
 #elif defined(__FreeBSD__)
-	#include "freebsd.h"
+	#include "fb/freebsd.h"
 #elif defined(__NetBSD__)
-	#include "netbsd.h"
+	#include "fb/netbsd.h"
 #elif defined(__OpenBSD__)
-	#include "openbsd.h"
+	#include "fb/openbsd.h"
 #endif
 
+#include "draw.h"
 #include "terminal.h"
 #include "function.h"
 #include "osc.h"
 #include "dcs.h"
 #include "parse.h"
+
+void usage()
+{
+	fprintf(stderr,
+		"yaft (yet another framebuffer terminal)\n\n"
+		"usage: just type 'yaft'\n\n"
+		"command line option:\n"
+		"\tnone (see below)\n\n"
+		"compile time configuration:\n"
+		"\trewrite conf.h before build\n\n"
+		"enviroment variables:\n"
+		"\tFRAMEBUFFER:\n"
+		"\t\tuse specified framebuffer device (default:/dev/fb0)\n"
+		"\t\tex) FRAMEBUFFER=/dev/fb1 yaft\n"
+		"\tYAFT:\n"
+		"\t\tuse wallpaper (need fbv or idump, see yaft_wall script)\n"
+		"\t\tex) YAFT=wall yaft or YAFT=wallpaper yaft\n\n"
+		"custom font:\n"
+		"\tyou can use your favorite fonts by using mkfont_bdf (please rewrite makefile)\n"
+		"\tusage: mkfont_bdf ALIAS BDF1 BDF2 BDF3... > glyph.h\n"
+		"\t\tALIAS: glyph substitution rule file (see table/alias)\n"
+		"\t\tBDF: monospace bdf files (must be the same size)\n\n"
+		"see README for more information\n"
+		);
+}
 
 void sig_handler(int signo)
 {
@@ -27,18 +53,18 @@ void sig_handler(int signo)
 	if (signo == SIGCHLD)
 		tty.loop_flag = false;
 	else if (signo == SIGUSR1) {
-		if (tty.visible) {
+		if (tty.visible) { /* vt deactivated */
 			ioctl(STDIN_FILENO, VT_RELDISP, 1);
 			tty.visible = false;
-			if (BACKGROUND_DRAW)
+			if (BACKGROUND_DRAW) /* update passive cursor */
 				tty.redraw_flag = true;
-			else {
+			else { /* sleep until next vt switching */
 				sigfillset(&sigset);
 				sigdelset(&sigset, SIGUSR1);
 				sigsuspend(&sigset);
 			}
 		}
-		else {
+		else { /* vt activated */
 			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
 			tty.visible     = true;
 			tty.redraw_flag = true;
@@ -131,7 +157,7 @@ void check_fds(fd_set *fds, struct timeval *tv, int input, int master)
 	eselect(master + 1, fds, NULL, NULL, tv);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
 	uint8_t buf[BUFSIZE];
 	ssize_t size;
@@ -140,6 +166,13 @@ int main()
 	struct framebuffer fb;
 	struct terminal term;
 	struct termios save_tm;
+
+	/* show usage */
+	if (argc > 1
+		&& (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0)) {
+		usage();
+		return EXIT_SUCCESS;
+	}
 
 	/* init */
 	setlocale(LC_ALL, "");
