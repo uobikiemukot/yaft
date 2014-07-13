@@ -164,7 +164,7 @@ static inline uint32_t color2pixel(struct fbinfo_t *vinfo, uint32_t color)
 void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 {
 	int i, orig_mode, mode;
-	char *path;
+	char *path, *env;
 	struct wsdisplay_fbinfo finfo;
 
 	if ((path = getenv("FRAMEBUFFER")) != NULL)
@@ -214,7 +214,14 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 
 	fb->fp    = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
 	fb->buf   = (uint8_t *) ecalloc(1, fb->screen_size);
-	fb->wall  = (WALLPAPER && fb->bytes_per_pixel > 1) ? load_wallpaper(fb): NULL;
+	//fb->wall  = (WALLPAPER && fb->bytes_per_pixel > 1) ? load_wallpaper(fb): NULL;
+
+	if (((env = getenv("YAFT")) != NULL)
+		&& ((strstr(env, "wall") != NULL) || (strstr(env, "wallpaper") != NULL)))
+		fb->wall = load_wallpaper(fb);
+	else
+		fb->wall = NULL;
+
 	return;
 
 fb_init_error:
@@ -233,97 +240,4 @@ void fb_die(struct framebuffer *fb)
 	free(fb->wall);
 	emunmap(fb->fp, fb->screen_size);
 	eclose(fb->fd);
-}
-
-static inline void draw_line(struct framebuffer *fb, struct terminal *term, int line)
-{
-	int pos, size, bit_shift, margin_right;
-	int col, w, h, src_offset, dst_offset;
-	uint32_t pixel, color = 0;
-	struct color_pair_t color_pair;
-	struct cell_t *cellp;
-	const struct glyph_t *glyphp;
-
-	for (col = term->cols - 1; col >= 0; col--) {
-		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
-
-		/* target cell */
-		cellp = &term->cells[col + line * term->cols];
-
-		/* draw sixel bitmap */
-		if (cellp->has_bitmap) {
-			for (h = 0; h < CELL_HEIGHT; h++) {
-				for (w = 0; w < CELL_WIDTH; w++) {
-					src_offset = BYTES_PER_PIXEL * (h * CELL_WIDTH + w);
-					memcpy(&color, cellp->bitmap + src_offset, BYTES_PER_PIXEL);
-
-					dst_offset = (line * CELL_HEIGHT + h) * fb->line_length + (col * CELL_WIDTH + w) * fb->bytes_per_pixel;
-					pixel = color2pixel(&fb->vinfo, color);
-					memcpy(fb->buf + dst_offset, &pixel, fb->bytes_per_pixel);
-				}
-			}
-			continue;
-		}
-
-		/* get color and glyph */
-		color_pair = cellp->color_pair;
-		glyphp     = cellp->glyphp;
-
-		/* check wide character or not */
-		bit_shift = (cellp->width == WIDE) ? CELL_WIDTH: 0;
-
-		/* check cursor positon */
-		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
-			&& (col == term->cursor.x
-			|| (cellp->width == WIDE && (col + 1) == term->cursor.x)
-			|| (cellp->width == NEXT_TO_WIDE && (col - 1) == term->cursor.x))) {
-			color_pair.fg = DEFAULT_BG;
-			color_pair.bg = (!tty.visible && BACKGROUND_DRAW) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
-		}
-
-		for (h = 0; h < CELL_HEIGHT; h++) {
-			/* if UNDERLINE attribute on, swap bg/fg */
-			if ((h == (CELL_HEIGHT - 1)) && (cellp->attribute & attr_mask[ATTR_UNDERLINE]))
-				color_pair.bg = color_pair.fg;
-
-			for (w = 0; w < CELL_WIDTH; w++) {
-				pos = (term->width - 1 - margin_right - w) * fb->bytes_per_pixel
-					+ (line * CELL_HEIGHT + h) * fb->line_length;
-
-				/* set color palette */
-				if (glyphp->bitmap[h] & (0x01 << (bit_shift + w)))
-					pixel = term->color_palette[color_pair.fg];
-				else if (fb->wall && color_pair.bg == DEFAULT_BG) /* wallpaper */
-					memcpy(&pixel, fb->wall + pos, fb->bytes_per_pixel);
-				else
-					pixel = term->color_palette[color_pair.bg];
-
-				/* update copy buffer only */
-				memcpy(fb->buf + pos, &pixel, fb->bytes_per_pixel);
-			}
-		}
-	}
-
-	/* actual display update (bit blit) */
-	pos = (line * CELL_HEIGHT) * fb->line_length;
-	size = CELL_HEIGHT * fb->line_length;
-	memcpy(fb->fp + pos, fb->buf + pos, size);
-
-	/* TODO: page flip
-		don't know how to page flip in BSD */
-
-	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
-}
-
-void refresh(struct framebuffer *fb, struct terminal *term)
-{
-	int line;
-
-	if (term->mode & MODE_CURSOR)
-		term->line_dirty[term->cursor.y] = true;
-
-	for (line = 0; line < term->lines; line++) {
-		if (term->line_dirty[line])
-			draw_line(fb, term, line);
-	}
 }
