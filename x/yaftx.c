@@ -1,13 +1,13 @@
 /* See LICENSE for licence details. */
-#include "yaft.h"
-#include "conf.h"
-#include "util.h"
+#include "../yaft.h"
+#include "../conf.h"
+#include "../util.h"
 #include "x.h"
-#include "terminal.h"
-#include "function.h"
-#include "osc.h"
-#include "dcs.h"
-#include "parse.h"
+#include "../terminal.h"
+#include "../function.h"
+#include "../osc.h"
+#include "../dcs.h"
+#include "../parse.h"
 
 void sig_handler(int signo)
 {
