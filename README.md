@@ -58,15 +58,45 @@ this value is an index of color_list (see color.h)
 +	TABSTOP          = 8,      /* hardware tabstop */
 +	BACKGROUND_DRAW  = false,  /* always draw even if vt is not active (maybe linux console only) */
 +	WALLPAPER        = false,  /* copy framebuffer before startup, and use it as wallpaper (console only) */
-+	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph(single width): U+0020 (SPACE)) */
-+	SUBSTITUTE_WIDE  = 0x3013, /* used for missing glyph(double width): U+3013 (GETA MARK) */
-+	REPLACEMENT_CHAR = 0x0020, /* used for malformed UTF-8 sequence   : U+0020 (SPACE)  */
++	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph (single width): U+0020 (SPACE)) */
++	SUBSTITUTE_WIDE  = 0x3000, /* used for missing glyph (double width): U+3000 (IDEOGRAPHIC SPACE) */
++	REPLACEMENT_CHAR = 0x003F, /* used for malformed UTF-8 sequence    : U+003F (QUESTION MARK)  */
 
 ### terminal name and path
 
 +	static char *term_name = "TERM=yaft-256color";
 +	static char *fb_path   = "/dev/fb0";
 +	static char *shell_cmd = "/bin/bash";
+
+## how to use your favorite fonts
+
+you can use tools/mkfont_bdf to create glyph.h
+
+usage: tools/mkfont_bdf ALIAS_FILE BDF1 BDF2 BDF3 ... > glyph.h
+
+-	ALIAS_FILE: fonts substitution rule file (see table/alias)
+-	BDF1, BDF2, BDF3...:
+	+	yaft supports only "monospace" bdf font (not supports pcf, please use [pcf2bdf])
+	+	yaft doesn't support bold fonts (yaft just brightens color at bold attribute)
+	+	you can specify mulitiple bdf fonts (but these fonts MUST be the same size)
+	+	if there are same glyphs in different bdf file,
+		yaft use the glyph included in the last specified bdf file
+
+change makefile like this
+
+~~~
+#./mkfont_bdf table/alias fonts/milkjf_k16.bdf fonts/milkjf_8x16r.bdf fonts/milkjf_8x16.bdf > glyph.h
+./mkfont_bdf table/your_alias your/favorite/fonts.bdf > glyph.h
+~~~
+
+or change yaft.h
+
+~~~
+//#include "glyph.h"
+#include "glyph_you_created.h"
+~~~
+
+[pcf2bdf]: ftp://ftp.freebsd.org/pub/FreeBSD/ports/distfiles/pcf2bdf-1.04.tgz
 
 ## environment variable
 
