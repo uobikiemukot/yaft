@@ -7,13 +7,14 @@ Last update: Thu Jul 10 20:07:09 JST 2014
 yaft is simple framebuffer terminal emulator for minimalist (living without X).
 This software is being developed to replace Linux console for personal use.
 
-Most defferent point is supporting UTF-8 encoding (with embedded fonts) and 256 color mode.
+Most defferent point is supporting UCS2 glyphs including wide character (with embedded fonts) and 256 color mode (same as xterm/rxvt).
+(Linux console can handle only 512 glyphs and doesn't support 256 color mode.)
 yaft requires minimal dependency, what you need for build is only make and gcc (or bmake and clang).
 
 Main target is Linux console, but yaft supports some other framebuffer platform, FreeBSD console and NetBSD/OpenBSD wscons (experimental).
 And there are other (non framebuffer) ports, yaftx (X Window System) and yaft-android (Android).
 
-This repository includes yaft, yaft-freebsd, yaft-netbsd and yaftx.
+This repository includes yaft, yaft-freebsd, yaft-netbsd, yaft-openbsd and yaftx.
 yaft-android is found [here](https://github.com/uobikiemukot/yaft-android).
 
 ## download
@@ -33,7 +34,7 @@ or
 
 +	recognizes most of escape sequences of vt102 and Linux console ([detail](http://uobikiemukot.github.io/yaft/escape.html))
 +	supports various framebuffer types (8/15/16/24/32bpp)
-+	supports (only) UTF-8 encoding with embedded fonts
++	supports (only) UTF-8 encoding and UCS2 gylphs with embedded fonts
 +	supports 256 colors (same as xterm)
 +	supports wallpaper
 +	supports DRCS (DECDLD/DRCSMMv1) (experimental)
@@ -45,7 +46,7 @@ If you want to change configuration, rewrite conf.h
 
 ### color
 
-this value is an index of color_list (see color.h)
+This value is an index of color_list (see color.h)
 
 +	DEFAULT_FG = 7,
 +	DEFAULT_BG = 0,
@@ -56,7 +57,7 @@ this value is an index of color_list (see color.h)
 
 +	DEBUG            = false,  /* write dump of input to stdout, debug message to stderr */
 +	TABSTOP          = 8,      /* hardware tabstop */
-+	BACKGROUND_DRAW  = false,  /* always draw even if vt is not active (maybe linux console only) */
++	BACKGROUND_DRAW  = false,  /* always draw even if vt is not active (maybe linux console only, useful for multi display) */
 +	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph (single width): U+0020 (SPACE)) */
 +	SUBSTITUTE_WIDE  = 0x3000, /* used for missing glyph (double width): U+3000 (IDEOGRAPHIC SPACE) */
 +	REPLACEMENT_CHAR = 0x003F, /* used for malformed UTF-8 sequence    : U+003F (QUESTION MARK)  */
@@ -69,13 +70,13 @@ this value is an index of color_list (see color.h)
 
 ## how to use your favorite fonts
 
-you can use tools/mkfont_bdf to create glyph.h
+You can use tools/mkfont_bdf to create glyph.h
 
 usage: tools/mkfont_bdf ALIAS_FILE BDF1 BDF2 BDF3 ... > glyph.h
 
 -	ALIAS_FILE: glyph substitution rule file (see table/alias)
 -	BDF1, BDF2, BDF3...:
-	+	yaft supports only "monospace" bdf font (not supports pcf, please use [pcf2bdf])
+	+	yaft supports only "monospace" bdf font
 	+	yaft doesn't support bold fonts (yaft just brightens color at bold attribute)
 	+	you can specify mulitiple bdf fonts (but these fonts MUST be the same size)
 	+	if there are same glyphs in different bdf file,
@@ -95,18 +96,16 @@ or change yaft.h
 #include "glyph_you_created.h"
 ~~~
 
-[pcf2bdf]: ftp://ftp.freebsd.org/pub/FreeBSD/ports/distfiles/pcf2bdf-1.04.tgz
-
 ## environment variable
 
 ~~~
 $ FRAMEBUFFER="/dev/fb1" yaft # use another framebuffer device
-$ YAFT="wall" yaft # set wallpaper (see yaft_wall script)
+$ idump /path/to/wallpaper.png; YAFT="wall" yaft # set wallpaper (see yaft_wall script)
 ~~~
 
 ## build and install (yaft)
 
-please check makefile and LANG environment variable before make
+Please check makefile and LANG environment variable before make
 (yaft uses wcwidth in libc for calculating glyph width)
 
 ~~~
@@ -122,7 +121,7 @@ $ make
 $ make yaftx
 ~~~
 
-please install manually
+Please install manually
 
 ## terminfo/termcap
 
@@ -134,20 +133,17 @@ terminfo/termcap is found in info/ directory
 $ yaft
 ~~~
 
-for displaying wallpaper, you can use yaft_wall script (it requires [fbv])
+For enabling wallpaper, you can use yaft_wall script (it requires [fbv](http://www.eclis.ch/fbv/))
 
 ~~~
 $ yaft_wall /path/to/wallpaper.jpg
 ~~~
 
-or you can use [idump]
+or you can use [idump](https://github.com/uobikiemukot/idump)
 
 ~~~
-$ idump /path/to/wallpaper.jpg; yaft
+$ idump /path/to/wallpaper.jpg; YAFT="wall" yaft
 ~~~
-
-[fbv]: http://www.eclis.ch/fbv/
-[idump]: https://github.com/uobikiemukot/idump
 
 ## screenshot
 
