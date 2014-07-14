@@ -1,0 +1,48 @@
+.TH "YAFT" "1" "July 2014" "yaft 0.2.7" "yaft User Manual"
+.SH NAME
+.PP
+yaft \- yet another framebuffer terminal
+.SH SYNOPSIS
+.PP
+.B yaft
+.RB [ \-h ]
+.SH DESCRIPTION
+.PP
+.B yaft
+is simple framebuffer terminal emulator for minimalist (living without X).
+.SH OPTIONS
+.TP
+.B \-h
+Show help
+.RS
+.RE
+.SH CUSTOMIZATION
+.PP
+Rewrite conf.h before make.
+.SH CUSTOM FONTS
+.PP
+You can use tools/mkfont_bdf to create fonts file. See makefile and table/alias for detail.
+.SH ENVIRONMENT VARIABLES
+.TP
+.B FRAMEBUFFER
+Specify framebuffer device.
+.RS
+.RE
+.TP
+.B YAFT
+If this variable includes "wall", yaft enables wallpaper mode. See yaft_wall script for detail.
+.RS
+.RE
+.SH AUTHOR
+.PP
+haru <uobikiemukot at gmail dot com>
+.SH LICENSE
+.PP
+MIT LISENCE
+.SH "REPORTING BUGS"
+Please submit bug reports to <\fBhttps://github.com/uobikiemukot/yaft/issues\fR>. 
+.SH SEE ALSO
+.PP
+.BR console_codes (4),
+.BR console_ioctl (4),
+.BR terminfo (5)
