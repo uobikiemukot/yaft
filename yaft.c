@@ -26,7 +26,7 @@ void usage()
 		"yaft (yet another framebuffer terminal)\n\n"
 		"usage: just type 'yaft'\n\n"
 		"command line option:\n"
-		"\t-h or -help: show this help\n\n"
+		"\t-h: show this help\n\n"
 		"compile time configuration:\n"
 		"\trewrite conf.h before build\n\n"
 		"enviroment variables:\n"
@@ -34,14 +34,15 @@ void usage()
 		"\t\tuse specified framebuffer device (default:/dev/fb0)\n"
 		"\t\tex) FRAMEBUFFER=/dev/fb1 yaft\n"
 		"\tYAFT:\n"
-		"\t\tuse wallpaper (need fbv or idump, see yaft_wall script)\n"
-		"\t\tex) YAFT=wall yaft or YAFT=wallpaper yaft\n\n"
-		"custom font:\n"
+		"\t\tuse wallpaper (need fbv or idump, see yaft_wall script for more detail)\n"
+		"\t\tex) idump /path/to/wallpaper.png; YAFT=wall yaft\n\n"
+		"custom fonts:\n"
 		"\tyou can use your favorite fonts by using mkfont_bdf (please rewrite makefile)\n"
 		"\tusage: mkfont_bdf ALIAS BDF1 BDF2 BDF3... > glyph.h\n"
 		"\t\tALIAS: glyph substitution rule file (see table/alias)\n"
-		"\t\tBDF: monospace bdf files (must be the same size)\n\n"
-		"see README for more information\n"
+		"\t\tBDF1 BDF2 BDF3...: monospace bdf files (must be the same size)\n\n"
+		"See README or github page (https://github.com/uobikiemukot/yaft/) for more information\n"
+		"If you find a bug, please use github issues\n"
 		);
 }
 
@@ -168,8 +169,7 @@ int main(int argc, char *argv[])
 	struct termios save_tm;
 
 	/* show usage */
-	if (argc > 1
-		&& (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0)) {
+	if (argc > 1 && strcmp(argv[1], "-h") == 0) {
 		usage();
 		return EXIT_SUCCESS;
 	}
