@@ -230,8 +230,7 @@ void fb_init(struct framebuffer *fb, uint32_t *color_palette)
 	fb->buf   = (uint8_t *) ecalloc(1, fb->screen_size);
 	//fb->wall  = (WALLPAPER && fb->bytes_per_pixel > 1) ? load_wallpaper(fb): NULL;
 
-	if (((env = getenv("YAFT")) != NULL)
-		&& ((strstr(env, "wall") != NULL) || (strstr(env, "wallpaper") != NULL)))
+	if (((env = getenv("YAFT")) != NULL) && (strstr(env, "wall") != NULL))
 		fb->wall = load_wallpaper(fb);
 	else
 		fb->wall = NULL;
