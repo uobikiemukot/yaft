@@ -24,13 +24,18 @@ mkfont_bdf: tools/mkfont_bdf.c tools/font.h tools/bdf.h
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 glyph.h: mkfont_bdf
-	# please change following line, if you want to use your favorite fonts
+	# If you want to use your favorite fonts, please change following line
+	# usage: mkfont_bdf ALIAS BDF1 BDF2 BDF3... > glyph.h
+	# ALIAS: glyph substitution rule file (see table/alias for more detail)
+	# BDF1 BDF2 BDF3...: monospace bdf files (must be the same size)
 	./mkfont_bdf table/alias fonts/milkjf_k16.bdf fonts/milkjf_8x16r.bdf fonts/milkjf_8x16.bdf > glyph.h
 
 yaft: yaft.c $(HDR)
+	# If you want to change configuration, please modify conf.h before make (see conf.h for more detail)
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 yaftx: x/yaftx.c $(HDR)
+	# If you want to change configuration, please modify conf.h before make (see conf.h for more detail)
 	$(CC) -o $@ $< $(XCFLAGS) $(XLDFLAGS)
 
 install:
