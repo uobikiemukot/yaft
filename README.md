@@ -6,10 +6,10 @@ Last update: Thu Jul 10 20:07:09 JST 2014
 
 yaft is simple framebuffer terminal emulator for minimalist (living without X).
 This software is being developed to replace Linux console for personal use.
+<!-- Linux console can handle only 512 glyphs and doesn't support 256 color. -->
 
-Most defferent point is supporting UCS2 glyphs including wide character (with embedded fonts) and 256 color mode (same as xterm/rxvt).
-(Linux console can handle only 512 glyphs and doesn't support 256 color mode.)
-yaft requires minimal dependency, what you need for build is only make and gcc (or bmake and clang).
+yaft supports UCS2 glyphs (including wide character) and 256 color.
+What you need for build is only make and gcc (or bmake and clang).
 
 Main target is Linux console, but yaft supports some other framebuffer platform, FreeBSD console and NetBSD/OpenBSD wscons (experimental).
 And there are other (non framebuffer) ports, yaftx (X Window System) and yaft-android (Android).
