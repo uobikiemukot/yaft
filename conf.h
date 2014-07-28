@@ -34,7 +34,7 @@ const char *term_name = "yaft-256color";
 //const char *fb_path = "/dev/graphics/fb0"; /* for Android */
 
 /* shell */
-#if defined(__linux__)
+#if defined(__linux__) || defined(__MACH__)
 	const char *shell_cmd = "/bin/bash";
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 	const char *shell_cmd = "/bin/csh";
