@@ -157,6 +157,7 @@ void set_cursor(struct terminal *term, int y, int x)
 
 	term->cursor.x = x;
 	term->cursor.y = y;
+	term->wrap_occured = false;
 }
 
 const struct glyph_t *drcsch(struct terminal *term, uint32_t code)
