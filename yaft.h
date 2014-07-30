@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/select.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
 #include <wchar.h>
@@ -38,7 +39,7 @@ enum misc {
 	BITS_PER_BYTE     = 8,
 	BYTES_PER_PIXEL   = 3,       /* pixel size of sixel bitmap data */
 	BITS_PER_SIXEL    = 6,       /* number of bits of a sixel */
-	ESCSEQ_SIZE       = 2,       /* limit size of terminal escape sequence */
+	ESCSEQ_SIZE       = 1024,    /* limit size of terminal escape sequence */
 	SELECT_TIMEOUT    = 15000,   /* used by select() */
 	MAX_ARGS          = 16,      /* max parameters of csi/osc sequence */
 	COLORS            = 256,     /* number of color */
