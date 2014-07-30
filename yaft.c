@@ -138,7 +138,7 @@ void check_fds(fd_set *fds, struct timeval *tv, int input, int master)
 	eselect(master + 1, fds, NULL, NULL, tv);
 }
 
-int main(int argc, char *argv[])
+int main()
 {
 	uint8_t buf[BUFSIZE];
 	ssize_t size;
