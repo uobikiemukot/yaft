@@ -20,39 +20,15 @@
 #include "dcs.h"
 #include "parse.h"
 
-void usage()
-{
-	fprintf(stderr,
-		"yaft (yet another framebuffer terminal)\n\n"
-		"usage: just type 'yaft'\n\n"
-		"command line option:\n"
-		"\t-h: show this help\n\n"
-		"compile time configuration:\n"
-		"\trewrite conf.h before build\n\n"
-		"enviroment variables:\n"
-		"\tFRAMEBUFFER:\n"
-		"\t\tuse specified framebuffer device (default:/dev/fb0)\n"
-		"\t\tex) FRAMEBUFFER=/dev/fb1 yaft\n"
-		"\tYAFT:\n"
-		"\t\tuse wallpaper (need fbv or idump, see yaft_wall script for more detail)\n"
-		"\t\tex) idump /path/to/wallpaper.png; YAFT=wall yaft\n\n"
-		"custom fonts:\n"
-		"\tyou can use your favorite fonts by using mkfont_bdf (please rewrite makefile)\n"
-		"\tusage: mkfont_bdf ALIAS BDF1 BDF2 BDF3... > glyph.h\n"
-		"\t\tALIAS: glyph substitution rule file (see table/alias)\n"
-		"\t\tBDF1 BDF2 BDF3...: monospace bdf files (must be the same size)\n\n"
-		"See README or github page (https://github.com/uobikiemukot/yaft/) for more information\n"
-		"If you find a bug, please use github issues\n"
-		);
-}
-
 void sig_handler(int signo)
 {
 	extern struct tty_state tty; /* global */
 	sigset_t sigset;
 
-	if (signo == SIGCHLD)
+	if (signo == SIGCHLD) {
+		wait(NULL);
 		tty.loop_flag = false;
+	}
 	else if (signo == SIGUSR1) {
 		if (tty.visible) { /* vt deactivated */
 			ioctl(STDIN_FILENO, VT_RELDISP, 1);
@@ -77,7 +53,6 @@ void set_rawmode(int fd, struct termios *save_tm)
 {
 	struct termios tm;
 
-	etcgetattr(fd, save_tm);
 	tm = *save_tm;
 	tm.c_iflag = tm.c_oflag = 0;
 	tm.c_cflag &= ~CSIZE;
@@ -108,6 +83,7 @@ void tty_init(struct termios *save_tm)
 	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS))
 		fatal("ioctl: KDSETMODE failed (maybe here is not console)");
 
+	etcgetattr(STDIN_FILENO, save_tm);
 	set_rawmode(STDIN_FILENO, save_tm);
 	ewrite(STDIN_FILENO, "\033[?25l", 6); /* make cusor invisible */
 }
@@ -136,6 +112,7 @@ void tty_die(struct termios *save_tm)
 
 void fork_and_exec(int *master, int lines, int cols)
 {
+	char *shell_env;
 	pid_t pid;
 	struct winsize ws = {.ws_row = lines, .ws_col = cols,
 		.ws_xpixel = 0, .ws_ypixel = 0};
@@ -144,7 +121,10 @@ void fork_and_exec(int *master, int lines, int cols)
 
 	if (pid == 0) { /* child */
 		esetenv("TERM", term_name, 1);
-		eexecvp(shell_cmd, (const char *[]){shell_cmd, NULL});
+		if ((shell_env = getenv("SHELL")) != NULL)
+			eexecvp(shell_env, (const char *[]){shell_env, NULL});
+		else
+			eexecvp(shell_cmd, (const char *[]){shell_cmd, NULL});
 	}
 }
 
@@ -167,12 +147,6 @@ int main(int argc, char *argv[])
 	struct framebuffer fb;
 	struct terminal term;
 	struct termios save_tm;
-
-	/* show usage */
-	if (argc > 1 && strcmp(argv[1], "-h") == 0) {
-		usage();
-		return EXIT_SUCCESS;
-	}
 
 	/* init */
 	setlocale(LC_ALL, "");
