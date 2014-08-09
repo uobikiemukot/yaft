@@ -145,7 +145,8 @@ struct terminal {
 	int fd;                                      /* master fd */
 	int width, height;                           /* terminal size (pixel) */
 	int cols, lines;                             /* terminal size (cell) */
-	struct cell_t *cells;                        /* pointer to each cell: cells[cols + lines * num_of_cols] */
+	//struct cell_t *cells;                        /* pointer to each cell: cells[cols + lines * num_of_cols] */
+	struct cell_t **cells;                       /* pointer to each cell: cells[lines][cols] */
 	struct margin scroll;                        /* scroll margin */
 	struct point_t cursor;                       /* cursor pos (x, y) */
 	bool *line_dirty;                            /* dirty flag */
@@ -172,7 +173,7 @@ struct tty_state { /* this variables changed at catching signals */
 	volatile sig_atomic_t visible;        /* SIGUSR1: vt is active or not */
 	volatile sig_atomic_t redraw_flag;    /* SIGUSR1: vt activated */
 	volatile sig_atomic_t loop_flag;      /* SIGCHLD: child process (shell) is alive or not */
-	volatile sig_atomic_t window_resized; /* SIGWINCH: only used for yaftx */
+	//volatile sig_atomic_t window_resized; /* SIGWINCH: only used for yaftx */
 };
 
 /* global variables */
@@ -180,5 +181,5 @@ struct tty_state tty = {
 	.visible        = true,
 	.redraw_flag    = false,
 	.loop_flag      = true,
-	.window_resized = false,
+	//.window_resized = false,
 };
