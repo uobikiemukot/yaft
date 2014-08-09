@@ -3,7 +3,8 @@ void erase_cell(struct terminal *term, int y, int x)
 {
 	struct cell_t *cellp;
 
-	cellp             = &term->cells[x + y * term->cols];
+	//cellp             = &term->cells[x + y * term->cols];
+	cellp             = &term->cells[y][x];
 	cellp->glyphp     = term->glyph_map[DEFAULT_CHAR];
 	cellp->color_pair = term->color_pair; /* bce */
 	cellp->attribute  = ATTR_RESET;
@@ -17,14 +18,16 @@ void copy_cell(struct terminal *term, int dst_y, int dst_x, int src_y, int src_x
 {
 	struct cell_t *dst, *src;
 
-	dst = &term->cells[dst_x + dst_y * term->cols];
-	src = &term->cells[src_x + src_y * term->cols];
+	//dst = &term->cells[dst_x + dst_y * term->cols];
+	//src = &term->cells[src_x + src_y * term->cols];
+	dst = &term->cells[dst_y][dst_x];
+	src = &term->cells[src_y][src_x];
 
-	if (src->width == NEXT_TO_WIDE)
+	if (src->width == NEXT_TO_WIDE) {
 		return;
-	else if (src->width == WIDE && dst_x == (term->cols - 1))
+	} else if (src->width == WIDE && dst_x == (term->cols - 1)) {
 		erase_cell(term, dst_y, dst_x);
-	else {
+	} else {
 		*dst = *src;
 		if (src->width == WIDE) {
 			*(dst + 1) = *src;
@@ -56,12 +59,14 @@ int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
 	cell.width      = glyphp->width;
 	cell.has_bitmap = false;
 
-	cellp    = &term->cells[x + y * term->cols];
+	//cellp    = &term->cells[x + y * term->cols];
+	cellp    = &term->cells[y][x];
 	*cellp   = cell;
 	term->line_dirty[y] = true;
 
 	if (cell.width == WIDE && x + 1 < term->cols) {
-		cellp        = &term->cells[x + 1 + y * term->cols];
+		//cellp        = &term->cells[x + 1 + y * term->cols];
+		cellp        = &term->cells[y][x + 1];
 		*cellp       = cell;
 		cellp->width = NEXT_TO_WIDE;
 		return WIDE;
@@ -71,8 +76,8 @@ int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
 
 void scroll(struct terminal *term, int from, int to, int offset)
 {
-	int i, j, size, abs_offset;
-	struct cell_t *dst, *src;
+	int i, j, size, abs_offset, scroll_lines;
+	//struct cell_t *dst, *src;
 
 	if (offset == 0 || from >= to)
 		return;
@@ -84,19 +89,34 @@ void scroll(struct terminal *term, int from, int to, int offset)
 		term->line_dirty[i] = true;
 
 	abs_offset = abs(offset);
-	size = sizeof(struct cell_t) * ((to - from + 1) - abs_offset) * term->cols;
+	//size = sizeof(struct cell_t) * ((to - from + 1) - abs_offset) * term->cols;
+	size = sizeof(struct cell_t) * term->cols;
+	scroll_lines = (to - from + 1) - abs_offset;
 
-	dst = term->cells + from * term->cols;
-	src = term->cells + (from + abs_offset) * term->cols;
+	//dst = term->cells + from * term->cols;
+	//src = term->cells + (from + abs_offset) * term->cols;
+	//dst = &term->cells[from][0];
+	//src = &term->cells[from + abs_offset][0];
 
-	if (offset > 0) {
-		memmove(dst, src, size);
-		for (i = (to - offset + 1); i <= to; i++)
+	if (offset > 0) { /* scroll down */
+		/* scroll down:
+			cells[from] ... cells[from + scroll_lines - 1]: copy from cells[i + offset]
+			cells[from + scroll_lines] ... cells[to]      : erase */
+		//memmove(dst, src, size);
+		for (i = from; i < from + scroll_lines; i++)
+			memmove(term->cells[i], term->cells[i + offset], size);
+
+		for (i = from + scroll_lines; i <= to; i++)
 			for (j = 0; j < term->cols; j++)
 				erase_cell(term, i, j);
-	}
-	else {
-		memmove(src, dst, size);
+	} else {
+		/* scroll up:
+			cells[from + abs_offset] ... cells[to]      : copy from cells[i - offset]
+			cells[from] ... cells[from + abs_offset - 1]: erase */
+		//memmove(src, dst, size);
+		for (i = to; i >= from + abs_offset; i--)
+			memmove(term->cells[i], term->cells[i - abs_offset], size);
+
 		for (i = from; i < from + abs_offset; i++)
 			for (j = 0; j < term->cols; j++)
 				erase_cell(term, i, j);
@@ -114,9 +134,9 @@ void move_cursor(struct terminal *term, int y_offset, int x_offset)
 	top = term->scroll.top;
 	bottom = term->scroll.bottom;
 
-	if (x < 0)
+	if (x < 0) {
 		x = 0;
-	else if (x >= term->cols) {
+	} else if (x >= term->cols) {
 		if (term->mode & MODE_AMRIGHT)
 			term->wrap_occured = true;
 		x = term->cols - 1;
@@ -129,8 +149,7 @@ void move_cursor(struct terminal *term, int y_offset, int x_offset)
 	if (term->cursor.y == top && y_offset < 0) {
 		y = top;
 		scroll(term, top, bottom, y_offset);
-	}
-	else if (term->cursor.y == bottom && y_offset > 0) {
+	} else if (term->cursor.y == bottom && y_offset > 0) {
 		y = bottom;
 		scroll(term, top, bottom, y_offset);
 	}
@@ -146,8 +165,7 @@ void set_cursor(struct terminal *term, int y, int x)
 		top = term->scroll.top;
 		bottom = term->scroll.bottom;
 		y += term->scroll.top;
-	}
-	else {
+	} else {
 		top = 0;
 		bottom = term->lines - 1;
 	}
@@ -176,9 +194,9 @@ const struct glyph_t *drcsch(struct terminal *term, uint32_t code)
 
 	if ((0x40 <= ku && ku <= 0x7E)
 		&& (0x20 <= ten && ten <= 0x7F)
-		&& (term->drcs[ku - 0x40] != NULL))
+		&& (term->drcs[ku - 0x40] != NULL)) {
 		return &term->drcs[ku - 0x40][ten - 0x20]; /* sub each offset */
-	else {
+	} else {
 		if (DEBUG)
 			fprintf(stderr, "drcs char not found\n");
 		return term->glyph_map[SUBSTITUTE_HALF];
@@ -195,13 +213,13 @@ void addch(struct terminal *term, uint32_t code)
 
 	width = wcwidth(code);
 
-	if (width <= 0) /* zero width */
+	if (width <= 0)                                /* zero width: not support comibining character */
 		return;
-	else if (0x100000 <= code && code <= 0x10FFFD) /* Unicode private area: plane 16 */
+	else if (0x100000 <= code && code <= 0x10FFFD) /* unicode private area: plane 16 (DRCSMMv1) */
 		glyphp = drcsch(term, code);
-	else if (code >= UCS2_CHARS /* yaft support only UCS2 */
-		|| term->glyph_map[code] == NULL /* missing glyph */
-		|| term->glyph_map[code]->width != width) /* width unmatch */
+	else if (code >= UCS2_CHARS                    /* yaft support only UCS2 */
+		|| term->glyph_map[code] == NULL           /* missing glyph */
+		|| term->glyph_map[code]->width != width)  /* width unmatch */
 		glyphp = (width == 1) ? term->glyph_map[SUBSTITUTE_HALF]: term->glyph_map[SUBSTITUTE_WIDE];
 	else
 		glyphp = term->glyph_map[code];
@@ -250,8 +268,7 @@ bool push_esc(struct terminal *term, uint8_t ch)
 			return true;
 		else if (SPACE <= ch && ch <= '/') /* intermediate char */
 			return false;
-	}
-	else if (term->esc.state == STATE_CSI) {
+	} else if (term->esc.state == STATE_CSI) {
 		/* format:
 			CSI       P.......P I.......I F
 			ESC  '['  '0'  '?'  ' '  '/'  '@'  '~'
@@ -261,8 +278,7 @@ bool push_esc(struct terminal *term, uint8_t ch)
 			return true;
 		else if (SPACE <= ch && ch <= '?')
 			return false;
-	}
-	else {
+	} else {
 		/* format:
 			OSC       I.....I F
 			ESC  ']'          BEL  or ESC  '\'
@@ -279,7 +295,7 @@ bool push_esc(struct terminal *term, uint8_t ch)
 			return false;
 	}
 
- 	/* invalid sequence */
+	/* invalid sequence */
 	reset_esc(term);
 	return false;
 }
@@ -352,7 +368,10 @@ void term_init(struct terminal *term, int width, int height)
 
 	term->line_dirty = (bool *) ecalloc(term->lines, sizeof(bool));
 	term->tabstop    = (bool *) ecalloc(term->cols, sizeof(bool));
-	term->cells      = (struct cell_t *) ecalloc(term->cols * term->lines, sizeof(struct cell_t));
+	//term->cells      = (struct cell_t *) ecalloc(term->cols * term->lines, sizeof(struct cell_t));
+	term->cells      = (struct cell_t **) ecalloc(term->lines, sizeof(struct cell_t *));
+	for (i = 0; i < term->lines; i++)
+		term->cells[i] = (struct cell_t *) ecalloc(term->cols, sizeof(struct cell_t));
 
 	term->esc.buf  = (char *) ecalloc(1, ESCSEQ_SIZE);
 	term->esc.size = ESCSEQ_SIZE;
@@ -385,8 +404,11 @@ void term_die(struct terminal *term)
 
 	free(term->line_dirty);
 	free(term->tabstop);
-	free(term->cells);
 	free(term->esc.buf);
+
+	for (i = 0; i < term->lines; i++)
+		free(term->cells[i]);
+	free(term->cells);
 
 	for (i = 0; i < DRCS_CHARSETS; i++)
 		if (term->drcs[i] != NULL)
