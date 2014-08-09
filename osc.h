@@ -72,27 +72,24 @@ int32_t parse_color2(char *seq)
 			strncpy(buf, seq + i, 1);
 			rgb[i] = bit_mask[8] & hex2num(buf) * 0xFF / 0x0F;
 		}
-	}
-	else if (length == 6) {  /* rrggbb */
+	} else if (length == 6) {  /* rrggbb */
 		for (i = 0; i < 3; i++) { /* rrggbb */
 			strncpy(buf, seq + i * 2, 2);
 			rgb[i] = bit_mask[8] & hex2num(buf);
 		}
-	}
-	else if (length == 9) {  /* rrrgggbbb */
+	} else if (length == 9) {  /* rrrgggbbb */
 		for (i = 0; i < 3; i++) {
 			strncpy(buf, seq + i * 3, 3);
 			rgb[i] = bit_mask[8] & hex2num(buf) * 0xFF / 0xFFF;
 		}
-	}
-	else if (length == 12) { /* rrrrggggbbbb */
+	} else if (length == 12) { /* rrrrggggbbbb */
 		for (i = 0; i < 3; i++) {
 			strncpy(buf, seq + i * 4, 4);
 			rgb[i] = bit_mask[8] & hex2num(buf) * 0xFF / 0xFFFF;
 		}
-	}
-	else
+	} else {
 		return -1;
+	}
 
 	color = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
 	if (DEBUG)
@@ -146,12 +143,10 @@ void set_palette(struct terminal *term, void *arg)
 	if (strncmp(argv[2], "rgb:", 4) == 0) {
 		if ((color = parse_color1(argv[2] + 4)) != -1) /* skip "rgb:" */
 			term->color_palette[index] = (uint32_t) color;
-	}
-	else if (strncmp(argv[2], "#", 1) == 0) {
+	} else if (strncmp(argv[2], "#", 1) == 0) {
 		if ((color = parse_color2(argv[2] + 1)) != -1) /* skip "#" */
 			term->color_palette[index] = (uint32_t) color;
-	}
-	else if (strncmp(argv[2], "?", 1) == 0) {
+	} else if (strncmp(argv[2], "?", 1) == 0) {
 		for (i = 0; i < 3; i++)
 			rgb[i] = bit_mask[8] & (term->color_palette[index] >> (8 * (2 - i)));
 
@@ -181,8 +176,7 @@ void reset_palette(struct terminal *term, void *arg)
 	if (argc < 2) { /* reset all color palette */
 		for (i = 0; i < COLORS; i++)
 			term->color_palette[i] = color_list[i];
-	}
-	else if (argc == 2) { /* reset color_palette[c] */
+	} else if (argc == 2) { /* reset color_palette[c] */
 		c = dec2num(argv[1]);
 		if (0 <= c && c < COLORS)
 			term->color_palette[c] = color_list[c];
@@ -246,7 +240,7 @@ void glyph_width_report(struct terminal *term, void *arg)
 		return;
 
 	snprintf(buf, BUFSIZE, "\033]8900;0;0;%d;", width); /* OSC 8900 ; Ps; Pv ; Pw ; */
-    ewrite(term->fd, buf, strlen(buf));
+	ewrite(term->fd, buf, strlen(buf));
 
 	left = right = -1;
 	for (i = from; i <= to; i++) {
@@ -260,12 +254,11 @@ void glyph_width_report(struct terminal *term, void *arg)
 
 		if (w != width) {
 			if (right != -1) {
-    			snprintf(buf, BUFSIZE, "%d:%d;", left, right);
-    			ewrite(term->fd, buf, strlen(buf));
-			}
-			else if (left != -1) {
-    			snprintf(buf, BUFSIZE, "%d:%d;", left, left);
-    			ewrite(term->fd, buf, strlen(buf));
+				snprintf(buf, BUFSIZE, "%d:%d;", left, right);
+				ewrite(term->fd, buf, strlen(buf));
+			} else if (left != -1) {
+				snprintf(buf, BUFSIZE, "%d:%d;", left, left);
+				ewrite(term->fd, buf, strlen(buf));
 			}
 
 			left = right = -1;
@@ -281,11 +274,10 @@ void glyph_width_report(struct terminal *term, void *arg)
 	if (right != -1) {
 		snprintf(buf, BUFSIZE, "%d:%d;", left, right);
 		ewrite(term->fd, buf, strlen(buf));
-	}
-	else if (left != -1) {
+	} else if (left != -1) {
 		snprintf(buf, BUFSIZE, "%d:%d;", left, left);
 		ewrite(term->fd, buf, strlen(buf));
 	}
 
-    ewrite(term->fd, "\033\\", 2); /* ST (ESC BACKSLASH) */
+	ewrite(term->fd, "\033\\", 2); /* ST (ESC BACKSLASH) */
 }
