@@ -28,20 +28,18 @@ void sig_handler(int signo)
 	if (signo == SIGCHLD) {
 		wait(NULL);
 		tty.loop_flag = false;
-	}
-	else if (signo == SIGUSR1) {
+	} else if (signo == SIGUSR1) {
 		if (tty.visible) { /* vt deactivated */
 			ioctl(STDIN_FILENO, VT_RELDISP, 1);
 			tty.visible = false;
-			if (BACKGROUND_DRAW) /* update passive cursor */
+			if (BACKGROUND_DRAW) { /* update passive cursor */
 				tty.redraw_flag = true;
-			else { /* sleep until next vt switching */
+			} else {               /* sleep until next vt switching */
 				sigfillset(&sigset);
 				sigdelset(&sigset, SIGUSR1);
 				sigsuspend(&sigset);
 			}
-		}
-		else { /* vt activated */
+		} else { /* vt activated */
 			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
 			tty.visible     = true;
 			tty.redraw_flag = true;
@@ -179,6 +177,8 @@ int main()
 				if (DEBUG)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
+				if (LAZY_DRAW && size == BUFSIZE)
+					continue; /* maybe more data arrives soon */
 				refresh(&fb, &term);
 			}
 		}
