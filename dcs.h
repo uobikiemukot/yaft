@@ -120,8 +120,7 @@ static inline uint32_t hls2rgb(int hue, int lum, int sat)
 
 	if (sat == 0) {
 		r = g = b = (lum * RGBMAX) / LSMAX;
-	}
-	else {
+	} else {
 		if (lum <= (LSMAX / 2) )
 			magic2 = (lum * (LSMAX + sat) + (LSMAX / 2)) / LSMAX;
 		else
@@ -181,9 +180,9 @@ static inline int sixel_color(struct sixel_canvas_t *sc, char *buf)
 	v2    = dec2num(parm.argv[3]);
 	v3    = dec2num(parm.argv[4]);
 
-	if (type == 1) /* HLS */
+	if (type == 1) { /* HLS */
 		color = hls2rgb(v1, v2, v3);
-	else {
+	} else {
 		r = bit_mask[8] & (0xFF * v1 / 100);
 		g = bit_mask[8] & (0xFF * v2 / 100);
 		b = bit_mask[8] & (0xFF * v3 / 100);
@@ -264,24 +263,24 @@ void sixel_parse_data(struct terminal *term, struct sixel_canvas_t *sc, char *st
 	end_buf = cp + strlen(start_buf);
 
 	while (cp < end_buf) {
-		if (*cp == '!')
+		if (*cp == '!') {
 			size = sixel_repeat(term, sc, cp);
-		else if (*cp == '"')
+		} else if (*cp == '"') {
 			size = sixel_attr(sc, cp);
-		else if (*cp == '#')
+		} else if (*cp == '#') {
 			size = sixel_color(sc, cp);
-		else if (*cp == '$')
+		} else if (*cp == '$') {
 			size = sixel_cr(sc);
-		else if (*cp == '-')
+		} else if (*cp == '-') {
 			size = sixel_nl(sc);
-		else if ('?' <= *cp && *cp <= '~')  {
+		} else if ('?' <= *cp && *cp <= '~')  {
 			bitmap =  bit_mask[BITS_PER_SIXEL] & (*cp - '?');
 			size = sixel_bitmap(term, sc, bitmap);
-		}
-		else if (*cp == '\0') /* end of sixel data */
+		} else if (*cp == '\0') { /* end of sixel data */
 			break;
-		else
+		} else {
 			size = 1;
+		}
 		cp += size;
 	}
 
@@ -349,11 +348,12 @@ void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 
 	if (cols + term->cursor.x > term->cols)
 		cols -= (cols + term->cursor.x - term->cols);
-	
+
 	for (y = 0; y < lines; y++) {
 		for (x = 0; x < cols; x++) {
 			erase_cell(term, term->cursor.y, term->cursor.x + x);
-			cellp = &term->cells[term->cursor.y * term->cols + (term->cursor.x + x)];
+			//cellp = &term->cells[term->cursor.y * term->cols + (term->cursor.x + x)];
+			cellp = &term->cells[term->cursor.y][term->cursor.x + x];
 			cellp->has_bitmap = true;
 			for (h = 0; h < CELL_HEIGHT; h++) {
 				src_offset = (y * CELL_HEIGHT + h) * sc->line_length + (CELL_WIDTH * x) * BYTES_PER_PIXEL;
@@ -483,22 +483,20 @@ void decdld_parse_data(char *start_buf, int start_char, struct glyph_t *chars)
 		if ('?' <= *cp && *cp <= '~') { /* sixel bitmap */
 			if (DEBUG)
 				fprintf(stderr, "char_num(ten):0x%.2X\n", char_num);
-            /* remove offset '?' and use only 6bit */
+			/* remove offset '?' and use only 6bit */
 			bitmap = bit_mask[BITS_PER_SIXEL] & (*cp - '?');
 			decdld_bitmap(&chars[char_num], bitmap, row, column);
 			column++;
-		}
-		else if (*cp == ';') { /* next char */
+		} else if (*cp == ';') {  /* next char */
 			row = column = 0;
 			char_num++;
 			init_glyph(&chars[char_num]);
-		}
-		else if (*cp == '/') { /* sixel nl+cr */
+		} else if (*cp == '/') {  /* sixel nl+cr */
 			row++;
 			column = 0;
-		}
-		else if (*cp == '\0')  /* end of DECDLD sequence */
+		} else if (*cp == '\0') { /* end of DECDLD sequence */
 			break;
+		}
 		cp++;
 	}
 }
@@ -561,7 +559,7 @@ void decdld_parse_header(struct terminal *term, char *start_buf)
 		cp++;
 
 	if (0x40 <= *cp && *cp <= 0x7E) /* final char of Dscs must be between 0x40 to 0x7E (DRCSMMv1) */
-		charset = *cp - 0x40; 
+		charset = *cp - 0x40;
 	else
 		charset = 0;
 
@@ -580,8 +578,7 @@ void decdld_parse_header(struct terminal *term, char *start_buf)
 				term->drcs[i] = NULL;
 			}
 		}
-	}
-	else if (erase_mode == 0) { /* reset selected drcs charset */
+	} else if (erase_mode == 0) { /* reset selected drcs charset */
 		if (term->drcs[charset] != NULL) {
 			free(term->drcs[charset]);
 			term->drcs[charset] = NULL;
