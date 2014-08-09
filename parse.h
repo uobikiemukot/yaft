@@ -168,12 +168,11 @@ void dcs_sequence(struct terminal *term, uint8_t ch)
 	/* check DCS header */
 	cp = term->esc.buf + 1; /* skip P */
 	while (cp < term->esc.bp) {
-		if (*cp == '{' || *cp == 'q')      /* DECDLD or sixel */
+		if (*cp == '{' || *cp == 'q')                      /* DECDLD or sixel */
 			break;
-		else if (*cp == ';'                /* valid DCS header */
-			|| ('0' <= *cp && *cp <= '9'))
+		else if (*cp == ';' || ('0' <= *cp && *cp <= '9')) /* valid DCS header */
 			;
-		else                               /* invalid sequence */
+		else                                               /* invalid sequence */
 			cp = term->esc.bp;
 		cp++;
 	}
@@ -195,10 +194,10 @@ void utf8_charset(struct terminal *term, uint8_t ch)
 		/* check illegal UTF-8 sequence
 			* ? byte sequence: first byte must be between 0xC2 ~ 0xFD
 			* 2 byte sequence: first byte must be between 0xC2 ~ 0xDF
- 			* 3 byte sequence: second byte following 0xE0 must be between 0xA0 ~ 0xBF
- 			* 4 byte sequence: second byte following 0xF0 must be between 0x90 ~ 0xBF
- 			* 5 byte sequence: second byte following 0xF8 must be between 0x88 ~ 0xBF
- 			* 6 byte sequence: second byte following 0xFC must be between 0x84 ~ 0xBF
+			* 3 byte sequence: second byte following 0xE0 must be between 0xA0 ~ 0xBF
+			* 4 byte sequence: second byte following 0xF0 must be between 0x90 ~ 0xBF
+			* 5 byte sequence: second byte following 0xF8 must be between 0x88 ~ 0xBF
+			* 6 byte sequence: second byte following 0xFC must be between 0x84 ~ 0xBF
 		*/
 		if ((term->charset.following_byte == 0)
 			|| (term->charset.following_byte == 1 && term->charset.count == 0 && term->charset.code <= 1)
@@ -211,38 +210,32 @@ void utf8_charset(struct terminal *term, uint8_t ch)
 		term->charset.code <<= 6;
 		term->charset.code += ch & 0x3F;
 		term->charset.count++;
-	}
-	else if (0xC0 <= ch && ch <= 0xDF) {
+	} else if (0xC0 <= ch && ch <= 0xDF) {
 		term->charset.code = ch & 0x1F;
 		term->charset.following_byte = 1;
 		term->charset.count = 0;
 		return;
-	}
-	else if (0xE0 <= ch && ch <= 0xEF) {
+	} else if (0xE0 <= ch && ch <= 0xEF) {
 		term->charset.code = ch & 0x0F;
 		term->charset.following_byte = 2;
 		term->charset.count = 0;
 		return;
-	}
-	else if (0xF0 <= ch && ch <= 0xF7) {
+	} else if (0xF0 <= ch && ch <= 0xF7) {
 		term->charset.code = ch & 0x07;
 		term->charset.following_byte = 3;
 		term->charset.count = 0;
 		return;
-	}
-	else if (0xF8 <= ch && ch <= 0xFB) {
+	} else if (0xF8 <= ch && ch <= 0xFB) {
 		term->charset.code = ch & 0x03;
 		term->charset.following_byte = 4;
 		term->charset.count = 0;
 		return;
-	}
-	else if (0xFC <= ch && ch <= 0xFD) {
+	} else if (0xFC <= ch && ch <= 0xFD) {
 		term->charset.code = ch & 0x01;
 		term->charset.following_byte = 5;
 		term->charset.count = 0;
 		return;
-	}
-	else { /* 0xFE - 0xFF: not used in UTF-8 */
+	} else { /* 0xFE - 0xFF: not used in UTF-8 */
 		addch(term, REPLACEMENT_CHAR);
 		reset_charset(term);
 		return;
@@ -294,20 +287,16 @@ void parse(struct terminal *term, uint8_t *buf, int size)
 				addch(term, ch);
 			else
 				utf8_charset(term, ch);
-		}
-		else if (term->esc.state == STATE_ESC) {
+		} else if (term->esc.state == STATE_ESC) {
 			if (push_esc(term, ch))
 				esc_sequence(term, ch);
-		}
-		else if (term->esc.state == STATE_CSI) {
+		} else if (term->esc.state == STATE_CSI) {
 			if (push_esc(term, ch))
 				csi_sequence(term, ch);
-		}
-		else if (term->esc.state == STATE_OSC) {
+		} else if (term->esc.state == STATE_OSC) {
 			if (push_esc(term, ch))
 				osc_sequence(term, ch);
-		}
-		else if (term->esc.state == STATE_DCS) {
+		} else if (term->esc.state == STATE_DCS) {
 			if (push_esc(term, ch))
 				dcs_sequence(term, ch);
 		}
