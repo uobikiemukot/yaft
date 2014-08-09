@@ -219,14 +219,12 @@ void erase_display(struct terminal *term, struct parm_t *parm)
 			for (j = 0; j < term->cols; j++)
 				if (i > term->cursor.y || (i == term->cursor.y && j >= term->cursor.x))
 					erase_cell(term, i, j);
-	}
-	else if (mode == 1) {
+	} else if (mode == 1) {
 		for (i = 0; i <= term->cursor.y; i++)
 			for (j = 0; j < term->cols; j++)
 				if (i < term->cursor.y || (i == term->cursor.y && j <= term->cursor.x))
 					erase_cell(term, i, j);
-	}
-	else if (mode == 2) {
+	} else if (mode == 2) {
 		for (i = 0; i < term->lines; i++)
 			for (j = 0; j < term->cols; j++)
 				erase_cell(term, i, j);
@@ -245,12 +243,10 @@ void erase_line(struct terminal *term, struct parm_t *parm)
 	if (mode == 0) {
 		for (i = term->cursor.x; i < term->cols; i++)
 			erase_cell(term, term->cursor.y, i);
-	}
-	else if (mode == 1) {
+	} else if (mode == 1) {
 		for (i = 0; i <= term->cursor.x; i++)
 			erase_cell(term, term->cursor.y, i);
-	}
-	else if (mode == 2) {
+	} else if (mode == 2) {
 		for (i = 0; i < term->cols; i++)
 			erase_cell(term, term->cursor.y, i);
 	}
@@ -337,39 +333,37 @@ void set_attr(struct terminal *term, struct parm_t *parm)
 	for (i = 0; i < parm->argc; i++) {
 		num = dec2num(parm->argv[i]);
 
-		if (num == 0) {                    /* reset all attribute and color */
+		if (num == 0) {                        /* reset all attribute and color */
 			term->attribute = ATTR_RESET;
 			term->color_pair.fg = DEFAULT_FG;
 			term->color_pair.bg = DEFAULT_BG;
-		}
-		else if (1 <= num && num <= 7)     /* set attribute */
+		} else if (1 <= num && num <= 7) {     /* set attribute */
 			term->attribute |= attr_mask[num];
-		else if (21 <= num && num <= 27)   /* reset attribute */
+		} else if (21 <= num && num <= 27) {   /* reset attribute */
 			term->attribute &= ~attr_mask[num - 20];
-		else if (30 <= num && num <= 37)   /* set foreground */
+		} else if (30 <= num && num <= 37) {   /* set foreground */
 			term->color_pair.fg = (num - 30);
-		else if (num == 38) {              /* set 256 color to foreground */
+		} else if (num == 38) {                /* set 256 color to foreground */
 			if ((i + 2) < parm->argc && dec2num(parm->argv[i + 1]) == 5) {
 				term->color_pair.fg = dec2num(parm->argv[i + 2]);
 				i += 2;
 			}
-		}
-		else if (num == 39)                /* reset foreground */
+		} else if (num == 39) {                /* reset foreground */
 			term->color_pair.fg = DEFAULT_FG;
-		else if (40 <= num && num <= 47)   /* set background */
+		} else if (40 <= num && num <= 47) {   /* set background */
 			term->color_pair.bg = (num - 40);
-		else if (num == 48) {              /* set 256 color to background */
+		} else if (num == 48) {                /* set 256 color to background */
 			if ((i + 2) < parm->argc && dec2num(parm->argv[i + 1]) == 5) {
 				term->color_pair.bg = dec2num(parm->argv[i + 2]);
 				i += 2;
 			}
-		}
-		else if (num == 49)                /* reset background */
+		} else if (num == 49) {                /* reset background */
 			term->color_pair.bg = DEFAULT_BG;
-		else if (90 <= num && num <= 97)   /* set bright foreground */
+		} else if (90 <= num && num <= 97) {   /* set bright foreground */
 			term->color_pair.fg = (num - 90) + BRIGHT_INC;
-		else if (100 <= num && num <= 107) /* set bright background */
+		} else if (100 <= num && num <= 107) { /* set bright background */
 			term->color_pair.bg = (num - 100) + BRIGHT_INC;
+		}
 	}
 }
 
@@ -380,14 +374,14 @@ void status_report(struct terminal *term, struct parm_t *parm)
 
 	for (i = 0; i < parm->argc; i++) {
 		num = dec2num(parm->argv[i]);
-		if (num == 5)        /* terminal response: ready */
+		if (num == 5) {         /* terminal response: ready */
 			ewrite(term->fd, "\033[0n", 4);
-		else if (num == 6) { /* cursor position report */
+		} else if (num == 6) {  /* cursor position report */
 			snprintf(buf, BUFSIZE, "\033[%d;%dR", term->cursor.y + 1, term->cursor.x + 1);
 			ewrite(term->fd, buf, strlen(buf));
-		}
-		else if (num == 15)  /* terminal response: printer not connected */
+		} else if (num == 15) { /* terminal response: printer not connected */
 			ewrite(term->fd, "\033[?13n", 6);
+		}
 	}
 }
 
@@ -403,11 +397,11 @@ void set_mode(struct terminal *term, struct parm_t *parm)
 		if (mode == 6) { /* private mode */
 			term->mode |= MODE_ORIGIN;
 			set_cursor(term, 0, 0);
-		}
-		else if (mode == 7)
+		} else if (mode == 7) {
 			term->mode |= MODE_AMRIGHT;
-		else if (mode == 25)
+		} else if (mode == 25) {
 			term->mode |= MODE_CURSOR;
+		}
 	}
 
 }
@@ -424,13 +418,12 @@ void reset_mode(struct terminal *term, struct parm_t *parm)
 		if (mode == 6) { /* private mode */
 			term->mode &= ~MODE_ORIGIN;
 			set_cursor(term, 0, 0);
-		}
-		else if (mode == 7) {
+		} else if (mode == 7) {
 			term->mode &= ~MODE_AMRIGHT;
 			term->wrap_occured = false;
-		}
-		else if (mode == 25)
+		} else if (mode == 25) {
 			term->mode &= ~MODE_CURSOR;
+		}
 	}
 
 }
@@ -439,19 +432,21 @@ void set_margin(struct terminal *term, struct parm_t *parm)
 {
 	int top, bottom;
 
-	if (parm->argc != 2)
+	if (parm->argc == 0) {        /* CSI r */
+		top    = 0;
+		bottom = term->lines - 1;
+	} else if (parm->argc == 2) { /* CSI ; r -> use default value */
+		top    = (parm->argv[0] == NULL) ? 0: dec2num(parm->argv[0]) - 1;
+		bottom = (parm->argv[1] == NULL) ? term->lines - 1: dec2num(parm->argv[1]) - 1;
+	} else {
 		return;
+	}
 
-	top    = dec2num(parm->argv[0]) - 1;
-	bottom = dec2num(parm->argv[1]) - 1;
+	top    = (top < 0) ? 0 : (top >= term->lines) ? term->lines - 1 : top;
+	bottom = (bottom < 0) ? 0 : (bottom >= term->lines) ? term->lines - 1 : bottom;
 
 	if (top >= bottom)
 		return;
-
-	top = (top < 0) ? 0 : (top >= term->lines) ? term->lines - 1 : top;
-
-	bottom = (bottom < 0) ? 0 :
-		(bottom >= term->lines) ? term->lines - 1 : bottom;
 
 	term->scroll.top = top;
 	term->scroll.bottom = bottom;
@@ -463,14 +458,14 @@ void clear_tabstop(struct terminal *term, struct parm_t *parm)
 {
 	int i, j, num;
 
-	if (parm->argc == 0)
+	if (parm->argc == 0) {
 		term->tabstop[term->cursor.x] = false;
-	else {
+	} else {
 		for (i = 0; i < parm->argc; i++) {
 			num = dec2num(parm->argv[i]);
-			if (num == 0)
+			if (num == 0) {
 				term->tabstop[term->cursor.x] = false;
-			else if (num == 3) {
+			} else if (num == 3) {
 				for (j = 0; j < term->cols; j++)
 					term->tabstop[j] = false;
 				return;
