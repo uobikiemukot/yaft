@@ -180,9 +180,9 @@ pid_t eforkpty(int *amaster, char *name,
 	errno = 0;
 	pid   = fork();
 
-	if (pid < 0)
+	if (pid < 0) {
 		error("fork");
-	else if (pid == 0) { /* child */
+	} else if (pid == 0) { /* child */
 		close(master);
 
 		setsid();
@@ -317,7 +317,10 @@ uint32_t bit_reverse(uint32_t val, int bits)
 
 int my_ceil(int val, int div)
 {
-	return (val + div - 1) / div;
+	if (div == 0)
+		return 0;
+	else
+		return (val + div - 1) / div;
 }
 
 int dec2num(char *str)
