@@ -28,7 +28,8 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
 		/* target cell */
-		cellp = &term->cells[col + line * term->cols];
+		//cellp = &term->cells[col + line * term->cols];
+		cellp = &term->cells[line][col];
 
 		/* draw sixel bitmap */
 		if (cellp->has_bitmap) {
@@ -88,6 +89,7 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 		but drivers  of recent hardware (inteldrmfb, nouveaufb, radeonfb) don't support...
 		(we can use this by using libdrm)
 	*/
+	/* TODO: vertical synchronizing */
 
 	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
 }
