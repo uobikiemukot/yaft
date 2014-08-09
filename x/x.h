@@ -146,8 +146,7 @@ XIMStyle select_better_style(XIMStyle im_style, XIMStyle best_style)
 			return (i == XIMPreeditNothing) ? im_style: best_style;
 		else
 			return 0;
-	}
-	else { /* if preedit flags are the same, compare status flags */
+	} else { /* if preedit flags are the same, compare status flags */
 		i = im_style & status;
 		b = best_style & status;
 
@@ -322,7 +321,8 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
 		/* draw sixel bitmap */
-		cellp = &term->cells[col + line * term->cols];
+		//cellp = &term->cells[col + line * term->cols];
+		cellp = &term->cells[line][col];
 		if (cellp->has_bitmap) {
 			draw_sixel(xw, line, col, cellp);
 			continue;
@@ -381,8 +381,11 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 		}
 	}
 	/* actual display update */
+	/* TODO: vertical synchronizing */
+	/*
 	XCopyArea(xw->display, xw->pixbuf, xw->window, xw->gc, 0, line * CELL_HEIGHT,
 		term->width, CELL_HEIGHT, 0, line * CELL_HEIGHT);
+	*/
 
 	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
 }
@@ -392,6 +395,8 @@ void set_preedit_pos(struct xwindow *xw, struct terminal *term)
 	XVaNestedList list;
 	XPoint pos;
 
+	/* FIXME: hard coding! this offset for xim, not suitable for scim */
+	/* TODO: implement xim {Preedit,Status}Callbacks */
 	pos.x = term->cursor.x * CELL_WIDTH;
 	pos.y = (term->cursor.y + 1) * CELL_HEIGHT - 2;
 
@@ -404,15 +409,29 @@ void set_preedit_pos(struct xwindow *xw, struct terminal *term)
 
 void refresh(struct xwindow *xw, struct terminal *term)
 {
-	int line;
+	int line, update_from, update_to;
 
 	if (term->mode & MODE_CURSOR)
 		term->line_dirty[term->cursor.y] = true;
 
+	update_from = update_to = -1;
 	for (line = 0; line < term->lines; line++) {
-		if (term->line_dirty[line])
+		if (term->line_dirty[line]) {
 			draw_line(xw, term, line);
+
+			if (update_from == -1)
+				update_from = update_to = line;
+			else
+				update_to = line;
+		}
 	}
+
+	/* actual display update: vertical synchronizing */
+	/*
+	*/
+	if (update_from != -1)
+		XCopyArea(xw->display, xw->pixbuf, xw->window, xw->gc, 0, update_from * CELL_HEIGHT,
+			term->width, (update_to - update_from + 1) * CELL_HEIGHT, 0, update_from * CELL_HEIGHT);
 
 	if (xw->input_style & XIMPreeditPosition)
 		set_preedit_pos(xw, term);
