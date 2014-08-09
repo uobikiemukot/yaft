@@ -13,8 +13,10 @@ void sig_handler(int signo)
 {
 	if (signo == SIGCHLD)
 		tty.loop_flag = false;
+	/*
 	else if (signo == SIGWINCH)
 		tty.window_resized = true;
+	*/
 }
 
 void sig_set()
@@ -25,7 +27,7 @@ void sig_set()
 	sigact.sa_handler = sig_handler;
 	sigact.sa_flags   = SA_RESTART;
 	esigaction(SIGCHLD, &sigact, NULL);
-	esigaction(SIGWINCH, &sigact, NULL);
+	//esigaction(SIGWINCH, &sigact, NULL);
 }
 
 void sig_reset()
@@ -36,7 +38,7 @@ void sig_reset()
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = SIG_DFL;
 	sigaction(SIGCHLD, &sigact, NULL);
-	sigaction(SIGWINCH, &sigact, NULL);
+	//sigaction(SIGWINCH, &sigact, NULL);
 }
 
 void check_fds(fd_set *fds, struct timeval *tv, int master)
@@ -71,9 +73,9 @@ void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	KeySym keysym;
 
 	size = XmbLookupString(xw->ic, e, buf, BUFSIZE, &keysym, NULL);
-	if ((customkey = keymap(keysym, e->state)))
+	if ((customkey = keymap(keysym, e->state))) {
 		ewrite(term->fd, customkey, strlen(customkey));
-	else {
+	} else {
 		if (size == 1 && (e->state & Mod1Mask)) {
 			buf[1] = buf[0];
 			buf[0] = '\033';
@@ -89,36 +91,55 @@ void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	struct winsize ws;
 
 	if (DEBUG)
-		fprintf(stderr, "term.width:%d term.height:%d width:%d height:%d\n",
+		fprintf(stderr, "xresize() term.width:%d term.height:%d width:%d height:%d\n",
 			term->width, term->height, e->width, e->height);
 
 	(void ) xw; /* unused */
 
-	if (e->width != term->width || e->height != term->height) {
-		term->width  = e->width;
-		term->height = e->height;
+	if (e->width == term->width && e->height == term->height)
+		return;
 
-		term->cols  = term->width / CELL_WIDTH;
-		term->lines = term->height / CELL_HEIGHT;
+	/*
+	if ((e->width % CELL_WIDTH) == 0 && (e->height % CELL_HEIGHT) == 0)
+	*/
 
-		ws.ws_row = term->lines;
-		ws.ws_col = term->cols;
-		ws.ws_xpixel = ws.ws_ypixel + 0;
+	term->width  = e->width;
+	term->height = e->height;
 
-		//reset(term);
-		refresh(xw, term);
-		ioctl(term->fd, TIOCSWINSZ, &ws);
-	}
+	term->cols  = term->width / CELL_WIDTH;
+	term->lines = term->height / CELL_HEIGHT;
+
+	term->scroll.top = 0;
+	term->scroll.bottom = term->lines - 1;
+
+	ws.ws_col = term->cols;
+	ws.ws_row = term->lines;
+	ws.ws_xpixel = ws.ws_ypixel = 0;
+	ioctl(term->fd, TIOCSWINSZ, &ws);
+
+	//reset(term);
+	//refresh(xw, term);
 }
 
 void xredraw(struct xwindow *xw, struct terminal *term, XEvent *ev)
 {
 	XExposeEvent *e = &ev->xexpose;
+	int i, lines, update_from;
 
-	if (e->count == 0) {
-		redraw(term);
-		refresh(xw, term);
+	if (DEBUG)
+		fprintf(stderr, "xredraw() count:%d x:%d y:%d width:%d height:%d\n",
+			e->count, e->x, e->y, e->width, e->height);
+
+	update_from = e->y / CELL_HEIGHT;
+	lines       = my_ceil(e->height, CELL_HEIGHT);
+
+	for (i = 0; i < lines; i++) {
+		if ((update_from + i) < term->lines)
+			term->line_dirty[update_from + i] = true;
 	}
+
+	if (e->count == 0)
+		refresh(xw, term);
 }
 
 void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
@@ -126,16 +147,14 @@ void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	extern struct tty_state tty;
 
 	if (ev->type == FocusIn) {
-		tty.visible = true;
+		//tty.visible = true;
 		XSetICFocus(xw->ic);
-	}
-	else {
-		tty.visible = false;
+		refresh(xw, term);
+	} else {
+		//tty.visible = false;
 		XUnsetICFocus(xw->ic);
 		XmbResetIC(xw->ic);
 	}
-
-	refresh(xw, term);
 }
 
 void xbpress(struct xwindow *xw, struct terminal *term, XEvent *ev)
@@ -151,7 +170,7 @@ void xbpress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 		refresh(xw, term);
 
 		if (DEBUG)
-			fprintf(stderr, "copy begin (x, y) (%d, %d)\n",
+			fprintf(stderr, "xbpress() copy begin (x, y) (%d, %d)\n",
 				paste->begin.x, paste->begin.y);
 	}
 }
@@ -163,15 +182,17 @@ char *copy_cell2str(struct terminal *term,
 	char *cp, *buf;
 	size_t size;
 	struct cell_t *cellp;
-	wchar_t code;
+	uint32_t code;
 
 	num = (end.x + end.y * term->cols) - (begin.x + begin.y * term->cols);
 	if (num < 0) {
-		cellp = &term->cells[end.y * term->cols + end.x];
+		//cellp = &term->cells[end.y * term->cols + end.x];
+		cellp = &term->cells[end.y][end.x];
 		num *= -1;
+	} else {
+		//cellp = &term->cells[begin.y * term->cols + begin.x];
+		cellp = &term->cells[begin.y][begin.x];
 	}
-	else
-		cellp = &term->cells[begin.y * term->cols + begin.x];
 
 	buf = ecalloc(num + 1, 3); /* Unicode BMP: max 3 bytes per character */
 	cp  = buf;
@@ -182,9 +203,9 @@ char *copy_cell2str(struct terminal *term,
 
 		code = (cellp + i)->glyphp->code;
 		if (DEBUG)
-			fprintf(stderr, "num:%d code:%u\n", i, code);
+			fprintf(stderr, "copy_cell2str() num:%d code:%u\n", i, code);
 
-		if (0 <= code && code < UCS2_CHARS) {
+		if (code < UCS2_CHARS) {
 			size = wcrtomb(cp, code, NULL);
 			cp   += size;
 		}
@@ -207,7 +228,7 @@ void xbrelease(struct xwindow *xw, struct terminal *term, XEvent *ev)
 		term->line_dirty[paste->end.y]   = true;
 
 		if (DEBUG)
-			fprintf(stderr, "copy end (x, y) (%d, %d)\n",
+			fprintf(stderr, "xbrelease() copy end (x, y) (%d, %d)\n",
 				paste->end.x, paste->end.y);
 
 		free(paste->str);
@@ -215,8 +236,7 @@ void xbrelease(struct xwindow *xw, struct terminal *term, XEvent *ev)
 		clipboard = XInternAtom(xw->display, "CLIPBOARD", 0);
 		XSetSelectionOwner(xw->display, XA_PRIMARY, xw->window, ev->xbutton.time);
 		XSetSelectionOwner(xw->display, clipboard, xw->window, ev->xbutton.time);
-	}
-	else if (ev->xbutton.button == Button2) { /* paste */
+	} else if (ev->xbutton.button == Button2) { /* paste */
 		clipboard = XInternAtom(xw->display, "CLIPBOARD", 0);
 		XConvertSelection(xw->display, clipboard, paste->target,
 			XA_PRIMARY, xw->window, ev->xbutton.time);
@@ -300,16 +320,16 @@ void xmove(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	struct paste_t *paste = &xw->paste;
 
 	if (paste->copy_cursor_visible) {
+		/* FIXME: not accurate position in some environments... */
 		paste->current.x = ev->xmotion.x / CELL_WIDTH;
 		paste->current.y = ev->xmotion.y / CELL_HEIGHT;
 
 		if (paste->prev != -1)
 			term->line_dirty[paste->prev] = true;
 		term->line_dirty[paste->current.y] = true;
+		paste->prev = paste->current.y;
 
 		refresh(xw, term);
-
-		paste->prev = paste->current.y;
 	}
 }
 
@@ -331,13 +351,17 @@ void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, XEvent 
 
 void fork_and_exec(int *master)
 {
+	char *shell_env;
 	pid_t pid;
 
 	pid = eforkpty(master, NULL, NULL, NULL);
 
     if (pid == 0) { /* child */
 		esetenv("TERM", term_name, 1);
-		eexecvp(shell_cmd, (const char *[]){shell_cmd, NULL});
+		if ((shell_env = getenv("SHELL")) != NULL)
+			eexecvp(shell_env, (const char *[]){shell_env, NULL});
+		else
+			eexecvp(shell_cmd, (const char *[]){shell_cmd, NULL});
     }
 }
 
@@ -349,7 +373,7 @@ int main()
 	struct timeval tv;
 	struct xwindow xw;
 	struct terminal term;
-	struct winsize ws;
+	//struct winsize ws;
 	XEvent ev;
 	XConfigureEvent confev;
 
@@ -361,12 +385,15 @@ int main()
 
 	/* fork and exec shell */
 	fork_and_exec(&term.fd);
+
+	/* initial terminal size defined in x.h */
 	confev.width  = TERM_WIDTH;
 	confev.height = TERM_HEIGHT;
-	xresize(&xw, &term, (XEvent *) &confev); /* terminal size defined in x.h */
+	xresize(&xw, &term, (XEvent *) &confev);
 
 	/* main loop */
 	while (tty.loop_flag) {
+		/*
 		if (tty.window_resized) {
 			ioctl(term.fd, TIOCGWINSZ, &ws);
 			if (DEBUG)
@@ -379,6 +406,7 @@ int main()
 			refresh(&xw, &term);
 			tty.window_resized = false;
 		}
+		*/
 
 		while(XPending(xw.display)) {
 			XNextEvent(xw.display, &ev);
