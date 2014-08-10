@@ -13,7 +13,7 @@ typedef unsigned long   u_long;
 #include  <dev/wscons/wsconsio.h>
 #include  <dev/wscons/wsksymdef.h>
 
-/* some structs for NetBSD */
+/* some structs for OpenBSD */
 enum term_size {
 	TERM_WIDTH  = 640,
 	TERM_HEIGHT = 480,
@@ -83,7 +83,7 @@ uint8_t *load_wallpaper(struct framebuffer *fb)
 	return ptr;
 }
 
-/* some functions for NetBSD framebuffer */
+/* some functions for OpenBSD framebuffer */
 void cmap_create(struct wsdisplay_cmap **cmap, int size)
 {
 	*cmap                = (struct wsdisplay_cmap *) ecalloc(1, sizeof(struct wsdisplay_cmap));
