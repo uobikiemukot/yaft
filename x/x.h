@@ -378,10 +378,9 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 			}
 		}
 	}
-	/* actual display update: move to refresh() */
+	/* actual display update: move to refresh()
 	XCopyArea(xw->display, xw->pixbuf, xw->window, xw->gc, 0, line * CELL_HEIGHT,
-		term->width, CELL_HEIGHT, 0, line * CELL_HEIGHT);
-	*/
+		term->width, CELL_HEIGHT, 0, line * CELL_HEIGHT); */
 
 	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
 }
