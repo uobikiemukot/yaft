@@ -22,8 +22,6 @@
 #include "glyph.h"
 #include "color.h"
 
-#define SIGWINCH 28
-
 enum char_code {
 	/* 7 bit */
 	BEL = 0x07, BS  = 0x08, HT  = 0x09,
@@ -108,9 +106,10 @@ struct cell_t {
 	struct color_pair_t color_pair; /* color (fg, bg) */
 	enum char_attr attribute;       /* bold, underscore, etc... */
 	enum glyph_width_t width;       /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
-	bool has_bitmap;
-	/* must be statically allocated for copy_cell() */
-	uint8_t bitmap[BYTES_PER_PIXEL * CELL_WIDTH * CELL_HEIGHT];
+	bool has_pixmap;                /* has sixel pixmap data or not */
+	/*	sixel pixmap data:
+		must be statically allocated for copy_cell() */
+	uint8_t pixmap[BYTES_PER_PIXEL * CELL_WIDTH * CELL_HEIGHT];
 };
 
 struct esc_t {
@@ -133,7 +132,7 @@ struct state_t {   /* for save, restore state */
 };
 
 struct sixel_canvas_t {
-	uint8_t *bitmap;
+	uint8_t *pixmap;
 	struct point_t point;
 	int width, height;
 	int line_length;
@@ -145,7 +144,6 @@ struct terminal {
 	int fd;                                      /* master fd */
 	int width, height;                           /* terminal size (pixel) */
 	int cols, lines;                             /* terminal size (cell) */
-	//struct cell_t *cells;                        /* pointer to each cell: cells[cols + lines * num_of_cols] */
 	struct cell_t **cells;                       /* pointer to each cell: cells[lines][cols] */
 	struct margin scroll;                        /* scroll margin */
 	struct point_t cursor;                       /* cursor pos (x, y) */
@@ -173,7 +171,6 @@ struct tty_state { /* this variables changed at catching signals */
 	volatile sig_atomic_t visible;        /* SIGUSR1: vt is active or not */
 	volatile sig_atomic_t redraw_flag;    /* SIGUSR1: vt activated */
 	volatile sig_atomic_t loop_flag;      /* SIGCHLD: child process (shell) is alive or not */
-	//volatile sig_atomic_t window_resized; /* SIGWINCH: only used for yaftx */
 };
 
 /* global variables */
@@ -181,5 +178,4 @@ struct tty_state tty = {
 	.visible        = true,
 	.redraw_flag    = false,
 	.loop_flag      = true,
-	//.window_resized = false,
 };
