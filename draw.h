@@ -1,5 +1,5 @@
 /* See LICENSE for licence details. */
-static inline void draw_sixel(struct framebuffer *fb, int line, int col, uint8_t *bitmap)
+static inline void draw_sixel(struct framebuffer *fb, int line, int col, uint8_t *pixmap)
 {
 	int h, w, src_offset, dst_offset;
 	uint32_t pixel, color = 0;
@@ -7,7 +7,7 @@ static inline void draw_sixel(struct framebuffer *fb, int line, int col, uint8_t
 	for (h = 0; h < CELL_HEIGHT; h++) {
 		for (w = 0; w < CELL_WIDTH; w++) {
 			src_offset = BYTES_PER_PIXEL * (h * CELL_WIDTH + w);
-			memcpy(&color, bitmap + src_offset, BYTES_PER_PIXEL);
+			memcpy(&color, pixmap + src_offset, BYTES_PER_PIXEL);
 
 			dst_offset = (line * CELL_HEIGHT + h) * fb->line_length + (col * CELL_WIDTH + w) * fb->bytes_per_pixel;
 			pixel = color2pixel(&fb->vinfo, color);
@@ -28,12 +28,11 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
 		/* target cell */
-		//cellp = &term->cells[col + line * term->cols];
 		cellp = &term->cells[line][col];
 
-		/* draw sixel bitmap */
-		if (cellp->has_bitmap) {
-			draw_sixel(fb, line, col, cellp->bitmap);
+		/* draw sixel pixmap */
+		if (cellp->has_pixmap) {
+			draw_sixel(fb, line, col, cellp->pixmap);
 			continue;
 		}
 
@@ -87,8 +86,7 @@ static inline void draw_line(struct framebuffer *fb, struct terminal *term, int 
 		if fb_fix_screeninfo.ypanstep > 0, we can use hardware panning.
 		set fb_fix_screeninfo.{yres_virtual,yoffset} and call ioctl(FBIOPAN_DISPLAY)
 		but drivers  of recent hardware (inteldrmfb, nouveaufb, radeonfb) don't support...
-		(we can use this by using libdrm)
-	*/
+		(maybe we can use this by using libdrm) */
 	/* TODO: vertical synchronizing */
 
 	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
