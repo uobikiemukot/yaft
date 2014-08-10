@@ -40,7 +40,7 @@ void (*csi_func[ESC_CHARS])(struct terminal *term, struct parm_t *) = {
 	['P'] = delete_char,
 	['X'] = erase_char,
 	['a'] = curs_forward,
-	//['c'] = identify,
+	['c'] = device_attribute,
 	['d'] = curs_line,
 	['e'] = curs_down,
 	['f'] = curs_pos,
@@ -50,8 +50,10 @@ void (*csi_func[ESC_CHARS])(struct terminal *term, struct parm_t *) = {
 	['m'] = set_attr,
 	['n'] = status_report,
 	['r'] = set_margin,
-	//['s'] = save_state,
-	//['u'] = restore_state,
+	/* XXX: not implemented because these sequences conflict DECSLRM/DECSHTS
+	['s'] = sco_save_state,
+	['u'] = sco_restore_state,
+	*/
 	['`'] = curs_col,
 };
 
@@ -144,7 +146,7 @@ void osc_sequence(struct terminal *term, uint8_t ch)
 		if (DEBUG)
 			fprintf(stderr, "osc_mode:%d\n", osc_mode);
 
-		/*
+		/* XXX: disable because this functions only work 24/32bpp
 		if (osc_mode == 4)
 			set_palette(term, &parm);
 		else if (osc_mode == 104)
