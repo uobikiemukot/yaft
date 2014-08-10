@@ -24,7 +24,7 @@ static inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc,
 			break;
 
 		if (bitmap & (0x01 << i))
-			memcpy(sc->bitmap + offset, &sc->color_table[sc->color_index], BYTES_PER_PIXEL);
+			memcpy(sc->pixmap + offset, &sc->color_table[sc->color_index], BYTES_PER_PIXEL);
 
 		offset += sc->line_length;
 	}
@@ -293,7 +293,7 @@ void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair, int 
 	extern const uint32_t color_list[]; /* global */
 	int i;
 
-	memset(sc->bitmap, 0, BYTES_PER_PIXEL * width * height);
+	memset(sc->pixmap, 0, BYTES_PER_PIXEL * width * height);
 
 	sc->width   = 1;
 	sc->height  = 6;
@@ -352,15 +352,14 @@ void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 	for (y = 0; y < lines; y++) {
 		for (x = 0; x < cols; x++) {
 			erase_cell(term, term->cursor.y, term->cursor.x + x);
-			//cellp = &term->cells[term->cursor.y * term->cols + (term->cursor.x + x)];
 			cellp = &term->cells[term->cursor.y][term->cursor.x + x];
-			cellp->has_bitmap = true;
+			cellp->has_pixmap = true;
 			for (h = 0; h < CELL_HEIGHT; h++) {
 				src_offset = (y * CELL_HEIGHT + h) * sc->line_length + (CELL_WIDTH * x) * BYTES_PER_PIXEL;
 				dst_offset = h * CELL_WIDTH * BYTES_PER_PIXEL;
 				if (src_offset >= BYTES_PER_PIXEL * term->width * term->height)
 					break;
-				memcpy(cellp->bitmap + dst_offset, sc->bitmap + src_offset, CELL_WIDTH * BYTES_PER_PIXEL);
+				memcpy(cellp->pixmap + dst_offset, sc->pixmap + src_offset, CELL_WIDTH * BYTES_PER_PIXEL);
 			}
 		}
 		move_cursor(term, 1, 0);
