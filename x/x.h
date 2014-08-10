@@ -18,7 +18,6 @@ struct keydef {
 	KeySym k;
 	unsigned int mask;
 	char s[BUFSIZE];
-	//char *s;
 };
 
 const struct keydef key[] = {
@@ -291,7 +290,7 @@ static inline void draw_sixel(struct xwindow *xw, int line, int col, struct cell
 
 	for (h = 0; h < CELL_HEIGHT; h++) {
 		for (w = 0; w < CELL_WIDTH; w++) {
-			memcpy(&color, cellp->bitmap + BYTES_PER_PIXEL * (h * CELL_WIDTH + w), BYTES_PER_PIXEL);
+			memcpy(&color, cellp->pixmap + BYTES_PER_PIXEL * (h * CELL_WIDTH + w), BYTES_PER_PIXEL);
 
 			if (color_list[DEFAULT_BG] != color) {
 				XSetForeground(xw->display, xw->gc, color);
@@ -320,10 +319,9 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 	for (col = term->cols - 1; col >= 0; col--) {
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
-		/* draw sixel bitmap */
-		//cellp = &term->cells[col + line * term->cols];
+		/* draw sixel pixmap */
 		cellp = &term->cells[line][col];
-		if (cellp->has_bitmap) {
+		if (cellp->has_pixmap) {
 			draw_sixel(xw, line, col, cellp);
 			continue;
 		}
@@ -380,9 +378,7 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 			}
 		}
 	}
-	/* actual display update */
-	/* TODO: vertical synchronizing */
-	/*
+	/* actual display update: move to refresh() */
 	XCopyArea(xw->display, xw->pixbuf, xw->window, xw->gc, 0, line * CELL_HEIGHT,
 		term->width, CELL_HEIGHT, 0, line * CELL_HEIGHT);
 	*/
@@ -427,8 +423,6 @@ void refresh(struct xwindow *xw, struct terminal *term)
 	}
 
 	/* actual display update: vertical synchronizing */
-	/*
-	*/
 	if (update_from != -1)
 		XCopyArea(xw->display, xw->pixbuf, xw->window, xw->gc, 0, update_from * CELL_HEIGHT,
 			term->width, (update_to - update_from + 1) * CELL_HEIGHT, 0, update_from * CELL_HEIGHT);
