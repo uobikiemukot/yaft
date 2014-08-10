@@ -3,13 +3,12 @@ void erase_cell(struct terminal *term, int y, int x)
 {
 	struct cell_t *cellp;
 
-	//cellp             = &term->cells[x + y * term->cols];
 	cellp             = &term->cells[y][x];
 	cellp->glyphp     = term->glyph_map[DEFAULT_CHAR];
 	cellp->color_pair = term->color_pair; /* bce */
 	cellp->attribute  = ATTR_RESET;
 	cellp->width      = HALF;
-	cellp->has_bitmap = false;
+	cellp->has_pixmap = false;
 
 	term->line_dirty[y] = true;
 }
@@ -18,8 +17,6 @@ void copy_cell(struct terminal *term, int dst_y, int dst_x, int src_y, int src_x
 {
 	struct cell_t *dst, *src;
 
-	//dst = &term->cells[dst_x + dst_y * term->cols];
-	//src = &term->cells[src_x + src_y * term->cols];
 	dst = &term->cells[dst_y][dst_x];
 	src = &term->cells[src_y][src_x];
 
@@ -57,15 +54,13 @@ int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
 
 	cell.attribute  = term->attribute;
 	cell.width      = glyphp->width;
-	cell.has_bitmap = false;
+	cell.has_pixmap = false;
 
-	//cellp    = &term->cells[x + y * term->cols];
 	cellp    = &term->cells[y][x];
 	*cellp   = cell;
 	term->line_dirty[y] = true;
 
 	if (cell.width == WIDE && x + 1 < term->cols) {
-		//cellp        = &term->cells[x + 1 + y * term->cols];
 		cellp        = &term->cells[y][x + 1];
 		*cellp       = cell;
 		cellp->width = NEXT_TO_WIDE;
@@ -77,7 +72,6 @@ int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
 void scroll(struct terminal *term, int from, int to, int offset)
 {
 	int i, j, size, abs_offset, scroll_lines;
-	//struct cell_t *dst, *src;
 
 	if (offset == 0 || from >= to)
 		return;
@@ -88,21 +82,14 @@ void scroll(struct terminal *term, int from, int to, int offset)
 	for (i = from; i <= to; i++)
 		term->line_dirty[i] = true;
 
-	abs_offset = abs(offset);
-	//size = sizeof(struct cell_t) * ((to - from + 1) - abs_offset) * term->cols;
 	size = sizeof(struct cell_t) * term->cols;
+	abs_offset = abs(offset);
 	scroll_lines = (to - from + 1) - abs_offset;
-
-	//dst = term->cells + from * term->cols;
-	//src = term->cells + (from + abs_offset) * term->cols;
-	//dst = &term->cells[from][0];
-	//src = &term->cells[from + abs_offset][0];
 
 	if (offset > 0) { /* scroll down */
 		/* scroll down:
 			cells[from] ... cells[from + scroll_lines - 1]: copy from cells[i + offset]
 			cells[from + scroll_lines] ... cells[to]      : erase */
-		//memmove(dst, src, size);
 		for (i = from; i < from + scroll_lines; i++)
 			memmove(term->cells[i], term->cells[i + offset], size);
 
@@ -113,8 +100,7 @@ void scroll(struct terminal *term, int from, int to, int offset)
 		/* scroll up:
 			cells[from + abs_offset] ... cells[to]      : copy from cells[i - offset]
 			cells[from] ... cells[from + abs_offset - 1]: erase */
-		//memmove(src, dst, size);
-		for (i = to; i >= from + abs_offset; i--)
+		for (i = to; i >= from + abs_offset; i--) /* copy last line first */
 			memmove(term->cells[i], term->cells[i - abs_offset], size);
 
 		for (i = from; i < from + abs_offset; i++)
@@ -368,7 +354,7 @@ void term_init(struct terminal *term, int width, int height)
 
 	term->line_dirty = (bool *) ecalloc(term->lines, sizeof(bool));
 	term->tabstop    = (bool *) ecalloc(term->cols, sizeof(bool));
-	//term->cells      = (struct cell_t *) ecalloc(term->cols * term->lines, sizeof(struct cell_t));
+
 	term->cells      = (struct cell_t **) ecalloc(term->lines, sizeof(struct cell_t *));
 	for (i = 0; i < term->lines; i++)
 		term->cells[i] = (struct cell_t *) ecalloc(term->cols, sizeof(struct cell_t));
@@ -393,7 +379,7 @@ void term_init(struct terminal *term, int width, int height)
 		term->drcs[i] = NULL;
 
 	/* allocate sixel buffer */
-	term->sixel.bitmap = (uint8_t *) ecalloc(width * height, BYTES_PER_PIXEL);
+	term->sixel.pixmap = (uint8_t *) ecalloc(width * height, BYTES_PER_PIXEL);
 
 	reset(term);
 }
@@ -414,5 +400,5 @@ void term_die(struct terminal *term)
 		if (term->drcs[i] != NULL)
 			free(term->drcs[i]);
 
-	free(term->sixel.bitmap);
+	free(term->sixel.pixmap);
 }
