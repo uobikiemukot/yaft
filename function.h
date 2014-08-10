@@ -126,6 +126,7 @@ void curs_up(struct terminal *term, struct parm_t *parm)
 
 	if (num <= 0)
 		num = 1;
+
 	move_cursor(term, -num, 0);
 }
 
@@ -135,6 +136,7 @@ void curs_down(struct terminal *term, struct parm_t *parm)
 
 	if (num <= 0)
 		num = 1;
+
 	move_cursor(term, num, 0);
 }
 
@@ -144,6 +146,7 @@ void curs_forward(struct terminal *term, struct parm_t *parm)
 
 	if (num <= 0)
 		num = 1;
+
 	move_cursor(term, 0, num);
 }
 
@@ -153,6 +156,7 @@ void curs_back(struct terminal *term, struct parm_t *parm)
 
 	if (num <= 0)
 		num = 1;
+
 	move_cursor(term, 0, -num);
 }
 
@@ -162,6 +166,7 @@ void curs_nl(struct terminal *term, struct parm_t *parm)
 
 	if (num <= 0)
 		num = 1;
+
 	move_cursor(term, num, 0);
 	cr(term);
 }
@@ -172,19 +177,16 @@ void curs_pl(struct terminal *term, struct parm_t *parm)
 
 	if (num <= 0)
 		num = 1;
+
 	move_cursor(term, -num, 0);
 	cr(term);
 }
 
 void curs_col(struct terminal *term, struct parm_t *parm)
 {
-	int num, last = parm->argc - 1;
+	int num;
 
-	if (parm->argc <= 0)
-		num = 0;
-	else
-		num = dec2num(parm->argv[last]) - 1;
-
+	num = (parm->argc <= 0) ? 0: dec2num(parm->argv[parm->argc - 1]) - 1;
 	set_cursor(term, term->cursor.y, num);
 }
 
@@ -193,23 +195,35 @@ void curs_pos(struct terminal *term, struct parm_t *parm)
 	int line, col;
 
 	if (parm->argc <= 0) {
-		set_cursor(term, 0, 0);
+		line = col = 0;
+	} else if (parm->argc == 2) {
+		line = dec2num(parm->argv[0]) - 1;
+		col  = dec2num(parm->argv[1]) - 1;
+	} else {
 		return;
 	}
 
-	if (parm->argc != 2)
-		return;
+	if (line < 0)
+		line = 0;
+	if (col < 0)
+		col = 0;
 
-	line = dec2num(parm->argv[0]) - 1;
-	col  = dec2num(parm->argv[1]) - 1;
 	set_cursor(term, line, col);
+}
+
+void curs_line(struct terminal *term, struct parm_t *parm)
+{
+	int num;
+
+	num = (parm->argc <= 0) ? 0: dec2num(parm->argv[parm->argc - 1]) - 1;
+	set_cursor(term, num, term->cursor.x);
 }
 
 void erase_display(struct terminal *term, struct parm_t *parm)
 {
-	int i, j, mode, last = parm->argc - 1;
+	int i, j, mode;
 
-	mode = (parm->argc == 0) ? 0: dec2num(parm->argv[last]);
+	mode = (parm->argc <= 0) ? 0: dec2num(parm->argv[parm->argc - 1]);
 
 	if (mode < 0 || 2 < mode)
 		return;
@@ -233,9 +247,9 @@ void erase_display(struct terminal *term, struct parm_t *parm)
 
 void erase_line(struct terminal *term, struct parm_t *parm)
 {
-	int i, mode, last = parm->argc - 1;
+	int i, mode;
 
-	mode = (parm->argc == 0) ? 0: dec2num(parm->argv[last]);
+	mode = (parm->argc <= 0) ? 0: dec2num(parm->argv[parm->argc - 1]);
 
 	if (mode < 0 || 2 < mode)
 		return;
@@ -262,7 +276,9 @@ void insert_line(struct terminal *term, struct parm_t *parm)
 			return;
 	}
 
-	num = (num <= 0) ? 1 : num;
+	if (num <= 0)
+		num = 1;
+
 	scroll(term, term->cursor.y, term->scroll.bottom, -num);
 }
 
@@ -276,7 +292,9 @@ void delete_line(struct terminal *term, struct parm_t *parm)
 			return;
 	}
 
-	num = (num <= 0) ? 1 : num;
+	if (num <= 0)
+		num = 1;
+
 	scroll(term, term->cursor.y, term->scroll.bottom, num);
 }
 
@@ -284,7 +302,8 @@ void delete_char(struct terminal *term, struct parm_t *parm)
 {
 	int i, num = sum(parm);
 
-	num = (num <= 0) ? 1 : num;
+	if (num <= 0)
+		num = 1;
 
 	for (i = term->cursor.x; i < term->cols; i++) {
 		if ((i + num) < term->cols)
@@ -307,24 +326,12 @@ void erase_char(struct terminal *term, struct parm_t *parm)
 		erase_cell(term, term->cursor.y, i);
 }
 
-void curs_line(struct terminal *term, struct parm_t *parm)
-{
-	int num, last = parm->argc - 1;
-
-	if (parm->argc == 0)
-		num = 0;
-	else
-		num = dec2num(parm->argv[last]) - 1;
-
-	set_cursor(term, num, term->cursor.x);
-}
-
 void set_attr(struct terminal *term, struct parm_t *parm)
 {
 	int i, num;
 
-	if (parm->argc == 0) {
-		term->attribute = ATTR_RESET;
+	if (parm->argc <= 0) {
+		term->attribute     = ATTR_RESET;
 		term->color_pair.fg = DEFAULT_FG;
 		term->color_pair.bg = DEFAULT_BG;
 		return;
@@ -385,6 +392,13 @@ void status_report(struct terminal *term, struct parm_t *parm)
 	}
 }
 
+void device_attribute(struct terminal *term, struct parm_t *parm)
+{
+	/* TODO: refer VT525 DA */
+	(void) parm;
+	ewrite(term->fd, "\033[?6c", 5); /* "I am a VT102" */
+}
+
 void set_mode(struct terminal *term, struct parm_t *parm)
 {
 	int i, mode;
@@ -432,7 +446,7 @@ void set_margin(struct terminal *term, struct parm_t *parm)
 {
 	int top, bottom;
 
-	if (parm->argc == 0) {        /* CSI r */
+	if (parm->argc <= 0) {        /* CSI r */
 		top    = 0;
 		bottom = term->lines - 1;
 	} else if (parm->argc == 2) { /* CSI ; r -> use default value */
@@ -442,8 +456,10 @@ void set_margin(struct terminal *term, struct parm_t *parm)
 		return;
 	}
 
-	top    = (top < 0) ? 0 : (top >= term->lines) ? term->lines - 1 : top;
-	bottom = (bottom < 0) ? 0 : (bottom >= term->lines) ? term->lines - 1 : bottom;
+	if (top < 0 || top >= term->lines)
+		top = 0;
+	if (bottom < 0 || bottom >= term->lines)
+		bottom = term->lines - 1;
 
 	if (top >= bottom)
 		return;
@@ -458,7 +474,7 @@ void clear_tabstop(struct terminal *term, struct parm_t *parm)
 {
 	int i, j, num;
 
-	if (parm->argc == 0) {
+	if (parm->argc <= 0) {
 		term->tabstop[term->cursor.x] = false;
 	} else {
 		for (i = 0; i < parm->argc; i++) {
