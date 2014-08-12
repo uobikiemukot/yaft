@@ -35,7 +35,7 @@ enum char_code {
 enum misc {
 	BUFSIZE           = 1024,    /* read, esc, various buffer size */
 	BITS_PER_BYTE     = 8,
-	BYTES_PER_PIXEL   = 3,       /* pixel size of sixel bitmap data */
+	BYTES_PER_PIXEL   = 4,       /* pixel size of sixel pixmap data */
 	BITS_PER_SIXEL    = 6,       /* number of bits of a sixel */
 	ESCSEQ_SIZE       = 1024,    /* limit size of terminal escape sequence */
 	SELECT_TIMEOUT    = 15000,   /* used by select() */
