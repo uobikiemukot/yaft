@@ -6,9 +6,17 @@ enum {
 	LSMAX  = 100,
 };
 
+static inline void split_rgb(uint32_t color, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+	*r = bit_mask[8] & (color >> 16);
+	*g = bit_mask[8] & (color >>  8);
+	*b = bit_mask[8] & (color >>  0);
+}
+
 static inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc, uint8_t bitmap)
 {
 	int i, offset;
+	uint8_t r, g, b;
 
 	if (DEBUG)
 		fprintf(stderr, "sixel_bitmap()\nbitmap:%.2X point(%d, %d)\n",
@@ -23,8 +31,13 @@ static inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc,
 		if (offset >= BYTES_PER_PIXEL * term->width * term->height)
 			break;
 
-		if (bitmap & (0x01 << i))
-			memcpy(sc->pixmap + offset, &sc->color_table[sc->color_index], BYTES_PER_PIXEL);
+		if (bitmap & (0x01 << i)) {
+			//memcpy(sc->pixmap + offset, &sc->color_table[sc->color_index], BYTES_PER_PIXEL);
+			split_rgb(sc->color_table[sc->color_index], &r, &g, &b);
+			*(sc->pixmap + offset + 0) = b;
+			*(sc->pixmap + offset + 1) = g;
+			*(sc->pixmap + offset + 2) = r;
+		}
 
 		offset += sc->line_length;
 	}
