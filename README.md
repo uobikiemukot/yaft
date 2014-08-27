@@ -1,6 +1,6 @@
 # yaft (yet another framebuffer terminal)
 
-Last update: Thu Jul 10 20:07:09 JST 2014
+Last update: Wed Aug 27 20:19:46 JST 2014
 
 ## description
 
@@ -28,7 +28,7 @@ or
 
 (maybe something old)
 
--	http://uobikiemukot.github.io/yaft/release/yaft-0.2.7.tar.gz
+-	[http://uobikiemukot.github.io/yaft/release/yaft-0.2.8.tar.gz](http://uobikiemukot.github.io/yaft/release/yaft-0.2.8.tar.gz)
 
 ## features
 
