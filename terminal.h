@@ -369,10 +369,14 @@ void term_init(struct terminal *term, int width, int height)
 	for (gi = 0; gi < sizeof(glyphs) / sizeof(struct glyph_t); gi++)
 		term->glyph_map[glyphs[gi].code] = &glyphs[gi];
 
-	if (term->glyph_map[DEFAULT_CHAR] == NULL
-		|| term->glyph_map[SUBSTITUTE_HALF] == NULL
-		|| term->glyph_map[SUBSTITUTE_WIDE] == NULL)
-		fatal("cannot find DEFAULT_CHAR or SUBSTITUTE_HALF or SUBSTITUTE_HALF\n");
+	if (term->glyph_map[DEFAULT_CHAR] == NULL)
+		fatal("cannot find DEFAULT_CHAR");
+
+	if (term->glyph_map[SUBSTITUTE_HALF] == NULL)
+		fatal("cannot find SUBSTITUTE_HALF");
+
+	if (term->glyph_map[SUBSTITUTE_WIDE] == NULL)
+		fatal("cannot find SUBSTITUTE_WIDE");
 
 	/* initialize drcs */
 	for (i = 0; i < DRCS_CHARSETS; i++)
