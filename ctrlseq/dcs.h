@@ -20,9 +20,8 @@ static inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc,
 	int i, offset;
 	//uint8_t r, g, b;
 
-	if (DEBUG)
-		fprintf(stderr, "sixel_bitmap()\nbitmap:%.2X point(%d, %d)\n",
-			bitmap, sc->point.x, sc->point.y);
+	logging(DEBUG, "sixel_bitmap()\nbitmap:%.2X point(%d, %d)\n",
+		bitmap, sc->point.x, sc->point.y);
 
 	if (sc->point.x >= term->width || sc->point.y >= term->height)
 		return 1;
@@ -70,9 +69,8 @@ static inline int sixel_repeat(struct terminal *term, struct sixel_canvas_t *sc,
 
 	count = dec2num(tmp);
 
-	if (DEBUG)
-		fprintf(stderr, "sixel_repeat()\nbuf:%s length:%u\ncount:%d repeat:0x%.2X\n",
-			tmp, (unsigned) length, count, *cp);
+	logging(DEBUG, "sixel_repeat()\nbuf:%s length:%u\ncount:%d repeat:0x%.2X\n",
+		tmp, (unsigned) length, count, *cp);
 
 	if ('?' <= *cp && *cp <= '~') {
 		bitmap = bit_mask[BITS_PER_SIXEL] & (*cp - '?');
@@ -105,9 +103,8 @@ static inline int sixel_attr(struct sixel_canvas_t *sc, char *buf)
 		sc->height = dec2num(parm.argv[3]);
 	}
 
-	if (DEBUG)
-		fprintf(stderr, "sixel_attr()\nbuf:%s\nwidth:%d height:%d\n",
-			tmp, sc->width, sc->height);
+	logging(DEBUG, "sixel_attr()\nbuf:%s\nwidth:%d height:%d\n",
+		tmp, sc->width, sc->height);
 
 	return length;
 }
@@ -180,9 +177,8 @@ static inline int sixel_color(struct sixel_canvas_t *sc, char *buf)
 	else if (index >= COLORS)
 		index = COLORS - 1;
 
-	if (DEBUG)
-		fprintf(stderr, "sixel_color()\nbuf:%s length:%u\nindex:%d\n",
-			tmp, (unsigned) length, index);
+	logging(DEBUG, "sixel_color()\nbuf:%s length:%u\nindex:%d\n",
+		tmp, (unsigned) length, index);
 
 	if (parm.argc == 1) { /* select color */
 		sc->color_index = index;
@@ -206,9 +202,8 @@ static inline int sixel_color(struct sixel_canvas_t *sc, char *buf)
 		color = (r << 16) | (g << 8) | b;
 	}
 
-	if (DEBUG)
-		fprintf(stderr, "type:%d v1:%u v2:%u v3:%u color:0x%.8X\n",
-			type, v1, v2, v3, color);
+	logging(DEBUG, "type:%d v1:%u v2:%u v3:%u color:0x%.8X\n",
+		type, v1, v2, v3, color);
 
 	sc->color_table[index] = color;
 
@@ -217,8 +212,7 @@ static inline int sixel_color(struct sixel_canvas_t *sc, char *buf)
 
 static inline int sixel_cr(struct sixel_canvas_t *sc)
 {
-	if (DEBUG)
-		fprintf(stderr, "sixel_cr()\n");
+	logging(DEBUG, "sixel_cr()\n");
 
 	sc->point.x = 0;
 
@@ -227,8 +221,7 @@ static inline int sixel_cr(struct sixel_canvas_t *sc)
 
 static inline int sixel_nl(struct sixel_canvas_t *sc)
 {
-	if (DEBUG)
-		fprintf(stderr, "sixel_nl()\n");
+	logging(DEBUG, "sixel_nl()\n");
 
 	/* DECGNL moves active position to left margin
 		and down one line of sixels:
@@ -301,8 +294,7 @@ void sixel_parse_data(struct terminal *term, struct sixel_canvas_t *sc, char *st
 		cp += size;
 	}
 
-	if (DEBUG)
-		fprintf(stderr, "sixel_parse_data()\nwidth:%d height:%d\n", sc->width, sc->height);
+	logging(DEBUG, "sixel_parse_data()\nwidth:%d height:%d\n", sc->width, sc->height);
 }
 
 void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair, int width, int height)
@@ -369,7 +361,7 @@ void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 	for (y = 0; y < lines; y++) {
 		for (x = 0; x < cols; x++) {
 			erase_cell(term, term->cursor.y, term->cursor.x + x);
-			cellp = &term->cells[term->cursor.y][term->cursor.x + x];
+			cellp = &term->cells[term->cursor.y * term->cols + (term->cursor.x + x)];
 			cellp->has_pixmap = true;
 			for (h = 0; h < CELL_HEIGHT; h++) {
 				src_offset = (y * CELL_HEIGHT + h) * sc->line_length + (CELL_WIDTH * x) * BYTES_PER_PIXEL;
@@ -380,6 +372,7 @@ void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 			}
 		}
 		move_cursor(term, 1, 0);
+		//set_cursor(term, term->cursor.y + 1, term->cursor.x);
 	}
 	cr(term);
 }
@@ -407,8 +400,7 @@ void sixel_parse_header(struct terminal *term, char *start_buf)
 	cp = strchr(start_buf, 'q');
 	*cp = '\0';
 
-	if (DEBUG)
-		fprintf(stderr, "sixel_parse_header()\nbuf:%s\n", start_buf);
+	logging(DEBUG, "sixel_parse_header()\nbuf:%s\n", start_buf);
 
 	/* split header by semicolon ';' */
 	reset_parm(&parm);
@@ -444,8 +436,7 @@ static inline void decdld_bitmap(struct glyph_t *glyph, uint8_t bitmap, uint8_t 
 	*/
 	int i, height_shift, width_shift;
 
-	if (DEBUG)
-		fprintf(stderr, "bit pattern:0x%.2X\n", bitmap);
+	logging(DEBUG, "bit pattern:0x%.2X\n", bitmap);
 
 	width_shift = CELL_WIDTH - 1 - column;
 	if (width_shift < 0)
@@ -456,8 +447,7 @@ static inline void decdld_bitmap(struct glyph_t *glyph, uint8_t bitmap, uint8_t 
 			height_shift = row * BITS_PER_SIXEL + i;
 
 			if (height_shift < CELL_HEIGHT) {
-				if (DEBUG)
-					fprintf(stderr, "height_shift:%d width_shift:%d\n", height_shift, width_shift);
+				logging(DEBUG, "height_shift:%d width_shift:%d\n", height_shift, width_shift);
 				glyph->bitmap[height_shift] |= bit_mask[CELL_WIDTH] & (0x01 << width_shift);
 			}
 		}
@@ -497,8 +487,7 @@ void decdld_parse_data(char *start_buf, int start_char, struct glyph_t *chars)
 
 	while (cp < end_buf) {
 		if ('?' <= *cp && *cp <= '~') { /* sixel bitmap */
-			if (DEBUG)
-				fprintf(stderr, "char_num(ten):0x%.2X\n", char_num);
+			logging(DEBUG, "char_num(ten):0x%.2X\n", char_num);
 			/* remove offset '?' and use only 6bit */
 			bitmap = bit_mask[BITS_PER_SIXEL] & (*cp - '?');
 			decdld_bitmap(&chars[char_num], bitmap, row, column);
@@ -548,15 +537,14 @@ void decdld_parse_header(struct terminal *term, char *start_buf)
 		ST  : ESC (0x1B) '\' (0x5C) or BEL (0x07)
 	*/
 	char *cp;
-	int i, start_char, erase_mode, charset;
+	int start_char, erase_mode, charset;
 	struct parm_t parm;
 
 	/* replace final char of DECDLD header by NUL '\0' */
 	cp = strchr(start_buf, '{');
 	*cp = '\0';
 
-	if (DEBUG)
-		fprintf(stderr, "decdld_parse_header()\nbuf:%s\n", start_buf);
+	logging(DEBUG, "decdld_parse_header()\nbuf:%s\n", start_buf);
 
 	/* split header by semicolon ';' */
 	reset_parm(&parm);
@@ -579,30 +567,20 @@ void decdld_parse_header(struct terminal *term, char *start_buf)
 	else
 		charset = 0;
 
-	if (DEBUG)
-		fprintf(stderr, "charset(ku):0x%.2X start_char:%d erase_mode:%d\n",
-			charset, start_char, erase_mode);
+	logging(DEBUG, "charset(ku):0x%.2X start_char:%d erase_mode:%d\n",
+		charset, start_char, erase_mode);
 
 	/* reset previous glyph data */
 	if (erase_mode < 0 || erase_mode > 2)
 		erase_mode = 0;
 
-	if (erase_mode == 2) {      /* reset all drcs charset */
-		for (i = 0; i < DRCS_CHARSETS; i++) {
-			if (term->drcs[i] != NULL) {
-				free(term->drcs[i]);
-				term->drcs[i] = NULL;
-			}
-		}
-	} else if (erase_mode == 0) { /* reset selected drcs charset */
-		if (term->drcs[charset] != NULL) {
-			free(term->drcs[charset]);
-			term->drcs[charset] = NULL;
-		}
-	}
+	if (erase_mode == 2)      /* reset all drcs charset */
+		memset(term->drcs, 0, sizeof(struct glyph_t) * DRCS_CHARS);
+	else if (erase_mode == 0) /* reset selected drcs charset */
+		memset(term->drcs + GLYPHS_PER_CHARSET * charset, 0, sizeof(struct glyph_t) * DRCS_CHARS);
 
-	if (term->drcs[charset] == NULL) /* always allcate 96 chars buffer */
-		term->drcs[charset] = ecalloc(GLYPH_PER_CHARSET, sizeof(struct glyph_t));
+	//if (term->drcs[charset] == NULL) /* always allcate 96 chars buffer */
+		//term->drcs[charset] = ecalloc(GLYPH_PER_CHARSET, sizeof(struct glyph_t));
 
-	decdld_parse_data(cp + 1, start_char, term->drcs[charset]); /* skil final char */
+	decdld_parse_data(cp + 1, start_char, term->drcs + GLYPHS_PER_CHARSET * charset); /* skip final char */
 }

@@ -17,9 +17,8 @@ int32_t parse_color1(char *seq)
 	reset_parm(&parm);
 	parse_arg(seq, &parm, '/', isalnum);
 
-	if (DEBUG)
-		for (i = 0; i < parm.argc; i++)
-			fprintf(stderr, "parm.argv[%d]: %s\n", i, parm.argv[i]);
+	for (i = 0; i < parm.argc; i++)
+		logging(DEBUG, "parm.argv[%d]: %s\n", i, parm.argv[i]);
 
 	if (parm.argc != 3)
 		return -1;
@@ -28,8 +27,7 @@ int32_t parse_color1(char *seq)
 
 	for (i = 0; i < 3; i++) {
 		value = hex2num(parm.argv[i]);
-		if (DEBUG)
-			fprintf(stderr, "value:%d\n", value);
+		logging(DEBUG, "value:%d\n", value);
 
 		if (length == 1)      /* r/g/b/ */
 			rgb[i] = bit_mask[8] & (value * 0xFF / 0x0F);
@@ -44,8 +42,7 @@ int32_t parse_color1(char *seq)
 	}
 
 	color = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
-	if (DEBUG)
-		fprintf(stderr, "color:0x%.6X\n", color);
+	logging(DEBUG, "color:0x%.6X\n", color);
 
 	return color;
 }
@@ -92,8 +89,7 @@ int32_t parse_color2(char *seq)
 	}
 
 	color = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
-	if (DEBUG)
-		fprintf(stderr, "color:0x%.6X\n", color);
+	logging(DEBUG, "color:0x%.6X\n", color);
 
 	return color;
 }
@@ -141,14 +137,18 @@ void set_palette(struct terminal *term, void *arg)
 		return;
 
 	if (strncmp(argv[2], "rgb:", 4) == 0) {
-		if ((color = parse_color1(argv[2] + 4)) != -1) /* skip "rgb:" */
-			term->color_palette[index] = (uint32_t) color;
+		if ((color = parse_color1(argv[2] + 4)) != -1) { /* skip "rgb:" */
+			term->virtual_palette[index] = (uint32_t) color;
+			term->palette_modified = true;
+		}
 	} else if (strncmp(argv[2], "#", 1) == 0) {
-		if ((color = parse_color2(argv[2] + 1)) != -1) /* skip "#" */
-			term->color_palette[index] = (uint32_t) color;
+		if ((color = parse_color2(argv[2] + 1)) != -1) { /* skip "#" */
+			term->virtual_palette[index] = (uint32_t) color;
+			term->palette_modified = true;
+		}
 	} else if (strncmp(argv[2], "?", 1) == 0) {
 		for (i = 0; i < 3; i++)
-			rgb[i] = bit_mask[8] & (term->color_palette[index] >> (8 * (2 - i)));
+			rgb[i] = bit_mask[8] & (term->virtual_palette[index] >> (8 * (2 - i)));
 
 		snprintf(buf, BUFSIZE, "\033]4;%d;rgb:%.2X/%.2X/%.2X\033\\",
 			index, rgb[0], rgb[1], rgb[2]);
@@ -175,11 +175,14 @@ void reset_palette(struct terminal *term, void *arg)
 
 	if (argc < 2) { /* reset all color palette */
 		for (i = 0; i < COLORS; i++)
-			term->color_palette[i] = color_list[i];
+			term->virtual_palette[i] = color_list[i];
+		term->palette_modified = true;
 	} else if (argc == 2) { /* reset color_palette[c] */
 		c = dec2num(argv[1]);
-		if (0 <= c && c < COLORS)
-			term->color_palette[c] = color_list[c];
+		if (0 <= c && c < COLORS) {
+			term->virtual_palette[c] = color_list[c];
+			term->palette_modified = true;
+		}
 	}
 }
 
@@ -232,11 +235,14 @@ void glyph_width_report(struct terminal *term, void *arg)
 
 	//reserved = dec2num(argv[1]);
 	width = dec2num(argv[2]);
-	from = dec2num(sub_parm.argv[1]);
-	to = dec2num(sub_parm.argv[2]);
+	from  = dec2num(sub_parm.argv[1]);
+	to    = dec2num(sub_parm.argv[2]);
 
-	if ((from < 0 || to >= UCS2_CHARS) /* TODO: change here when implement DRCS */
-		|| (width < 0 || width > 2))
+	if ((width < 0) || (width > 2))
+		return;
+
+	/* unicode private area: plane 16 (DRCSMMv1) is always half */
+	if ((from < 0) || (to >= UCS2_CHARS))
 		return;
 
 	snprintf(buf, BUFSIZE, "\033]8900;0;0;%d;", width); /* OSC 8900 ; Ps; Pv ; Pw ; */
@@ -247,10 +253,10 @@ void glyph_width_report(struct terminal *term, void *arg)
 		wcw = wcwidth(i);
 		if (wcw <= 0) /* zero width */
 			w = 0;
-		else if (term->glyph_map[i] == NULL) /* missing glyph */
+		else if (term->glyph[i] == NULL) /* missing glyph */
 			w = wcw;
 		else
-			w = term->glyph_map[i]->width;
+			w = term->glyph[i]->width;
 
 		if (w != width) {
 			if (right != -1) {
@@ -260,15 +266,13 @@ void glyph_width_report(struct terminal *term, void *arg)
 				snprintf(buf, BUFSIZE, "%d:%d;", left, left);
 				ewrite(term->fd, buf, strlen(buf));
 			}
-
 			left = right = -1;
-			continue;
+		} else {
+			if (left == -1)
+				left = i;
+			else
+				right = i;
 		}
-
-		if (left == -1)
-			left = i;
-		else
-			right = i;
 	}
 
 	if (right != -1) {
