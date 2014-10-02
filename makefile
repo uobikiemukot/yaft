@@ -7,8 +7,10 @@ LDFLAGS ?=
 XCFLAGS  ?= -std=c99 -pedantic -Wall -Wextra -I/usr/include/X11/ -O3 -s -pipe
 XLDFLAGS ?= -lX11
 
-HDR = color.h conf.h dcs.h draw.h function.h osc.h parse.h terminal.h util.h yaft.h glyph.h \
-	fb/linux.h fb/freebsd.h fb/netbsd.h fb/openbsd.h x/x.h
+HDR = glyph.h yaft.h conf.h color.h parse.h terminal.h util.h \
+	ctrlseq/esc.h ctrlseq/csi.h ctrlseq/osc.h ctrlseq/dcs.h \
+	fb/common.h fb/type.h fb/linux.h fb/freebsd.h fb/netbsd.h fb/openbsd.h \
+	x/x.h
 
 DESTDIR   =
 PREFIX    = $(DESTDIR)/usr
