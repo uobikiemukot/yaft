@@ -207,10 +207,11 @@ int eopenpty(int *amaster, int *aslave, char *aname,
 	*amaster = master;
 	*aslave  = eopen(name, O_RDWR | O_NOCTTY);
 
-	/* XXX: we don't use the slave's name, always return NULL */
 	if (aname)
-		//strncpy(aname, name, TTY_NAME_MAX - 1);
-		snprintf(aname, TTY_NAME_MAX, "%s", name);
+		/* XXX: we don't use the slave's name, do nothing */
+		(void) aname;
+		//strncpy(aname, name, _POSIX_TTY_NAME_MAX - 1);
+		//snprintf(aname, _POSIX_TTY_NAME_MAX, "%s", name);
 	if (termp)
 		etcsetattr(*aslave, TCSAFLUSH, termp);
 	if (winsize)
