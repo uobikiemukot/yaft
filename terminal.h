@@ -3,8 +3,8 @@ void erase_cell(struct terminal *term, int y, int x)
 {
 	struct cell_t *cellp;
 
-	cellp             = &term->cells[y][x];
-	cellp->glyphp     = term->glyph_map[DEFAULT_CHAR];
+	cellp             = &term->cells[y * term->cols + x];
+	cellp->glyphp     = term->glyph[DEFAULT_CHAR];
 	cellp->color_pair = term->color_pair; /* bce */
 	cellp->attribute  = ATTR_RESET;
 	cellp->width      = HALF;
@@ -17,8 +17,8 @@ void copy_cell(struct terminal *term, int dst_y, int dst_x, int src_y, int src_x
 {
 	struct cell_t *dst, *src;
 
-	dst = &term->cells[dst_y][dst_x];
-	src = &term->cells[src_y][src_x];
+	dst = &term->cells[dst_y * term->cols + dst_x];
+	src = &term->cells[src_y * term->cols + src_x];
 
 	if (src->width == NEXT_TO_WIDE) {
 		return;
@@ -56,12 +56,12 @@ int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
 	cell.width      = glyphp->width;
 	cell.has_pixmap = false;
 
-	cellp    = &term->cells[y][x];
+	cellp    = &term->cells[y * term->cols + x];
 	*cellp   = cell;
 	term->line_dirty[y] = true;
 
 	if (cell.width == WIDE && x + 1 < term->cols) {
-		cellp        = &term->cells[y][x + 1];
+		cellp        = &term->cells[y * term->cols + (x + 1)];
 		*cellp       = cell;
 		cellp->width = NEXT_TO_WIDE;
 		return WIDE;
@@ -71,41 +71,34 @@ int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
 
 void scroll(struct terminal *term, int from, int to, int offset)
 {
-	int i, j, size, abs_offset, scroll_lines;
+	int size, abs_offset;
+	struct cell_t *dst, *src;
 
 	if (offset == 0 || from >= to)
 		return;
 
-	if (DEBUG)
-		fprintf(stderr, "scroll from:%d to:%d offset:%d\n", from, to, offset);
+	logging(DEBUG, "scroll from:%d to:%d offset:%d\n", from, to, offset);
 
-	for (i = from; i <= to; i++)
-		term->line_dirty[i] = true;
+	for (int y = from; y <= to; y++)
+		term->line_dirty[y] = true;
 
-	size = sizeof(struct cell_t) * term->cols;
 	abs_offset = abs(offset);
-	scroll_lines = (to - from + 1) - abs_offset;
+	size = sizeof(struct cell_t) * ((to - from + 1) - abs_offset) * term->cols;
+
+	dst = term->cells + from * term->cols;
+	src = term->cells + (from + abs_offset) * term->cols;
 
 	if (offset > 0) { /* scroll down */
-		/* scroll down:
-			cells[from] ... cells[from + scroll_lines - 1]: copy from cells[i + offset]
-			cells[from + scroll_lines] ... cells[to]      : erase */
-		for (i = from; i < from + scroll_lines; i++)
-			memmove(term->cells[i], term->cells[i + offset], size);
-
-		for (i = from + scroll_lines; i <= to; i++)
-			for (j = 0; j < term->cols; j++)
-				erase_cell(term, i, j);
-	} else {
-		/* scroll up:
-			cells[from + abs_offset] ... cells[to]      : copy from cells[i - offset]
-			cells[from] ... cells[from + abs_offset - 1]: erase */
-		for (i = to; i >= from + abs_offset; i--) /* copy last line first */
-			memmove(term->cells[i], term->cells[i - abs_offset], size);
-
-		for (i = from; i < from + abs_offset; i++)
-			for (j = 0; j < term->cols; j++)
-				erase_cell(term, i, j);
+		memmove(dst, src, size);
+		for (int y = (to - offset + 1); y <= to; y++)
+			for (int x = 0; x < term->cols; x++)
+				erase_cell(term, y, x);
+	}
+	else {            /* scroll up */
+		memmove(src, dst, size);
+		for (int y = from; y < from + abs_offset; y++)
+			for (int x = 0; x < term->cols; x++)
+				erase_cell(term, y, x);
 	}
 }
 
@@ -164,29 +157,23 @@ void set_cursor(struct terminal *term, int y, int x)
 	term->wrap_occured = false;
 }
 
-const struct glyph_t *drcsch(struct terminal *term, uint32_t code)
+const struct glyph_t *drcs_glyph(struct terminal *term, uint32_t code)
 {
 	/* DRCSMMv1
 		ESC ( SP <\xXX> <\xYY> ESC ( B
 		<===> U+10XXYY ( 0x40 <= 0xXX <=0x7E, 0x20 <= 0xYY <= 0x7F )
 	*/
-	int ku, ten;
+	int row, cell; /* = ku, ten */
 
-	ku  = (0xFF00 & code) >> 8;
-	ten = 0xFF & code;
+	row  = (0xFF00 & code) >> 8;
+	cell = 0xFF & code;
 
-	if (DEBUG)
-		fprintf(stderr, "drcs ku:0x%.2X ten:0x%.2X\n", ku, ten);
+	logging(DEBUG, "drcs row:0x%.2X cell:0x%.2X\n", row, cell);
 
-	if ((0x40 <= ku && ku <= 0x7E)
-		&& (0x20 <= ten && ten <= 0x7F)
-		&& (term->drcs[ku - 0x40] != NULL)) {
-		return &term->drcs[ku - 0x40][ten - 0x20]; /* sub each offset */
-	} else {
-		if (DEBUG)
-			fprintf(stderr, "drcs char not found\n");
-		return term->glyph_map[SUBSTITUTE_HALF];
-	}
+	if ((0x40 <= row && row <= 0x7E) && (0x20 <= cell && cell <= 0x7F))
+		return &term->drcs[(row - 0x40) * GLYPHS_PER_CHARSET + (cell - 0x20)];
+	else
+		return term->glyph[SUBSTITUTE_HALF];
 }
 
 void addch(struct terminal *term, uint32_t code)
@@ -194,21 +181,20 @@ void addch(struct terminal *term, uint32_t code)
 	int width;
 	const struct glyph_t *glyphp;
 
-	if (DEBUG)
-		fprintf(stderr, "addch: U+%.4X\n", code);
+	logging(DEBUG, "addch: U+%.4X\n", code);
 
 	width = wcwidth(code);
 
 	if (width <= 0)                                /* zero width: not support comibining character */
 		return;
 	else if (0x100000 <= code && code <= 0x10FFFD) /* unicode private area: plane 16 (DRCSMMv1) */
-		glyphp = drcsch(term, code);
+		glyphp = drcs_glyph(term, code);
 	else if (code >= UCS2_CHARS                    /* yaft support only UCS2 */
-		|| term->glyph_map[code] == NULL           /* missing glyph */
-		|| term->glyph_map[code]->width != width)  /* width unmatch */
-		glyphp = (width == 1) ? term->glyph_map[SUBSTITUTE_HALF]: term->glyph_map[SUBSTITUTE_WIDE];
+		|| term->glyph[code] == NULL           /* missing glyph */
+		|| term->glyph[code]->width != width)  /* width unmatch */
+		glyphp = (width == 1) ? term->glyph[SUBSTITUTE_HALF]: term->glyph[SUBSTITUTE_WIDE];
 	else
-		glyphp = term->glyph_map[code];
+		glyphp = term->glyph[code];
 
 	if ((term->wrap_occured && term->cursor.x == term->cols - 1) /* folding */
 		|| (glyphp->width == WIDE && term->cursor.x == term->cols - 1)) {
@@ -222,8 +208,7 @@ void addch(struct terminal *term, uint32_t code)
 
 void reset_esc(struct terminal *term)
 {
-	if (DEBUG)
-		fprintf(stderr, "*esc reset*\n");
+	logging(DEBUG, "*esc reset*\n");
 
 	term->esc.bp = term->esc.buf;
 	term->esc.state = STATE_RESET;
@@ -234,8 +219,7 @@ bool push_esc(struct terminal *term, uint8_t ch)
 	long offset;
 
 	if ((term->esc.bp - term->esc.buf) >= term->esc.size) { /* buffer limit */
-		if (DEBUG)
-			fprintf(stderr, "escape sequence length >= %d, term.esc.buf reallocated\n", term->esc.size);
+		logging(DEBUG, "escape sequence length >= %d, term.esc.buf reallocated\n", term->esc.size);
 		offset = term->esc.bp - term->esc.buf;
 		term->esc.buf  = erealloc(term->esc.buf, term->esc.size * 2);
 		term->esc.size *= 2;
@@ -337,10 +321,18 @@ void redraw(struct terminal *term)
 		term->line_dirty[i] = true;
 }
 
-void term_init(struct terminal *term, int width, int height)
+void term_die(struct terminal *term)
 {
-	int i;
-	uint32_t code, gi;
+	free(term->line_dirty);
+	free(term->tabstop);
+	free(term->esc.buf);
+	free(term->cells);
+	free(term->sixel.pixmap);
+}
+
+bool term_init(struct terminal *term, int width, int height)
+{
+	extern const uint32_t color_list[COLORS]; /* global */
 
 	term->width  = width;
 	term->height = height;
@@ -348,61 +340,49 @@ void term_init(struct terminal *term, int width, int height)
 	term->cols  = term->width / CELL_WIDTH;
 	term->lines = term->height / CELL_HEIGHT;
 
-	if (DEBUG)
-		fprintf(stderr, "width:%d height:%d cols:%d lines:%d\n",
-			width, height, term->cols, term->lines);
-
-	term->line_dirty = (bool *) ecalloc(term->lines, sizeof(bool));
-	term->tabstop    = (bool *) ecalloc(term->cols, sizeof(bool));
-
-	term->cells      = (struct cell_t **) ecalloc(term->lines, sizeof(struct cell_t *));
-	for (i = 0; i < term->lines; i++)
-		term->cells[i] = (struct cell_t *) ecalloc(term->cols, sizeof(struct cell_t));
-
-	term->esc.buf  = (char *) ecalloc(1, ESCSEQ_SIZE);
 	term->esc.size = ESCSEQ_SIZE;
 
-	/* initialize glyph map */
-	for (code = 0; code < UCS2_CHARS; code++)
-		term->glyph_map[code] = NULL;
+	logging(DEBUG, "width:%d height:%d cols:%d lines:%d\n",
+		width, height, term->cols, term->lines);
 
-	for (gi = 0; gi < sizeof(glyphs) / sizeof(struct glyph_t); gi++)
-		term->glyph_map[glyphs[gi].code] = &glyphs[gi];
-
-	if (term->glyph_map[DEFAULT_CHAR] == NULL)
-		fatal("cannot find DEFAULT_CHAR");
-
-	if (term->glyph_map[SUBSTITUTE_HALF] == NULL)
-		fatal("cannot find SUBSTITUTE_HALF");
-
-	if (term->glyph_map[SUBSTITUTE_WIDE] == NULL)
-		fatal("cannot find SUBSTITUTE_WIDE");
-
-	/* initialize drcs */
-	for (i = 0; i < DRCS_CHARSETS; i++)
-		term->drcs[i] = NULL;
-
-	/* allocate sixel buffer */
+	/* allocate memory */
+	term->line_dirty   = (bool *) ecalloc(term->lines, sizeof(bool));
+	term->tabstop      = (bool *) ecalloc(term->cols, sizeof(bool));
+	term->cells        = (struct cell_t *) ecalloc(term->lines * term->cols, sizeof(struct cell_t));
+	term->esc.buf      = (char *) ecalloc(1, term->esc.size);
 	term->sixel.pixmap = (uint8_t *) ecalloc(width * height, BYTES_PER_PIXEL);
 
+	if (!term->line_dirty || !term->tabstop || !term->cells
+		|| !term->esc.buf || !term->sixel.pixmap) {
+		term_die(term);
+		return false;
+	}
+
+	/* initialize palette */
+	for (int i = 0; i < COLORS; i++)
+		term->virtual_palette[i] = color_list[i];
+	term->palette_modified = false;
+
+	/* initialize glyph map */
+	for (uint32_t code = 0; code < UCS2_CHARS; code++)
+		term->glyph[code] = NULL;
+
+	for (uint32_t gi = 0; gi < sizeof(glyphs) / sizeof(struct glyph_t); gi++)
+		term->glyph[glyphs[gi].code] = &glyphs[gi];
+
+	if (!term->glyph[DEFAULT_CHAR]
+		|| !term->glyph[SUBSTITUTE_HALF]
+		|| !term->glyph[SUBSTITUTE_WIDE]) {
+		logging(ERROR, "couldn't find essential glyph:\
+			DEFAULT_CHAR(U+%.4X):%p SUBSTITUTE_HALF(U+%.4X):%p SUBSTITUTE_WIDE(U+%.4X):%p\n",
+			DEFAULT_CHAR, term->glyph[DEFAULT_CHAR],
+			SUBSTITUTE_HALF, term->glyph[SUBSTITUTE_HALF],
+			SUBSTITUTE_WIDE, term->glyph[SUBSTITUTE_WIDE]);
+		return false;
+	}
+
+	/* reset terminal */
 	reset(term);
-}
 
-void term_die(struct terminal *term)
-{
-	int i;
-
-	free(term->line_dirty);
-	free(term->tabstop);
-	free(term->esc.buf);
-
-	for (i = 0; i < term->lines; i++)
-		free(term->cells[i]);
-	free(term->cells);
-
-	for (i = 0; i < DRCS_CHARSETS; i++)
-		if (term->drcs[i] != NULL)
-			free(term->drcs[i]);
-
-	free(term->sixel.pixmap);
+	return true;
 }
