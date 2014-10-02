@@ -1,5 +1,15 @@
 /* See LICENSE for licence details. */
 /* os specific ioctl */
+void init_cmap(cmap_t *cmap, int colors)
+{
+	cmap->start  = 0;
+	cmap->len    = colors;
+	cmap->red    = (__u16 *) ecalloc(colors, sizeof(__u16));
+	cmap->green  = (__u16 *) ecalloc(colors, sizeof(__u16));
+	cmap->blue   = (__u16 *) ecalloc(colors, sizeof(__u16));
+	cmap->transp = NULL;
+}
+
 int put_cmap(int fd, cmap_t *cmap)
 {
 	return ioctl(fd, FBIOPUTCMAP, cmap);
