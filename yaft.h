@@ -6,6 +6,7 @@
 #include <locale.h>
 #include <limits.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -33,22 +34,23 @@ enum char_code {
 };
 
 enum misc {
-	BUFSIZE           = 1024,    /* read, esc, various buffer size */
-	BITS_PER_BYTE     = 8,
-	BYTES_PER_PIXEL   = 4,       /* pixel size of sixel pixmap data */
-	BITS_PER_SIXEL    = 6,       /* number of bits of a sixel */
-	ESCSEQ_SIZE       = 1024,    /* limit size of terminal escape sequence */
-	SELECT_TIMEOUT    = 15000,   /* used by select() */
-	MAX_ARGS          = 16,      /* max parameters of csi/osc sequence */
-	COLORS            = 256,     /* number of color */
-	UCS2_CHARS        = 0x10000, /* number of UCS2 glyph */
-	CTRL_CHARS        = 0x20,    /* number of ctrl_func */
-	ESC_CHARS         = 0x80,    /* number of esc_func */
-	DRCS_CHARSETS     = 63,      /* number of charset of DRCS (according to DRCSMMv1) */
-	GLYPH_PER_CHARSET = 96,      /* number of glyph of each DRCS charset */
-	DEFAULT_CHAR      = SPACE,   /* used for erase char */
-	BRIGHT_INC        = 8,       /* value used for brightening color */
-	OSC_GWREPT        = 8900,    /* OSC Ps: mode number of yaft GWREPT */
+	BUFSIZE            = 1024,             /* read, esc, various buffer size */
+	BITS_PER_BYTE      = 8,                /* bits per byte */
+	BYTES_PER_PIXEL    = sizeof(uint32_t), /* pixel size of sixel pixmap data */
+	BITS_PER_SIXEL     = 6,                /* number of bits of a sixel */
+	ESCSEQ_SIZE        = 1024,             /* limit size of terminal escape sequence */
+	SELECT_TIMEOUT     = 15000,            /* used by select() */
+	SLEEP_TIME         = 30000,            /* sleep time at EAGAIN, EWOULDBLOCK (usec) */
+	MAX_ARGS           = 16,               /* max parameters of csi/osc sequence */
+	UCS2_CHARS         = 0x10000,          /* number of UCS2 glyphs */
+	CTRL_CHARS         = 0x20,             /* number of ctrl_func */
+	ESC_CHARS          = 0x80,             /* number of esc_func */
+	DRCS_CHARSETS      = 63,               /* number of charset of DRCS (according to DRCSMMv1) */
+	GLYPHS_PER_CHARSET = 96,               /* number of glyph of each DRCS charset */
+	DRCS_CHARS         = DRCS_CHARSETS * GLYPHS_PER_CHARSET,
+	DEFAULT_CHAR       = SPACE,            /* used for erase char */
+	BRIGHT_INC         = 8,                /* value used for brightening color */
+	OSC_GWREPT         = 8900,             /* OSC Ps: mode number of yaft GWREPT */
 };
 
 enum char_attr {
@@ -141,24 +143,25 @@ struct sixel_canvas_t {
 };
 
 struct terminal {
-	int fd;                                      /* master fd */
-	int width, height;                           /* terminal size (pixel) */
-	int cols, lines;                             /* terminal size (cell) */
-	struct cell_t **cells;                       /* pointer to each cell: cells[lines][cols] */
-	struct margin scroll;                        /* scroll margin */
-	struct point_t cursor;                       /* cursor pos (x, y) */
-	bool *line_dirty;                            /* dirty flag */
-	bool *tabstop;                               /* tabstop flag */
-	enum term_mode mode;                         /* for set/reset mode */
-	bool wrap_occured;                           /* whether auto wrap occured or not */
-	struct state_t state;                        /* for restore */
-	struct color_pair_t color_pair;              /* color (fg, bg) */
-	enum char_attr attribute;                    /* bold, underscore, etc... */
-	struct charset_t charset;                    /* store UTF-8 byte stream */
-	struct esc_t esc;                            /* store escape sequence */
-	uint32_t color_palette[COLORS];              /* 256 color palette */
-	const struct glyph_t *glyph_map[UCS2_CHARS]; /* array of pointer to glyphs[] */
-	struct glyph_t *drcs[DRCS_CHARSETS];         /* DRCS chars */
+	int fd;                                  /* master of pseudo terminal */
+	int width, height;                       /* terminal size (pixel) */
+	int cols, lines;                         /* terminal size (cell) */
+	struct cell_t *cells;                    /* pointer to each cell: cells[y * lines + x] */
+	struct margin scroll;                    /* scroll margin */
+	struct point_t cursor;                   /* cursor pos (x, y) */
+	bool *line_dirty;                        /* dirty flag */
+	bool *tabstop;                           /* tabstop flag */
+	enum term_mode mode;                     /* for set/reset mode */
+	bool wrap_occured;                       /* whether auto wrap occured or not */
+	struct state_t state;                    /* for restore */
+	struct color_pair_t color_pair;          /* color (fg, bg) */
+	enum char_attr attribute;                /* bold, underscore, etc... */
+	struct charset_t charset;                /* store UTF-8 byte stream */
+	struct esc_t esc;                        /* store escape sequence */
+	uint32_t virtual_palette[COLORS];        /* virtual color palette: always 32bpp */
+	bool palette_modified;                   /* true if palette changed by OSC 4/104 */
+	const struct glyph_t *glyph[UCS2_CHARS]; /* array of pointer to glyphs[] */
+	struct glyph_t drcs[DRCS_CHARS];         /* DRCS chars */
 	struct sixel_canvas_t sixel;
 };
 
@@ -167,15 +170,7 @@ struct parm_t { /* for parse_arg() */
 	char *argv[MAX_ARGS];
 };
 
-struct tty_state { /* this variables changed at catching signals */
-	volatile sig_atomic_t visible;        /* SIGUSR1: vt is active or not */
-	volatile sig_atomic_t redraw_flag;    /* SIGUSR1: vt activated */
-	volatile sig_atomic_t loop_flag;      /* SIGCHLD: child process (shell) is alive or not */
-};
-
-/* global variables */
-struct tty_state tty = {
-	.visible        = true,
-	.redraw_flag    = false,
-	.loop_flag      = true,
-};
+volatile sig_atomic_t vt_active     = true;  /* SIGUSR1: vt is active or not */
+volatile sig_atomic_t redraw_needed = false; /* SIGUSR1: vt activated */
+volatile sig_atomic_t child_alive   = false; /* SIGCHLD: child process (shell) is alive or not */
+struct termios termios_orig;
