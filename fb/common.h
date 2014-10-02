@@ -74,12 +74,16 @@ cmap_t *cmap_create(int colors)
 		return NULL;
 	}
 
-	cmap->start  = 0;
-	cmap->len    = colors;
+	/* init os specific */
+	init_cmap(cmap, colors);
+	/*
 	cmap->red    = (cmap_color_t *) ecalloc(colors, sizeof(uint16_t));
 	cmap->green  = (cmap_color_t *) ecalloc(colors, sizeof(uint16_t));
 	cmap->blue   = (cmap_color_t *) ecalloc(colors, sizeof(uint16_t));
-	//cmap->transp = NULL; /* always transparent is disabile */
+	cmap->start  = 0;
+	cmap->len    = colors;
+	cmap->transp = NULL; // always transparent is disabile
+	*/
 
 	if (!cmap->red || !cmap->green || !cmap->blue) {
 		logging(ERROR, "couldn't allocate red/green/blue buffer of cmap\n");
