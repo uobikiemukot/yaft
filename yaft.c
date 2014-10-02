@@ -1,48 +1,45 @@
 /* See LICENSE for licence details. */
+/* yaft.c: include main function */
 #include "yaft.h"
 #include "conf.h"
 #include "util.h"
-
-#if defined(__linux__)
-	#include "fb/linux.h"
-#elif defined(__FreeBSD__)
-	#include "fb/freebsd.h"
-#elif defined(__NetBSD__)
-	#include "fb/netbsd.h"
-#elif defined(__OpenBSD__)
-	#include "fb/openbsd.h"
-#endif
-
-#include "draw.h"
+#include "fb/common.h"
 #include "terminal.h"
-#include "function.h"
-#include "osc.h"
-#include "dcs.h"
+#include "ctrlseq/esc.h"
+#include "ctrlseq/csi.h"
+#include "ctrlseq/osc.h"
+#include "ctrlseq/dcs.h"
 #include "parse.h"
 
 void sig_handler(int signo)
 {
-	extern struct tty_state tty; /* global */
 	sigset_t sigset;
+	/* global */
+	extern volatile sig_atomic_t vt_active;
+	extern volatile sig_atomic_t child_alive;
+	extern volatile sig_atomic_t redraw_needed;
+
+	logging(DEBUG, "caught signal! no:%d\n", signo);
 
 	if (signo == SIGCHLD) {
+		child_alive = false;
 		wait(NULL);
-		tty.loop_flag = false;
 	} else if (signo == SIGUSR1) {
-		if (tty.visible) { /* vt deactivated */
+		if (vt_active) {           /* vt deactivate */
+			vt_active = false;
 			ioctl(STDIN_FILENO, VT_RELDISP, 1);
-			tty.visible = false;
+
 			if (BACKGROUND_DRAW) { /* update passive cursor */
-				tty.redraw_flag = true;
+				redraw_needed = true;
 			} else {               /* sleep until next vt switching */
 				sigfillset(&sigset);
 				sigdelset(&sigset, SIGUSR1);
 				sigsuspend(&sigset);
 			}
-		} else { /* vt activated */
+		} else {                   /* vt activate */
+			vt_active     = true;
+			redraw_needed = true;
 			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
-			tty.visible     = true;
-			tty.redraw_flag = true;
 		}
 	}
 }
@@ -61,79 +58,91 @@ void set_rawmode(int fd, struct termios *save_tm)
 	etcsetattr(fd, TCSAFLUSH, &tm);
 }
 
-void tty_init(struct termios *save_tm)
+bool tty_init(struct termios *termios_orig)
 {
 	struct sigaction sigact;
-	struct vt_mode vtm;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = sig_handler;
 	sigact.sa_flags   = SA_RESTART;
 	esigaction(SIGCHLD, &sigact, NULL);
-	esigaction(SIGUSR1, &sigact, NULL);
 
-	vtm.mode   = VT_PROCESS;
-	vtm.waitv  = 0;
-	vtm.relsig = vtm.acqsig = vtm.frsig = SIGUSR1;
-	if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm))
-		fatal("ioctl: VT_SETMODE failed (maybe here is not console)");
+	if (VT_CONTROL) {
+		esigaction(SIGUSR1, &sigact, NULL);
+		struct vt_mode vtm;
+		vtm.mode   = VT_PROCESS;
+		vtm.waitv  = 0;
+		vtm.relsig = vtm.acqsig = vtm.frsig = SIGUSR1;
+		if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm))
+			logging(FATAL, "ioctl: VT_SETMODE failed (maybe here is not console)\n");
+		if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS))
+			logging(FATAL, "ioctl: KDSETMODE failed (maybe here is not console)\n");
+	}
 
-	if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS))
-		fatal("ioctl: KDSETMODE failed (maybe here is not console)");
-
-	etcgetattr(STDIN_FILENO, save_tm);
-	set_rawmode(STDIN_FILENO, save_tm);
+	etcgetattr(STDIN_FILENO, termios_orig);
+	set_rawmode(STDIN_FILENO, termios_orig);
 	ewrite(STDIN_FILENO, "\033[?25l", 6); /* make cusor invisible */
+
+	return true;
 }
 
-void tty_die(struct termios *save_tm)
+void tty_die(struct termios *termios_orig)
 {
  	/* no error handling */
 	struct sigaction sigact;
-	struct vt_mode vtm;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = SIG_DFL;
 	sigaction(SIGCHLD, &sigact, NULL);
-	sigaction(SIGUSR1, &sigact, NULL);
 
-	vtm.mode   = VT_AUTO;
-	vtm.waitv  = 0;
-	vtm.relsig = vtm.acqsig = vtm.frsig = 0;
-	ioctl(STDIN_FILENO, VT_SETMODE, &vtm);
-	ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT);
+	if (VT_CONTROL) {
+		sigaction(SIGUSR1, &sigact, NULL);
+		struct vt_mode vtm;
+		vtm.mode   = VT_AUTO;
+		vtm.waitv  = 0;
+		vtm.relsig = vtm.acqsig = vtm.frsig = 0;
+		ioctl(STDIN_FILENO, VT_SETMODE, &vtm);
+		ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT);
+	}
 
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, save_tm);
-	fflush(stdout);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, termios_orig);
+	//fflush(stdout);
 	ewrite(STDIN_FILENO, "\033[?25h", 6); /* make cursor visible */
 }
 
-void fork_and_exec(int *master, int lines, int cols)
+bool fork_and_exec(int *master, int lines, int cols)
 {
+	extern const char *shell_cmd; /* defined in conf.h */
 	char *shell_env;
 	pid_t pid;
 	struct winsize ws = {.ws_row = lines, .ws_col = cols,
-		.ws_xpixel = 0, .ws_ypixel = 0};
+		/* XXX: this variables are UNUSED (man tty_ioctl),
+			but useful for calculating terminal cell size */
+		.ws_ypixel = CELL_HEIGHT * lines, .ws_xpixel = CELL_WIDTH * cols};
 
 	pid = eforkpty(master, NULL, NULL, &ws);
-
-	if (pid == 0) { /* child */
+	if (pid < 0)
+		return false;
+	else if (pid == 0) { /* child */
 		esetenv("TERM", term_name, 1);
 		if ((shell_env = getenv("SHELL")) != NULL)
-			eexecvp(shell_env, (const char *[]){shell_env, NULL});
+			eexecl(shell_env);
 		else
-			eexecvp(shell_cmd, (const char *[]){shell_cmd, NULL});
+			eexecl(shell_cmd);
+		/* never reach here */
+		exit(EXIT_FAILURE);
 	}
+	return true;
 }
 
-void check_fds(fd_set *fds, struct timeval *tv, int input, int master)
+int check_fds(fd_set *fds, struct timeval *tv, int input, int master)
 {
 	FD_ZERO(fds);
 	FD_SET(input, fds);
 	FD_SET(master, fds);
 	tv->tv_sec  = 0;
 	tv->tv_usec = SELECT_TIMEOUT;
-	eselect(master + 1, fds, NULL, NULL, tv);
+	return eselect(master + 1, fds, NULL, NULL, tv);
 }
 
 int main()
@@ -144,37 +153,54 @@ int main()
 	struct timeval tv;
 	struct framebuffer fb;
 	struct terminal term;
-	struct termios save_tm;
+	/* global */
+	extern volatile sig_atomic_t redraw_needed;
+	extern volatile sig_atomic_t child_alive;
+	extern struct termios termios_orig;
 
 	/* init */
-	setlocale(LC_ALL, "");
-	fb_init(&fb, term.color_palette);
-	term_init(&term, fb.width, fb.height);
-	tty_init(&save_tm);
+	if (setlocale(LC_ALL, "") == NULL) /* for wcwidth() */
+		logging(WARN, "setlocale falied\n");
+
+	if (!fb_init(&fb)) {
+		logging(FATAL, "framebuffer initialize failed\n");
+		goto fb_init_failed;
+	}
+	if (!term_init(&term, fb.info.width, fb.info.height)) {
+		logging(FATAL, "terminal initialize failed\n");
+		goto term_init_failed;
+	}
+	if (!tty_init(&termios_orig)) {
+		logging(FATAL, "tty initialize failed\n");
+		goto tty_init_failed;
+	}
 
 	/* fork and exec shell */
-	fork_and_exec(&term.fd, term.lines, term.cols);
+	if (!fork_and_exec(&term.fd, term.lines, term.cols)) {
+		logging(FATAL, "forkpty failed\n");
+		goto tty_init_failed;
+	}
+	child_alive = true;
 
 	/* main loop */
-	while (tty.loop_flag) {
-		if (tty.redraw_flag) { 
-			/* after VT switching, need to restore cmap (in 8bpp mode) */
-			cmap_update(fb.fd, fb.cmap);
+	while (child_alive) {
+		if (redraw_needed) {
+			redraw_needed = false;
+			cmap_update(fb.fd, fb.cmap); /* after VT switching, need to restore cmap (in 8bpp mode) */
 			redraw(&term);
 			refresh(&fb, &term);
-			tty.redraw_flag = false;
 		}
 
-		check_fds(&fds, &tv, STDIN_FILENO, term.fd);
+		if (check_fds(&fds, &tv, STDIN_FILENO, term.fd) == -1)
+			continue;
+
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
-			size = read(STDIN_FILENO, buf, BUFSIZE);
-			if (size > 0)
+			if ((size = read(STDIN_FILENO, buf, BUFSIZE)) > 0)
 				ewrite(term.fd, buf, size);
 		}
 		if (FD_ISSET(term.fd, &fds)) {
-			size = read(term.fd, buf, BUFSIZE);
-			if (size > 0) {
-				if (DEBUG)
+			if ((size = read(term.fd, buf, BUFSIZE)) > 0) {
+				if (VERBOSE)
 					ewrite(STDOUT_FILENO, buf, size);
 				parse(&term, buf, size);
 				if (LAZY_DRAW && size == BUFSIZE)
@@ -185,9 +211,16 @@ int main()
 	}
 
 	/* normal exit */
-	tty_die(&save_tm);
+	tty_die(&termios_orig);
 	term_die(&term);
 	fb_die(&fb);
-
 	return EXIT_SUCCESS;
+
+	/* error exit */
+tty_init_failed:
+	term_die(&term);
+term_init_failed:
+	fb_die(&fb);
+fb_init_failed:
+	return EXIT_FAILURE;
 }
