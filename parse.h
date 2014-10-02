@@ -69,8 +69,7 @@ void control_character(struct terminal *term, uint8_t ch)
 
 	*term->esc.bp = '\0';
 
-	if (DEBUG)
-		fprintf(stderr, "ctl: %s\n", ctrl_char[ch]);
+	logging(DEBUG, "ctl: %s\n", ctrl_char[ch]);
 
 	if (ctrl_func[ch])
 		ctrl_func[ch](term);
@@ -80,8 +79,7 @@ void esc_sequence(struct terminal *term, uint8_t ch)
 {
 	*term->esc.bp = '\0';
 
-	if (DEBUG)
-		fprintf(stderr, "esc: ESC %s\n", term->esc.buf);
+	logging(DEBUG, "esc: ESC %s\n", term->esc.buf);
 
 	if (strlen(term->esc.buf) == 1 && esc_func[ch])
 		esc_func[ch](term);
@@ -99,8 +97,7 @@ void csi_sequence(struct terminal *term, uint8_t ch)
 
 	*(term->esc.bp - 1) = '\0'; /* omit final character */
 
-	if (DEBUG)
-		fprintf(stderr, "csi: CSI %s\n", term->esc.buf + 1);
+	logging(DEBUG, "csi: CSI %s\n", term->esc.buf + 1);
 
 	reset_parm(&parm);
 	parse_arg(term->esc.buf + 1, &parm, ';', isdigit); /* skip '[' */
@@ -135,23 +132,21 @@ void osc_sequence(struct terminal *term, uint8_t ch)
 
 	omit_string_terminator(term->esc.bp, ch);
 
-	if (DEBUG)
-		fprintf(stderr, "osc: OSC %s\n", term->esc.buf);
+	logging(DEBUG, "osc: OSC %s\n", term->esc.buf);
 
 	reset_parm(&parm);
 	parse_arg(term->esc.buf + 1, &parm, ';', is_osc_parm); /* skip ']' */
 
 	if (parm.argc > 0) {
 		osc_mode = dec2num(parm.argv[0]);
-		if (DEBUG)
-			fprintf(stderr, "osc_mode:%d\n", osc_mode);
+		logging(DEBUG, "osc_mode:%d\n", osc_mode);
 
 		/* XXX: disable because this functions only work 24/32bpp
+			-> support other bpp (including pseudo color) */
 		if (osc_mode == 4)
 			set_palette(term, &parm);
 		else if (osc_mode == 104)
 			reset_palette(term, &parm);
-		*/
 		if (osc_mode == 8900)
 			glyph_width_report(term, &parm);
 	}
@@ -164,8 +159,7 @@ void dcs_sequence(struct terminal *term, uint8_t ch)
 
 	omit_string_terminator(term->esc.bp, ch);
 
-	if (DEBUG)
-		fprintf(stderr, "dcs: DCS %s\n", term->esc.buf);
+	logging(DEBUG, "dcs: DCS %s\n", term->esc.buf);
 
 	/* check DCS header */
 	cp = term->esc.buf + 1; /* skip P */
@@ -179,7 +173,7 @@ void dcs_sequence(struct terminal *term, uint8_t ch)
 		cp++;
 	}
 
-	if (cp != term->esc.bp) { /* header only or cannot find final char */
+	if (cp != term->esc.bp) { /* header only or couldn't find final char */
 		/* parse DCS header */
 		if (*cp == 'q')
 			sixel_parse_header(term, term->esc.buf + 1);
