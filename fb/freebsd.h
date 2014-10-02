@@ -1,196 +1,93 @@
 /* See LICENSE for licence details. */
-
-/* _XOPEN_SOURCE >= 600 invalidates __BSD_VISIBLE
-	so define some types manually */
-typedef unsigned char   u_char;
-typedef unsigned short  u_short;
-typedef unsigned int    u_int;
-typedef unsigned long   u_long;
-
-#include <machine/param.h>
-#include <sys/consio.h>
-#include <sys/fbio.h>
-#include <sys/kbio.h>
-#include <sys/types.h>
-
-/* some structs for FreeBSD */
-struct framebuffer {
-	uint8_t *fp;          /* pointer of framebuffer(read only) */
-	uint8_t *wall;        /* buffer for wallpaper */
-	uint8_t *buf;         /* copy of framebuffer */
-	int fd;               /* file descriptor of framebuffer */
-	int width, height;    /* display resolution */
-	long screen_size;     /* screen data size (byte) */
-	int line_length;      /* line length (byte) */
-	int bytes_per_pixel;  /* BYTES per pixel */
-	video_color_palette_t /* cmap for legacy framebuffer (8bpp pseudocolor) */
-		*cmap, *cmap_org;
-	video_info_t vinfo;
-};
-
-/* common functions */
-uint8_t *load_wallpaper(struct framebuffer *fb)
+/* os specific ioctl */
+void init_cmap(cmap_t *cmap, int colors)
 {
-	uint8_t *ptr;
-
-	ptr = (uint8_t *) ecalloc(1, fb->screen_size);
-	memcpy(ptr, fb->fp, fb->screen_size);
-
-	return ptr;
+	/* commond member included in struct fbcmap and video_color_palette_t */
+	cmap->index       = 0;
+	cmap->count       = colors;
+	cmap->red         = (u_char *) ecalloc(colors, sizeof(u_char));
+	cmap->green       = (u_char *) ecalloc(colors, sizeof(u_char));
+	cmap->blue        = (u_char *) ecalloc(colors, sizeof(u_char));
+	/* not exist in struct fbcmap */
+	//cmap->transparent = NULL;
 }
 
-/* some functions for FreeBSD framebuffer */
-void cmap_create(video_color_palette_t **cmap)
+int put_cmap(int fd, cmap_t *cmap)
 {
-	*cmap                = (video_color_palette_t *) ecalloc(1, sizeof(video_color_palette_t));
-	(*cmap)->index       = 0;
-	(*cmap)->count       = COLORS;
-	(*cmap)->red         = (u_char *) ecalloc(COLORS, sizeof(u_char));
-	(*cmap)->green       = (u_char *) ecalloc(COLORS, sizeof(u_char));
-	(*cmap)->blue        = (u_char *) ecalloc(COLORS, sizeof(u_char));
-	(*cmap)->transparent = NULL;
+	return ioctl(fd, FBIOPUTCMAP, cmap);
 }
 
-void cmap_die(video_color_palette_t *cmap)
+int get_cmap(int fd, cmap_t *cmap)
 {
-	if (cmap) {
-		free(cmap->red);
-		free(cmap->green);
-		free(cmap->blue);
-		free(cmap->transparent);
-		free(cmap);
-	}
+	return ioctl(fd, FBIOGETCMAP, cmap);
 }
 
-void cmap_update(int fd, video_color_palette_t *cmap)
+/* initialize struct fb_info_t */
+void set_bitfield(video_info_t *vinfo,
+	struct bitfield_t *red, struct bitfield_t *green, struct bitfield_t *blue)
 {
-	if (cmap) {
-		if (ioctl(fd, FBIOPUTCMAP, cmap))
-			fatal("ioctl: FBIOPUTCMAP failed");
-	}
+	red->length   = vinfo->vi_pixel_fsizes[0];
+	green->length = vinfo->vi_pixel_fsizes[1];
+	blue->length  = vinfo->vi_pixel_fsizes[2];
+
+	red->offset   = vinfo->vi_pixel_fields[0];
+	green->offset = vinfo->vi_pixel_fields[1];
+	blue->offset  = vinfo->vi_pixel_fields[2];
 }
 
-void cmap_init(struct framebuffer *fb)
+void set_type_visual(struct fb_info_t *info, int type, int visual)
 {
-	extern const uint32_t color_list[]; /* global */
-	int i;
-	u_char r, g, b;
+	if (type == V_INFO_MM_PACKED || type == V_INFO_MM_DIRECT)
+		info->type = YAFT_FB_TYPE_PACKED_PIXELS;
+	else if (type == V_INFO_MM_PLANAR)
+		info->type =  YAFT_FB_TYPE_PLANES;
+	else
+		info->type =  YAFT_FB_TYPE_UNKNOWN;
 
-	if (ioctl(fb->fd, FBIOGETCMAP, fb->cmap_org)) { /* not fatal */
-		cmap_die(fb->cmap_org);
-		fb->cmap_org = NULL;
-	}
-
-	for (i = 0; i < COLORS; i++) {
-		/* where is endian info? */
-		r = bit_mask[8] & (color_list[i] >> 16);
-		g = bit_mask[8] & (color_list[i] >> 8);
-		b = bit_mask[8] & (color_list[i] >> 0);
-
-		*(fb->cmap->red   + i) = r;
-		*(fb->cmap->green + i) = g;
-		*(fb->cmap->blue  + i) = b;
-	}
-
-	cmap_update(fb->fd, fb->cmap);
+	/* in FreeBSD, Direct Color is not exist? */
+	if (type == V_INFO_MM_DIRECT && info->bits_per_pixel >= 15)
+		info->visual =  YAFT_FB_VISUAL_TRUECOLOR;
+	else if (type == V_INFO_MM_PACKED && visual & V_ADP_PALETTE
+		&& info->bits_per_pixel == 8)
+		info->visual =  YAFT_FB_VISUAL_PSEUDOCOLOR;
+	else
+		info->visual =  YAFT_FB_VISUAL_UNKNOWN;
 }
 
-static inline uint32_t color2pixel(video_info_t *vinfo, uint32_t color)
+bool set_fbinfo(int fd, struct fb_info_t *info)
 {
-	uint32_t r, g, b;
-
-	r = bit_mask[8] & (color >> 16);
-	g = bit_mask[8] & (color >> 8);
-	b = bit_mask[8] & (color >> 0);
-
-	/* pseudo color */
-	if (vinfo->vi_depth == 8) {
-		if (r == g && r == b) { /* 24 gray scale */
-			r = 24 * r / COLORS;
-			return 232 + r;
-		}                       /* 6x6x6 color cube */
-		r = 6 * r / COLORS;
-		g = 6 * g / COLORS;
-		b = 6 * b / COLORS;
-		return 16 + (r * 36) + (g * 6) + b;
-	}
-
-	/* direct color */
-	r = r >> (BITS_PER_BYTE - vinfo->vi_pixel_fsizes[0]);
-	g = g >> (BITS_PER_BYTE - vinfo->vi_pixel_fsizes[1]);
-	b = b >> (BITS_PER_BYTE - vinfo->vi_pixel_fsizes[2]);
-
-	return (r << vinfo->vi_pixel_fields[0])
-		+ (g << vinfo->vi_pixel_fields[1])
-		+ (b << vinfo->vi_pixel_fields[2]);
-}
-
-void fb_init(struct framebuffer *fb, uint32_t *color_palette)
-{
-	int i, video_mode;
-	char *path, *env;
+	int video_mode;
 	video_info_t vinfo;
 	video_adapter_info_t ainfo;
 
-	if ((path = getenv("FRAMEBUFFER")) != NULL)
-		fb->fd = eopen(path, O_RDWR);
-	else
-		fb->fd = eopen(fb_path, O_RDWR);
-
-	if (ioctl(fb->fd, FBIO_GETMODE, &video_mode))
-		fatal("ioctl: FBIO_GETMODE failed");
+	if (ioctl(fd, FBIO_GETMODE, &video_mode)) {
+		logging(ERROR, "ioctl: FBIO_GETMODE failed\n");
+		return false;
+	}
 
 	vinfo.vi_mode = video_mode;
-	if (ioctl(fb->fd, FBIO_MODEINFO, &vinfo))
-		fatal("ioctl: FBIO_MODEINFO failed");
-
-	if (ioctl(fb->fd, FBIO_ADPINFO, &ainfo))
-		fatal("ioctl: FBIO_ADPINFO failed");
-
-	fb->width  = vinfo.vi_width;
-	fb->height = vinfo.vi_height;
-	fb->screen_size = ainfo.va_window_size;
-	fb->line_length = ainfo.va_line_width;
-
-	if ((vinfo.vi_mem_model == V_INFO_MM_PACKED || vinfo.vi_mem_model == V_INFO_MM_DIRECT)
-		&& (vinfo.vi_depth == 15 || vinfo.vi_depth == 16
-		|| vinfo.vi_depth == 24 || vinfo.vi_depth == 32)) {
-		fb->cmap = fb->cmap_org = NULL;
-		fb->bytes_per_pixel = my_ceil(vinfo.vi_depth, BITS_PER_BYTE);
+	if (ioctl(fd, FBIO_MODEINFO, &vinfo)) {
+		logging(ERROR, "ioctl: FBIO_MODEINFO failed\n");
+		return false;
 	}
-	else if ((ainfo.va_flags & V_ADP_PALETTE) &&
-		vinfo.vi_mem_model == V_INFO_MM_PACKED && vinfo.vi_depth == 8) {
-		cmap_create(&fb->cmap);
-		cmap_create(&fb->cmap_org);
-		cmap_init(fb);
-		fb->bytes_per_pixel = 1;
+
+	if (ioctl(fd, FBIO_ADPINFO, &ainfo)) {
+		logging(ERROR, "ioctl: FBIO_ADPINFO failed\n");
+		return false;
 	}
-	else /* non packed pixel, mono color, grayscale: not implimented */
-		fatal("unsupported framebuffer type");
 
-	for (i = 0; i < COLORS; i++) /* init color palette */
-		color_palette[i] = (fb->bytes_per_pixel == 1) ? (uint32_t) i: color2pixel(&vinfo, color_list[i]);
+	set_bitfield(&vinfo, &info->red, &info->green, &info->blue);
 
-	fb->fp    = (uint8_t *) emmap(0, fb->screen_size, PROT_WRITE | PROT_READ, MAP_SHARED, fb->fd, 0);
-	fb->buf   = (uint8_t *) ecalloc(1, fb->screen_size);
-	//fb->wall  = (WALLPAPER && fb->bytes_per_pixel > 1) ? load_wallpaper(fb): NULL;
-	fb->vinfo = vinfo;
+	info->width  = vinfo.vi_width;
+	info->height = vinfo.vi_height;
+	info->screen_size = ainfo.va_window_size;
+	info->line_length = ainfo.va_line_width;
 
-	if (((env = getenv("YAFT")) != NULL) && (strstr(env, "wall") != NULL))
-		fb->wall = load_wallpaper(fb);
-	else
-		fb->wall = NULL;
-}
+	info->bits_per_pixel  = vinfo.vi_depth;
+	info->bytes_per_pixel = my_ceil(vinfo.vi_depth, BITS_PER_BYTE);
 
-void fb_die(struct framebuffer *fb)
-{
-	cmap_die(fb->cmap);
-	if (fb->cmap_org) {
-		ioctl(fb->fd, FBIOPUTCMAP, fb->cmap_org); /* not fatal */
-		cmap_die(fb->cmap_org);
-	}
-	free(fb->buf);
-	free(fb->wall);
-	emunmap(fb->fp, fb->screen_size);
-	eclose(fb->fd);
+	logging(DEBUG, "mem_model:%d va_flags:0x%X\n", vinfo.vi_mem_model, ainfo.va_flags);
+	set_type_visual(info, vinfo.vi_mem_model, ainfo.va_flags);
+
+	return true;
 }
