@@ -1,15 +1,31 @@
 /* See LICENSE for licence details. */
 /* error functions */
-void error(char *str)
-{
-	perror(str);
-	exit(EXIT_FAILURE);
-}
+enum loglevel_t {
+	DEBUG = 0,
+	WARN,
+	ERROR,
+	FATAL,
+};
 
-void fatal(char *str)
+void logging(enum loglevel_t loglevel, char *format, ...)
 {
-	fprintf(stderr, "%s\n", str);
-	exit(EXIT_FAILURE);
+	va_list arg;
+	static const char *loglevel2str[] = {
+		[DEBUG] = "DEBUG",
+		[WARN]  = "WARN",
+		[ERROR] = "ERROR",
+		[FATAL] = "FATAL",
+	};
+
+	/* debug message is available on verbose mode */
+	if ((loglevel == DEBUG) && (VERBOSE == false))
+		return;
+
+	fprintf(stderr, ">>%s<<\t", loglevel2str[loglevel]);
+
+	va_start(arg, format);
+	vfprintf(stderr, format, arg);
+	va_end(arg);
 }
 
 /* wrapper of C functions */
@@ -19,19 +35,21 @@ int eopen(const char *path, int flag)
 	errno = 0;
 
 	if ((fd = open(path, flag)) < 0) {
-		fprintf(stderr, "cannot open \"%s\"\n", path);
-		error("open");
+		logging(ERROR, "couldn't open \"%s\"\n", path);
+		logging(ERROR, "open: %s\n", strerror(errno));
 	}
-
 	return fd;
 }
 
-void eclose(int fd)
+int eclose(int fd)
 {
+	int ret;
 	errno = 0;
 
-	if (close(fd) < 0)
-		error("close");
+	if ((ret = close(fd)) < 0)
+		logging(ERROR, "close: %s\n", strerror(errno));
+
+	return ret;
 }
 
 FILE *efopen(const char *path, char *mode)
@@ -40,19 +58,21 @@ FILE *efopen(const char *path, char *mode)
 	errno = 0;
 
 	if ((fp = fopen(path, mode)) == NULL) {
-		fprintf(stderr, "cannot open \"%s\"\n", path);
-		error("fopen");
+		logging(ERROR, "couldn't open \"%s\"\n", path);
+		logging(ERROR, "fopen: %s\n", strerror(errno));
 	}
-
 	return fp;
 }
 
-void efclose(FILE *fp)
+int efclose(FILE *fp)
 {
+	int ret;
 	errno = 0;
 
-	if (fclose(fp) < 0)
-		error("fclose");
+	if ((ret = fclose(fp)) < 0)
+		logging(ERROR, "fclose: %s\n", strerror(errno));
+
+	return ret;
 }
 
 void *emmap(void *addr, size_t len, int prot, int flag, int fd, off_t offset)
@@ -61,17 +81,20 @@ void *emmap(void *addr, size_t len, int prot, int flag, int fd, off_t offset)
 	errno = 0;
 
 	if ((fp = mmap(addr, len, prot, flag, fd, offset)) == MAP_FAILED)
-		error("mmap");
+		logging(ERROR, "mmap: %s\n", strerror(errno));
 
 	return fp;
 }
 
-void emunmap(void *ptr, size_t len)
+int emunmap(void *ptr, size_t len)
 {
+	int ret;
 	errno = 0;
 
-	if (munmap(ptr, len) < 0)
-		error("munmap");
+	if ((ret = munmap(ptr, len)) < 0)
+		logging(ERROR, "munmap: %s\n", strerror(errno));
+
+	return ret;
 }
 
 void *ecalloc(size_t nmemb, size_t size)
@@ -80,7 +103,7 @@ void *ecalloc(size_t nmemb, size_t size)
 	errno = 0;
 
 	if ((ptr = calloc(nmemb, size)) == NULL)
-		error("calloc");
+		logging(ERROR, "calloc: %s\n", strerror(errno));
 
 	return ptr;
 }
@@ -91,56 +114,80 @@ void *erealloc(void *ptr, size_t size)
 	errno = 0;
 
 	if ((new = realloc(ptr, size)) == NULL)
-		error("realloc");
+		logging(ERROR, "realloc: %s\n", strerror(errno));
 
 	return new;
 }
 
-void eselect(int max_fd, fd_set *readfds, fd_set *writefds, fd_set *errorfds, struct timeval *tv)
-{
-	errno = 0;
-
-	if (select(max_fd, readfds, writefds, errorfds, tv) < 0) {
-		if (errno == EINTR)
-			eselect(max_fd, readfds, writefds, errorfds, tv);
-		else
-			error("select");
-	}
-}
-
-void ewrite(int fd, const void *buf, int size)
+int eselect(int maxfd, fd_set *readfds, fd_set *writefds, fd_set *errorfds, struct timeval *tv)
 {
 	int ret;
 	errno = 0;
 
-	if ((ret = write(fd, buf, size)) < 0)
-		error("write");
-	else if (ret < size)
-		ewrite(fd, (char *) buf + ret, size - ret);
+	if ((ret = select(maxfd, readfds, writefds, errorfds, tv)) < 0) {
+		if (errno == EINTR)
+			return eselect(maxfd, readfds, writefds, errorfds, tv);
+		else
+			logging(ERROR, "select: %s\n", strerror(errno));
+	}
+	return ret;
 }
 
-void esigaction(int signo, struct sigaction *act, struct sigaction *oact)
+ssize_t ewrite(int fd, const void *buf, size_t size)
 {
+	ssize_t ret;
 	errno = 0;
 
-	if (sigaction(signo, act, oact) < 0)
-		error("sigaction");
+	if ((ret = write(fd, buf, size)) < 0) {
+		if (errno == EINTR) {
+			logging(ERROR, "write: EINTR occurred\n");
+			return ewrite(fd, buf, size);
+		} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			logging(ERROR, "write: EAGAIN or EWOULDBLOCK occurred, sleep %d usec\n", SLEEP_TIME);
+			usleep(SLEEP_TIME);
+			return ewrite(fd, buf, size);
+		} else {
+			logging(ERROR, "write: %s\n", strerror(errno));
+			return ret;
+		}
+	} else if (ret < (ssize_t) size) {
+		logging(ERROR, "data size:%zu write size:%zd\n", size, ret);
+		return ewrite(fd, (char *) buf + ret, size - ret);
+	}
+	return ret;
 }
 
-void etcgetattr(int fd, struct termios *tm)
+int esigaction(int signo, struct sigaction *act, struct sigaction *oact)
 {
+	int ret;
 	errno = 0;
 
-	if (tcgetattr(fd, tm) < 0)
-		error("tcgetattr");
+	if ((ret = sigaction(signo, act, oact)) < 0)
+		logging(ERROR, "sigaction: %s\n", strerror(errno));
+
+	return ret;
 }
 
-void etcsetattr(int fd, int action, const struct termios *tm)
+int etcgetattr(int fd, struct termios *tm)
 {
+	int ret;
 	errno = 0;
 
-	if (tcsetattr(fd, action, tm) < 0)
-		error("tcgetattr");
+	if ((ret = tcgetattr(fd, tm)) < 0)
+		logging(ERROR, "tcgetattr: %s\n", strerror(errno));
+
+	return ret;
+}
+
+int etcsetattr(int fd, int action, const struct termios *tm)
+{
+	int ret;
+	errno = 0;
+
+	if ((ret = tcsetattr(fd, action, tm)) < 0)
+		logging(ERROR, "tcgetattr: %s\n", strerror(errno));
+
+	return ret;
 }
 
 int eopenpty(int *amaster, int *aslave, char *aname,
@@ -151,15 +198,19 @@ int eopenpty(int *amaster, int *aslave, char *aname,
 	errno = 0;
 
 	if ((master = posix_openpt(O_RDWR | O_NOCTTY)) < 0
-		|| grantpt(master) < 0 || unlockpt(master) < 0
-		|| (name = ptsname(master)) == NULL)
-		error("openpty");
-
+		|| grantpt(master) < 0
+		|| unlockpt(master) < 0
+		|| (name = ptsname(master)) == NULL) {
+		logging(ERROR, "openpty: %s\n", strerror(errno));
+		return -1;
+	}
 	*amaster = master;
-	*aslave  = eopen(name,  O_RDWR | O_NOCTTY);
+	*aslave  = eopen(name, O_RDWR | O_NOCTTY);
 
+	/* XXX: we don't use the slave's name, always return NULL */
 	if (aname)
-		aname = NULL; /* we don't use this value */
+		//strncpy(aname, name, TTY_NAME_MAX - 1);
+		snprintf(aname, TTY_NAME_MAX, "%s", name);
 	if (termp)
 		etcsetattr(*aslave, TCSAFLUSH, termp);
 	if (winsize)
@@ -179,19 +230,21 @@ pid_t eforkpty(int *amaster, char *name,
 
 	errno = 0;
 	pid   = fork();
-
 	if (pid < 0) {
-		error("fork");
+		logging(ERROR, "fork: %s\n", strerror(errno));
+		return pid;
 	} else if (pid == 0) { /* child */
 		close(master);
-
 		setsid();
+
 		dup2(slave, STDIN_FILENO);
 		dup2(slave, STDOUT_FILENO);
 		dup2(slave, STDERR_FILENO);
-		/* this ioctl may fail in Mac OS X: so we don't call exit()
+
+		/* XXX: this ioctl may fail in Mac OS X
 			ref http://www.opensource.apple.com/source/Libc/Libc-825.25/util/pty.c?txt */
-		ioctl(slave, TIOCSCTTY, NULL);
+		if (ioctl(slave, TIOCSCTTY, NULL))
+			logging(WARN, "ioctl: TIOCSCTTY faild\n");
 		close(slave);
 
 		return 0;
@@ -209,7 +262,7 @@ int esetenv(const char *name, const char *value, int overwrite)
 	errno = 0;
 
 	if ((ret = setenv(name, value, overwrite)) < 0)
-		error("setenv");
+		logging(ERROR, "setenv: %s\n", strerror(errno));
 
 	return ret;
 }
@@ -220,7 +273,19 @@ int eexecvp(const char *file, const char *argv[])
 	errno = 0;
 
 	if ((ret = execvp(file, (char * const *) argv)) < 0)
-		error("execvp");
+		logging(ERROR, "execvp: %s\n", strerror(errno));
+
+	return ret;
+}
+
+int eexecl(const char *path)
+{
+	int ret;
+	errno = 0;
+
+	/* XXX: assume only one argument is given */
+	if ((ret = execl(path, path, NULL)) < 0)
+		logging(ERROR, "execl: %s\n", strerror(errno));
 
 	return ret;
 }
@@ -232,7 +297,7 @@ long estrtol(const char *nptr, char **endptr, int base)
 
 	ret = strtol(nptr, endptr, base);
 	if (ret == LONG_MIN || ret == LONG_MAX) {
-		perror("strtol");
+		logging(ERROR, "strtol: %s\n", strerror(errno));
 		return 0;
 	}
 
@@ -254,9 +319,7 @@ void add_parm(struct parm_t *pt, char *cp)
 	if (pt->argc >= MAX_ARGS)
 		return;
 
-	if (DEBUG)
-		fprintf(stderr, "argv[%d]: %s\n",
-			pt->argc, (cp == NULL) ? "NULL": cp);
+	logging(DEBUG, "argv[%d]: %s\n", pt->argc, (cp == NULL) ? "NULL": cp);
 
 	pt->argv[pt->argc] = cp;
 	pt->argc++;
@@ -276,8 +339,7 @@ void parse_arg(char *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
 		return;
 
 	length = strlen(buf);
-	if (DEBUG)
-		fprintf(stderr, "parse_arg()\nlength:%u\n", (unsigned) length);
+	logging(DEBUG, "parse_arg() length:%u\n", (unsigned) length);
 
 	vp = NULL;
 	for (i = 0; i < length; i++) {
@@ -296,8 +358,7 @@ void parse_arg(char *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
 			add_parm(pt, vp);
 	}
 
-	if (DEBUG)
-		fprintf(stderr, "argc:%d\n", pt->argc);
+	logging(DEBUG, "argc:%d\n", pt->argc);
 }
 
 /* other functions */
@@ -337,4 +398,14 @@ int hex2num(char *str)
 		return 0;
 
 	return estrtol(str, NULL, 16);
+}
+
+int sum(struct parm_t *parm)
+{
+	int i, sum = 0;
+
+	for (i = 0; i < parm->argc; i++)
+		sum += dec2num(parm->argv[i]);
+
+	return sum;
 }
