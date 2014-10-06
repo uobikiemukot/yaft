@@ -2,52 +2,37 @@ int pre_match(const char *buf, const char *str) {
 	return !strncmp(buf, str, strlen(str));
 }
 
-void print_bitmap(uint32_t *bitmap)
-{
-	unsigned int i, j;
-
-	for (i = 0; i < MAX_HEIGHT; i++) {
-		for (j = 1; j <= sizeof(uint32_t) * BITS_PER_BYTE; j++) {
-			if (bitmap[i] & (1 << (sizeof(uint32_t) * BITS_PER_BYTE - j)))
-				fprintf(stderr, "@");
-			else
-				fprintf(stderr, ".");
-		}
-		fprintf(stderr, "\n");
-	}
-}
-
 int bit2byte(int bits)
 {
 	return (bits + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
 }
 
-void shift_glyph(struct bdf_t *bdf, struct bdf_glyph_t *glyph)
+void shift_glyph(struct bdf_header_t *bdf_header, struct bdf_char_t *bdf_char)
 {
 	int i, byte, shift;
-	uint32_t tmp;
+	bitmap_width_t bitmap;
 
-	for (i = 0; i < glyph->bbh; i++) {
-		tmp = glyph->bitmap[i];
-		byte = bit2byte(glyph->bbw);
-		tmp <<= (bit2byte(glyph->dwidth) - byte) * BITS_PER_BYTE;
-		if (glyph->bbx >= 0)
-			tmp >>= glyph->bbx;
+	for (i = 0; i < bdf_char->bbh; i++) {
+		bitmap  = bdf_char->bitmap[i];
+		byte    = bit2byte(bdf_char->bbw);
+		bitmap <<= (bit2byte(bdf_char->dwidth) - byte) * BITS_PER_BYTE;
+		if (bdf_char->bbx >= 0)
+			bitmap >>= bdf_char->bbx;
 		else {
-			fprintf(stderr, "maybe overlapping (glpyh:%X bbx:%d)\n", glyph->encoding, glyph->bbx);
-			tmp <<= abs(glyph->bbx);
+			logging(ERROR, "maybe overlapping (glpyh:%X bbx:%d)\n", bdf_char->encoding, bdf_char->bbx);
+			bitmap <<= abs(bdf_char->bbx);
 		}
-		glyph->bitmap[i] = tmp;
+		bdf_char->bitmap[i] = bitmap;
 	}
 
-	shift = bdf->ascent - (glyph->bbh + glyph->bby);
+	shift = bdf_header->ascent - (bdf_char->bbh + bdf_char->bby);
 	if (shift >= 0) {
-		memmove(glyph->bitmap + shift, glyph->bitmap, sizeof(uint32_t) * glyph->bbh);
-		memset(glyph->bitmap, 0, sizeof(uint32_t) * shift);
+		memmove(bdf_char->bitmap + shift, bdf_char->bitmap, sizeof(bitmap_width_t) * bdf_char->bbh);
+		memset(bdf_char->bitmap, 0, sizeof(bitmap_width_t) * shift);
 	}
 	else {
-		fprintf(stderr, "maybe overlapping (glpyh:%X vertical shift:%d)\n", glyph->encoding, shift);
-		memmove(glyph->bitmap, glyph->bitmap + abs(shift), sizeof(uint32_t) * glyph->bbh);
+		logging(ERROR, "maybe overlapping (glpyh:%X vertical shift:%d)\n", bdf_char->encoding, shift);
+		memmove(bdf_char->bitmap, bdf_char->bitmap + abs(shift), sizeof(bitmap_width_t) * bdf_char->bbh);
 	}
 }
 
@@ -74,60 +59,66 @@ void load_table(char *path, enum encode_t encode)
 		if ((cp = strchr(buf, '\n')) != NULL)
 			*cp = '\0';
 
-		sscanf(buf, "%X %X", &from, &to);
+		sscanf(buf, "%X %X", (unsigned int *) &from, (unsigned int *) &to);
 		convert_table[from] = to;
 	}
 }
 
-int read_header(char *buf, struct bdf_t *bdf)
+int read_header(char *buf, struct bdf_header_t *bdf_header)
 {
 	char *cp;
 
 	if (pre_match(buf, "FONTBOUNDINGBOX "))
 		sscanf(buf + strlen("FONTBOUNDINGBOX "), "%d %d %d %d",
-			&bdf->bbw, &bdf->bbh, &bdf->bbx, &bdf->bby);
+			&bdf_header->bbw, &bdf_header->bbh, &bdf_header->bbx, &bdf_header->bby);
 	else if (pre_match(buf, "FONT_ASCENT "))
-		bdf->ascent = atoi(buf + strlen("FONT_ASCENT "));
+		bdf_header->ascent = atoi(buf + strlen("FONT_ASCENT "));
 	else if (pre_match(buf, "FONT_DESCENT "))
-		bdf->descent = atoi(buf + strlen("FONT_DESCENT "));
+		bdf_header->descent = atoi(buf + strlen("FONT_DESCENT "));
 	else if (pre_match(buf, "DEFAULT_CHAR "))
-		bdf->default_char = atoi(buf + strlen("DEFAULT_CHAR "));
+		bdf_header->default_char = atoi(buf + strlen("DEFAULT_CHAR "));
 	else if (pre_match(buf, "PIXEL_SIZE "))
-		bdf->pixel_size = atoi(buf + strlen("PIXEL_SIZE "));
+		bdf_header->pixel_size = atoi(buf + strlen("PIXEL_SIZE "));
 	else if (pre_match(buf, "CHARSET_REGISTRY ")) {
-		strncpy(bdf->charset, buf + strlen("CHARSET_REGISTRY "), BUFSIZE - 1);
-		fprintf(stderr, "%s\n", bdf->charset);
-		for (cp = bdf->charset; *cp != '\0'; cp++)
-			*cp = toupper(*cp);
+		strncpy(bdf_header->charset, buf + strlen("CHARSET_REGISTRY "), BUFSIZE - 1);
+		logging(DEBUG, "%s\n", bdf_header->charset);
 
-		if (strstr(bdf->charset, "X68000") != NULL || strstr(bdf->charset, "x68000") != NULL)
+		for (cp = bdf_header->charset; *cp != '\0'; cp++)
+			*cp = (char) toupper((int) *cp);
+
+		if (strstr(bdf_header->charset, "X68000") != NULL
+			|| strstr(bdf_header->charset, "x68000") != NULL)
 			load_table("./table/X68000", X68000);
-		else if (strstr(bdf->charset, "JISX0201") != NULL || strstr(bdf->charset, "jisx0201") != NULL)
+		else if (strstr(bdf_header->charset, "JISX0201") != NULL
+			|| strstr(bdf_header->charset, "jisx0201") != NULL)
 			load_table("./table/JISX0201", JISX0201);
-		else if (strstr(bdf->charset, "JISX0208") != NULL || strstr(bdf->charset, "jisx0208") != NULL)
+		else if (strstr(bdf_header->charset, "JISX0208") != NULL
+			|| strstr(bdf_header->charset, "jisx0208") != NULL)
 			load_table("./table/JISX0208", JISX0208);
-		else if (strstr(bdf->charset, "ISO8859") != NULL || strstr(bdf->charset, "iso8859") != NULL)
+		else if (strstr(bdf_header->charset, "ISO8859") != NULL
+			|| strstr(bdf_header->charset, "iso8859") != NULL)
 			load_table("./table/ISO8859", ISO8859);
 		else /* assume "ISO10646" */
 			load_table("./table/ISO10646", ISO10646);
 	}
 	else if (pre_match(buf, "CHARS ")) {
-		bdf->chars =  atoi(buf + strlen("CHARS "));
+		bdf_header->chars =  atoi(buf + strlen("CHARS "));
 		return BDF_CHAR;
 	}
 
 	return BDF_HEADER;
 }
 
-int read_char(char *buf, struct bdf_glyph_t *glyph)
+int read_char(char *buf, struct bdf_char_t *bdf_char)
 {
 	if (pre_match(buf, "BBX "))
-		sscanf(buf + strlen("BBX "), "%d %d %d %d", &glyph->bbw, &glyph->bbh, &glyph->bbx, &glyph->bby);
+		sscanf(buf + strlen("BBX "), "%d %d %d %d",
+			&bdf_char->bbw, &bdf_char->bbh, &bdf_char->bbx, &bdf_char->bby);
 	else if (pre_match(buf, "DWIDTH "))
-		glyph->dwidth = atoi(buf + strlen("DWIDTH "));
+		bdf_char->dwidth = atoi(buf + strlen("DWIDTH "));
 	else if (pre_match(buf, "ENCODING ")) {
-		glyph->encoding = atoi(buf + strlen("ENCODING "));
-		//fprintf(stderr, "reading char:%d\n", glyph->encoding);
+		bdf_char->encoding = atoi(buf + strlen("ENCODING "));
+		//logging(DEBUG, "reading char:%d\n", bdf_char->encoding);
 	}
 	else if (pre_match(buf, "BITMAP")) {
 		return BDF_BITMAP;
@@ -136,67 +127,85 @@ int read_char(char *buf, struct bdf_glyph_t *glyph)
 	return BDF_CHAR;
 }
 
-int read_bitmap(struct glyph_t *fonts, char *buf, struct bdf_t *bdf, struct bdf_glyph_t *glyph)
+int read_bitmap(struct glyph_list_t **glist_head, struct glyph_t *default_glyph,
+	char *buf, struct bdf_header_t *bdf_header, struct bdf_char_t *bdf_char)
 {
-	int i;
+	static int count = 0;
 	uint32_t code;
 	uint8_t width, height;
-
-	static int count = 0;
+	struct glyph_list_t *listp;
+	struct glyph_t *glyph;
 
 	if (pre_match(buf, "ENDCHAR")) {
-		shift_glyph(bdf, glyph);
 		count = 0;
 
-		code = convert_table[glyph->encoding];
-		width = glyph->dwidth;
-		height = bdf->ascent + bdf->descent;
+		shift_glyph(bdf_header, bdf_char);
 
-		//fprintf(stderr, "code:%d width:%d height:%d\n", code, width, height);
+		code   = convert_table[bdf_char->encoding];
+		width  = bdf_char->dwidth;
+		height = bdf_header->ascent + bdf_header->descent;
 
-		if (code < UCS2_CHARS) {
-			fonts[code].width = width;
-			fonts[code].height = height;
-			fonts[code].bitmap = (uint32_t *) ecalloc(fonts[code].height, sizeof(uint32_t));
+		//logging(DEBUG, "code:%d width:%d height:%d\n", code, width, height);
 
-			for (i = 0; i < fonts[code].height; i++)
-				fonts[code].bitmap[i] = glyph->bitmap[i];
+		if (code < UCS2_CHARS && width <= 64) {
+			listp = ecalloc(1, sizeof(struct glyph_list_t));
+			glyph = ecalloc(1, sizeof(struct glyph_t));
+
+			glyph->width  = width;
+			glyph->height = height;
+			/* XXX: max width 64 pixels (wide char)  */
+			glyph->bitmap = (bitmap_width_t *) ecalloc(glyph->height, sizeof(bitmap_width_t));
+
+			for (int i = 0; i < glyph->height; i++)
+				glyph->bitmap[i] = bdf_char->bitmap[i];
+
+			/* add new element to glyph list */
+			listp->code  = code;
+			listp->glyph = glyph;
+			listp->next  = *glist_head;
+			*glist_head  = listp;
+
+			if (code == DEFAULT_CHAR)
+				*default_glyph = *glyph;
 		}
-		memset(glyph, 0, sizeof(struct bdf_glyph_t));
+		memset(bdf_char, 0, sizeof(struct bdf_char_t));
 		return BDF_CHAR;
 	}
 	else
-		sscanf(buf, "%X", &glyph->bitmap[count++]);
+		sscanf(buf, "%X", (unsigned int *) &bdf_char->bitmap[count++]);
 
 	return BDF_BITMAP;
 }
 
-void load_bdf_glyph(struct glyph_t *fonts, char *path)
+bool load_bdf_glyph(struct glyph_list_t **glist_head, struct glyph_t *default_glyph, char *path)
 {
 	int mode = BDF_HEADER;
-	char buf[BUFSIZE], *cp;
+	char lbuf[BUFSIZE], *cp;
 	FILE *fp;
-	struct bdf_t bdf;
-	struct bdf_glyph_t glyph;
+	struct bdf_header_t bdf_header;
+	struct bdf_char_t bdf_char;
 
-	fp = efopen(path, "r");
+	if ((fp = efopen(path, "r")) == NULL)
+		return false;
 
-	memset(&bdf, 0, sizeof(struct bdf_t));
-	memset(&glyph, 0, sizeof(struct bdf_glyph_t));
+	memset(&bdf_header, 0, sizeof(struct bdf_header_t));
+	memset(&bdf_char, 0, sizeof(struct bdf_char_t));
 
-	fprintf(stderr, "read bdf: %s\n", path);
+	logging(DEBUG, "read bdf: %s\n", path);
 
-	while (fgets(buf, BUFSIZE, fp) != NULL) {
-		if ((cp = strchr(buf, '\n')) != NULL)
+	while (fgets(lbuf, BUFSIZE, fp) != NULL) {
+		if ((cp = strchr(lbuf, '\n')) != NULL)
 			*cp = '\0';
 
-		//fprintf(stderr, "%s\n", buf);
+		//fprintf(stderr, "%s\n", lbuf);
 
 		if (mode == BDF_HEADER)
-			mode = read_header(buf, &bdf);
+			mode = read_header(lbuf, &bdf_header);
 		else if (mode == BDF_CHAR)
-			mode = read_char(buf, &glyph);
+			mode = read_char(lbuf, &bdf_char);
 		else if (mode == BDF_BITMAP)
-			mode = read_bitmap(fonts, buf, &bdf, &glyph);
+			mode = read_bitmap(glist_head, default_glyph, lbuf, &bdf_header, &bdf_char);
 	}
+	efclose(fp);
+	return true;
 }

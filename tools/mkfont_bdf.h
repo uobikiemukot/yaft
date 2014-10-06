@@ -3,12 +3,15 @@
 #include <ctype.h>
 #include <errno.h>
 #include <locale.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
+
+typedef uint64_t bitmap_width_t;
 
 enum char_code {
 	/* 7 bit control char */
@@ -25,7 +28,7 @@ enum misc {
 	BUFSIZE           = 1024,    /* read, esc, various buffer size */
 	UCS2_CHARS        = 0x10000, /* number of UCS2 glyph */
 	DEFAULT_CHAR      = SPACE,   /* used for erase char, cell_size */
-	MAX_HEIGHT        = 32,
+	MAX_HEIGHT        = 64,
 	BDF_HEADER        = 0,
 	BDF_CHAR          = 1,
 	BDF_BITMAP        = 2,
@@ -51,10 +54,16 @@ enum glyph_width_t {
 
 struct glyph_t {
 	uint8_t width, height;
-	uint32_t *bitmap;
+	bitmap_width_t *bitmap;
 };
 
-struct bdf_t {
+struct glyph_list_t {
+	uint32_t code;
+	struct glyph_t *glyph;
+	struct glyph_list_t *next;
+};
+
+struct bdf_header_t {
 	int bbw, bbh, bbx, bby;
 	int ascent, descent;
 	int default_char;
@@ -63,11 +72,11 @@ struct bdf_t {
 	char charset[BUFSIZE];
 };
 
-struct bdf_glyph_t {
+struct bdf_char_t {
 	int bbw, bbh, bbx, bby;
 	int dwidth;
 	int encoding;
-	uint32_t bitmap[MAX_HEIGHT];
+	bitmap_width_t bitmap[MAX_HEIGHT];
 };
 
 int convert_table[UCS2_CHARS];
