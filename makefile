@@ -22,7 +22,7 @@ yaft: mkfont_bdf
 
 yaftx: mkfont_bdf
 
-mkfont_bdf: tools/mkfont_bdf.c tools/font.h tools/bdf.h
+mkfont_bdf: tools/mkfont_bdf.c tools/mkfont_bdf.h tools/bdf.h tools/util.h
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
 glyph.h: mkfont_bdf
