@@ -75,12 +75,11 @@ You can use tools/mkfont_bdf to create glyph.h
 usage: tools/mkfont_bdf ALIAS_FILE BDF1 BDF2 BDF3 ... > glyph.h
 
 -	ALIAS_FILE: glyph substitution rule file (see table/alias)
--	BDF1, BDF2, BDF3...:
+-	BDF1, BDF2, BDF3...: bdf files
 	+	yaft supports only "monospace" bdf font
-	+	yaft doesn't support bold fonts (yaft just brightens color at bold attribute)
+	+	yaft doesn't support bold fonts (yaft just uses bright color for bold attribute)
 	+	you can specify mulitiple bdf fonts (but these fonts MUST be the same size)
-	+	if there are same glyphs in different bdf file,
-		yaft use the glyph included in the last specified bdf file
+	+	If there is more than one glyph of the same codepoint, the glyph included in the first bdf file is choosed
 
 change makefile like this
 
