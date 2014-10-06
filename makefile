@@ -8,7 +8,7 @@ XCFLAGS  ?= -std=c99 -pedantic -Wall -Wextra -I/usr/include/X11/ -O3 -s -pipe
 XLDFLAGS ?= -lX11
 
 HDR = glyph.h yaft.h conf.h color.h parse.h terminal.h util.h \
-	ctrlseq/esc.h ctrlseq/csi.h ctrlseq/osc.h ctrlseq/dcs.h \
+	ctrlseq/esc.h ctrlseq/csi.h \
 	fb/common.h fb/linux.h fb/freebsd.h fb/netbsd.h fb/openbsd.h \
 	x/x.h
 

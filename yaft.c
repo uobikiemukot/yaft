@@ -7,8 +7,6 @@
 #include "terminal.h"
 #include "ctrlseq/esc.h"
 #include "ctrlseq/csi.h"
-#include "ctrlseq/osc.h"
-#include "ctrlseq/dcs.h"
 #include "parse.h"
 
 void sig_handler(int signo)

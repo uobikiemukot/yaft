@@ -108,79 +108,17 @@ void csi_sequence(struct terminal_t *term, uint8_t ch)
 	reset_esc(term);
 }
 
-int is_osc_parm(int c)
-{
-	if (isdigit(c) || isalpha(c) ||
-		c == '?' || c == ':' || c == '/' || c == '#')
-		return true;
-	else
-		return false;
-}
-
-void omit_string_terminator(char *bp, uint8_t ch)
-{
-	if (ch == BACKSLASH) /* ST: ESC BACKSLASH */
-		*(bp - 2) = '\0';
-	else                 /* ST: BEL */
-		*(bp - 1) = '\0';
-}
-
 void osc_sequence(struct terminal_t *term, uint8_t ch)
 {
-	int osc_mode;
-	struct parm_t parm;
-
-	omit_string_terminator(term->esc.bp, ch);
-
+	(void) ch;
 	logging(DEBUG, "osc: OSC %s\n", term->esc.buf);
-
-	reset_parm(&parm);
-	parse_arg(term->esc.buf + 1, &parm, ';', is_osc_parm); /* skip ']' */
-
-	if (parm.argc > 0) {
-		osc_mode = dec2num(parm.argv[0]);
-		logging(DEBUG, "osc_mode:%d\n", osc_mode);
-
-		/* XXX: disable because this functions only work 24/32bpp
-			-> support other bpp (including pseudo color) */
-		if (osc_mode == 4)
-			set_palette(term, &parm);
-		else if (osc_mode == 104)
-			reset_palette(term, &parm);
-		if (osc_mode == 8900)
-			glyph_width_report(term, &parm);
-	}
 	reset_esc(term);
 }
 
 void dcs_sequence(struct terminal_t *term, uint8_t ch)
 {
-	char *cp;
-
-	omit_string_terminator(term->esc.bp, ch);
-
+	(void) ch;
 	logging(DEBUG, "dcs: DCS %s\n", term->esc.buf);
-
-	/* check DCS header */
-	cp = term->esc.buf + 1; /* skip P */
-	while (cp < term->esc.bp) {
-		if (*cp == '{' || *cp == 'q')                      /* DECDLD or sixel */
-			break;
-		else if (*cp == ';' || ('0' <= *cp && *cp <= '9')) /* valid DCS header */
-			;
-		else                                               /* invalid sequence */
-			cp = term->esc.bp;
-		cp++;
-	}
-
-	if (cp != term->esc.bp) { /* header only or couldn't find final char */
-		/* parse DCS header */
-		if (*cp == 'q')
-			sixel_parse_header(term, term->esc.buf + 1);
-		else if (*cp == '{')
-			decdld_parse_header(term, term->esc.buf + 1);
-	}
-
 	reset_esc(term);
 }
 

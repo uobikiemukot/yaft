@@ -170,7 +170,6 @@ static inline uint32_t color2pixel(struct fb_info_t *info, uint32_t color)
 			+ (b << info->blue.offset);
 }
 
-
 bool init_truecolor(struct fb_info_t *info, cmap_t **cmap, cmap_t **cmap_orig)
 {
 	switch(info->bits_per_pixel) {
@@ -364,24 +363,6 @@ void fb_die(struct framebuffer_t *fb)
 	//fb_release(fb->fd, &fb->info); /* os specific */
 }
 
-static inline void draw_sixel(struct framebuffer_t *fb, int line, int col, uint8_t *pixmap)
-{
-	int h, w, src_offset, dst_offset;
-	uint32_t pixel, color = 0;
-
-	for (h = 0; h < CELL_HEIGHT; h++) {
-		for (w = 0; w < CELL_WIDTH; w++) {
-			src_offset = BYTES_PER_PIXEL * (h * CELL_WIDTH + w);
-			memcpy(&color, pixmap + src_offset, BYTES_PER_PIXEL);
-
-			dst_offset = (line * CELL_HEIGHT + h) * fb->info.line_length
-				+ (col * CELL_WIDTH + w) * fb->info.bytes_per_pixel;
-			pixel = color2pixel(&fb->info, color);
-			memcpy(fb->buf + dst_offset, &pixel, fb->info.bytes_per_pixel);
-		}
-	}
-}
-
 static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, int line)
 {
 	int pos, size, bdf_padding, glyph_width, margin_right;
@@ -395,12 +376,6 @@ static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, 
 
 		/* target cell */
 		cellp = &term->cells[line][col];
-
-		/* draw sixel pixmap */
-		if (cellp->has_pixmap) {
-			draw_sixel(fb, line, col, cellp->pixmap);
-			continue;
-		}
 
 		/* copy current color_pair (maybe changed) */
 		color_pair = cellp->color_pair;
@@ -460,12 +435,6 @@ static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, 
 
 void refresh(struct framebuffer_t *fb, struct terminal_t *term)
 {
-	if (term->palette_modified) {
-		term->palette_modified = false;
-		for (int i = 0; i < COLORS; i++)
-			fb->real_palette[i] = color2pixel(&fb->info, term->virtual_palette[i]);
-	}
-
 	if (term->mode & MODE_CURSOR)
 		term->line_dirty[term->cursor.y] = true;
 
