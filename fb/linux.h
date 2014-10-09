@@ -1,6 +1,6 @@
 /* See LICENSE for licence details. */
 /* os specific ioctl */
-void init_cmap(cmap_t *cmap, int colors)
+void alloc_cmap(cmap_t *cmap, int colors)
 {
 	cmap->start  = 0;
 	cmap->len    = colors;

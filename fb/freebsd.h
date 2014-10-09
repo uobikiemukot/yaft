@@ -1,6 +1,6 @@
 /* See LICENSE for licence details. */
 /* os specific ioctl */
-void init_cmap(cmap_t *cmap, int colors)
+void alloc_cmap(cmap_t *cmap, int colors)
 {
 	/* commond member included in struct fbcmap and video_color_palette_t */
 	cmap->index       = 0;
@@ -37,6 +37,7 @@ void set_bitfield(video_info_t *vinfo,
 
 void set_type_visual(struct fb_info_t *info, int type, int visual)
 {
+	/* ref: jfbterm-FreeBSD http://www.ac.auone-net.jp/~baba/jfbterm/ */
 	if (type == V_INFO_MM_PACKED || type == V_INFO_MM_DIRECT)
 		info->type = YAFT_FB_TYPE_PACKED_PIXELS;
 	else if (type == V_INFO_MM_PLANAR)
