@@ -52,14 +52,9 @@ bool load_alias(struct glyph_t *font[], char *alias)
 		if ((dst >= UCS2_CHARS) || (src >= UCS2_CHARS))
 			continue;
 
-		if (font[src] != NULL && font[dst] != NULL) {
+		if (font[src] != NULL) {
 			logging(DEBUG, "swapped: use U+%.4X for U+%.4X\n", src, dst);
-
-			//free(font[dst]->bitmap);
-			font[dst]->width  = font[src]->width;
-			font[dst]->height = font[src]->height;
-			//font[dst]->bitmap = font[src]->bitmap;
-			memcpy(font[dst]->bitmap, font[src]->bitmap, sizeof(bitmap_width_t) * font[src]->height);
+			font[dst] = font[src];
 		}
 	}
 	efclose(fp);
