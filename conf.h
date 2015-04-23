@@ -24,15 +24,17 @@ const char *term_name = "yaft-256color";
 
 /* framubuffer device */
 #if defined(__linux__)
-	const char *fb_path = "/dev/fb0";
+	const char *fb_path_default = "/dev/fb0";
 #elif defined(__FreeBSD__)
-	const char *fb_path = "/dev/tty";
+	const char *fb_path_default = "/dev/tty";
 #elif defined(__NetBSD__)
-	const char *fb_path = "/dev/ttyE0";
+	const char *fb_path_default = "/dev/ttyE0";
 #elif defined(__OpenBSD__)
-	const char *fb_path = "/dev/ttyC0";
+	const char *fb_path_default = "/dev/ttyC0";
 #endif
-//const char *fb_path = "/dev/graphics/fb0"; /* for Android */
+//const char *fb_path_default = "/dev/graphics/fb0"; /* for Android */
+
+extern const char *fb_path;
 
 /* shell: refer SHELL environment at first */
 #if defined(__linux__) || defined(__MACH__)

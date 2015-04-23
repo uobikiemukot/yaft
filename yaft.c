@@ -13,6 +13,8 @@
 	#include "fb/openbsd.h"
 #endif
 
+const char *fb_path;
+
 #include "draw.h"
 #include "terminal.h"
 #include "function.h"
@@ -147,6 +149,8 @@ int main()
 	struct termios save_tm;
 
 	/* init */
+	if ((fb_path = getenv("FRAMEBUFFER")) != NULL)
+		fb_path = fb_path_default;
 	setlocale(LC_ALL, "");
 	fb_init(&fb, term.color_palette);
 	term_init(&term, fb.width, fb.height);
