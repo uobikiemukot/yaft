@@ -1,5 +1,5 @@
 #include "mkfont_bdf.h"
-#include "../conf.h"
+#include "conf.h"
 #include "util.h"
 #include "bdf.h"
 
@@ -52,9 +52,16 @@ bool load_alias(struct glyph_t *font[], char *alias)
 		if ((dst >= UCS2_CHARS) || (src >= UCS2_CHARS))
 			continue;
 
+		//if (font[src] != NULL && font[dst] != NULL) {
 		if (font[src] != NULL) {
 			logging(DEBUG, "swapped: use U+%.4X for U+%.4X\n", src, dst);
 			font[dst] = font[src];
+
+			//free(font[dst]->bitmap);
+			//font[dst]->width  = font[src]->width;
+			//font[dst]->height = font[src]->height;
+			//font[dst]->bitmap = font[src]->bitmap;
+			//memcpy(font[dst]->bitmap, font[src]->bitmap, sizeof(bitmap_width_t) * font[src]->height);
 		}
 	}
 	efclose(fp);
@@ -80,11 +87,11 @@ bool check_font(struct glyph_t **font, struct glyph_t *empty_half, struct glyph_
 	}
 	if (font[SUBSTITUTE_WIDE] == NULL) {
 		logging(WARN, "wide substitute glyph(U+%.4X) not found, use empty glyph\n", SUBSTITUTE_WIDE);
-		font[SUBSTITUTE_HALF] = empty_wide;
+		font[SUBSTITUTE_WIDE] = empty_wide;
 	}
 	if (font[REPLACEMENT_CHAR] == NULL) {
 		logging(WARN, "replacement glyph(U+%.4X) not found, use empty glyph\n", REPLACEMENT_CHAR);
-		font[SUBSTITUTE_HALF] = empty_half;
+		font[REPLACEMENT_CHAR] = empty_half;
 	}
 	return true;
 }
