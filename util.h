@@ -363,20 +363,6 @@ void parse_arg(char *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
 }
 
 /* other functions */
-uint32_t bit_reverse(uint32_t val, int bits)
-{
-	uint32_t ret = val;
-	int shift = bits - 1;
-
-	for (val >>= 1; val; val >>= 1) {
-		ret <<= 1;
-		ret |= val & 1;
-		shift--;
-	}
-
-	return ret <<= shift;
-}
-
 int my_ceil(int val, int div)
 {
 	if (div == 0)
