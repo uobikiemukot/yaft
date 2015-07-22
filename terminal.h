@@ -342,8 +342,7 @@ bool term_init(struct terminal *term, int width, int height)
 
 	term->esc.size = ESCSEQ_SIZE;
 
-	logging(DEBUG, "width:%d height:%d cols:%d lines:%d\n",
-		width, height, term->cols, term->lines);
+	logging(DEBUG, "terminal cols:%d lines:%d\n", term->cols, term->lines);
 
 	/* allocate memory */
 	term->line_dirty   = (bool *) ecalloc(term->lines, sizeof(bool));
