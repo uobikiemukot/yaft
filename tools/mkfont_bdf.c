@@ -1,5 +1,5 @@
 #include "mkfont_bdf.h"
-#include "conf.h"
+#include "../conf.h"
 #include "util.h"
 #include "bdf.h"
 
