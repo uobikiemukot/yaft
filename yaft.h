@@ -171,6 +171,6 @@ struct parm_t { /* for parse_arg() */
 };
 
 volatile sig_atomic_t vt_active     = true;  /* SIGUSR1: vt is active or not */
-volatile sig_atomic_t redraw_needed = false; /* SIGUSR1: vt activated */
+volatile sig_atomic_t need_redraw   = false; /* SIGUSR1: vt activated */
 volatile sig_atomic_t child_alive   = false; /* SIGCHLD: child process (shell) is alive or not */
 struct termios termios_orig;

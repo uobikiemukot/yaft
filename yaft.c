@@ -17,7 +17,7 @@ void sig_handler(int signo)
 	/* global */
 	extern volatile sig_atomic_t vt_active;
 	extern volatile sig_atomic_t child_alive;
-	extern volatile sig_atomic_t redraw_needed;
+	extern volatile sig_atomic_t need_redraw;
 
 	logging(DEBUG, "caught signal! no:%d\n", signo);
 
@@ -30,15 +30,15 @@ void sig_handler(int signo)
 			ioctl(STDIN_FILENO, VT_RELDISP, 1);
 
 			if (BACKGROUND_DRAW) { /* update passive cursor */
-				redraw_needed = true;
+				need_redraw = true;
 			} else {               /* sleep until next vt switching */
 				sigfillset(&sigset);
 				sigdelset(&sigset, SIGUSR1);
 				sigsuspend(&sigset);
 			}
 		} else {                   /* vt activate */
-			vt_active     = true;
-			redraw_needed = true;
+			vt_active   = true;
+			need_redraw = true;
 			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
 		}
 	}
@@ -154,7 +154,7 @@ int main()
 	struct framebuffer fb;
 	struct terminal term;
 	/* global */
-	extern volatile sig_atomic_t redraw_needed;
+	extern volatile sig_atomic_t need_redraw;
 	extern volatile sig_atomic_t child_alive;
 	extern struct termios termios_orig;
 
@@ -184,8 +184,8 @@ int main()
 
 	/* main loop */
 	while (child_alive) {
-		if (redraw_needed) {
-			redraw_needed = false;
+		if (need_redraw) {
+			need_redraw = false;
 			cmap_update(fb.fd, fb.cmap); /* after VT switching, need to restore cmap (in 8bpp mode) */
 			redraw(&term);
 			refresh(&fb, &term);
