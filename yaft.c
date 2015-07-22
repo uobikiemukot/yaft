@@ -69,14 +69,19 @@ bool tty_init(struct termios *termios_orig)
 
 	if (VT_CONTROL) {
 		esigaction(SIGUSR1, &sigact, NULL);
+
 		struct vt_mode vtm;
 		vtm.mode   = VT_PROCESS;
 		vtm.waitv  = 0;
 		vtm.relsig = vtm.acqsig = vtm.frsig = SIGUSR1;
+
 		if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm))
-			logging(FATAL, "ioctl: VT_SETMODE failed (maybe here is not console)\n");
-		if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS))
-			logging(FATAL, "ioctl: KDSETMODE failed (maybe here is not console)\n");
+			logging(WARN, "ioctl: VT_SETMODE failed (maybe here is not console)\n");
+
+		if (FORCE_TEXT_MODE == false) {
+			if (ioctl(STDIN_FILENO, KDSETMODE, KD_GRAPHICS))
+				logging(WARN, "ioctl: KDSETMODE failed (maybe here is not console)\n");
+		}
 	}
 
 	etcgetattr(STDIN_FILENO, termios_orig);
@@ -97,12 +102,16 @@ void tty_die(struct termios *termios_orig)
 
 	if (VT_CONTROL) {
 		sigaction(SIGUSR1, &sigact, NULL);
+
 		struct vt_mode vtm;
 		vtm.mode   = VT_AUTO;
 		vtm.waitv  = 0;
 		vtm.relsig = vtm.acqsig = vtm.frsig = 0;
+
 		ioctl(STDIN_FILENO, VT_SETMODE, &vtm);
-		ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT);
+
+		if (FORCE_TEXT_MODE == false)
+			ioctl(STDIN_FILENO, KDSETMODE, KD_TEXT);
 	}
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, termios_orig);
@@ -166,10 +175,12 @@ int main()
 		logging(FATAL, "framebuffer initialize failed\n");
 		goto fb_init_failed;
 	}
+
 	if (!term_init(&term, fb.info.width, fb.info.height)) {
 		logging(FATAL, "terminal initialize failed\n");
 		goto term_init_failed;
 	}
+
 	if (!tty_init(&termios_orig)) {
 		logging(FATAL, "tty initialize failed\n");
 		goto tty_init_failed;
