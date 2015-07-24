@@ -1,5 +1,5 @@
 /* See LICENSE for licence details. */
-void erase_cell(struct terminal *term, int y, int x)
+void erase_cell(struct terminal_t *term, int y, int x)
 {
 	struct cell_t *cellp;
 
@@ -13,7 +13,7 @@ void erase_cell(struct terminal *term, int y, int x)
 	term->line_dirty[y] = true;
 }
 
-void copy_cell(struct terminal *term, int dst_y, int dst_x, int src_y, int src_x)
+void copy_cell(struct terminal_t *term, int dst_y, int dst_x, int src_y, int src_x)
 {
 	struct cell_t *dst, *src;
 
@@ -34,7 +34,7 @@ void copy_cell(struct terminal *term, int dst_y, int dst_x, int src_y, int src_x
 	}
 }
 
-int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
+int set_cell(struct terminal_t *term, int y, int x, const struct glyph_t *glyphp)
 {
 	struct cell_t cell, *cellp;
 	uint8_t color_tmp;
@@ -69,7 +69,7 @@ int set_cell(struct terminal *term, int y, int x, const struct glyph_t *glyphp)
 	return HALF;
 }
 
-void scroll(struct terminal *term, int from, int to, int offset)
+void scroll(struct terminal_t *term, int from, int to, int offset)
 {
 	int size, abs_offset;
 	struct cell_t *dst, *src;
@@ -103,7 +103,7 @@ void scroll(struct terminal *term, int from, int to, int offset)
 }
 
 /* relative movement: cause scrolling */
-void move_cursor(struct terminal *term, int y_offset, int x_offset)
+void move_cursor(struct terminal_t *term, int y_offset, int x_offset)
 {
 	int x, y, top, bottom;
 
@@ -136,7 +136,7 @@ void move_cursor(struct terminal *term, int y_offset, int x_offset)
 }
 
 /* absolute movement: never scroll */
-void set_cursor(struct terminal *term, int y, int x)
+void set_cursor(struct terminal_t *term, int y, int x)
 {
 	int top, bottom;
 
@@ -157,7 +157,7 @@ void set_cursor(struct terminal *term, int y, int x)
 	term->wrap_occured = false;
 }
 
-const struct glyph_t *drcs_glyph(struct terminal *term, uint32_t code)
+const struct glyph_t *drcs_glyph(struct terminal_t *term, uint32_t code)
 {
 	/* DRCSMMv1
 		ESC ( SP <\xXX> <\xYY> ESC ( B
@@ -176,7 +176,7 @@ const struct glyph_t *drcs_glyph(struct terminal *term, uint32_t code)
 		return term->glyph[SUBSTITUTE_HALF];
 }
 
-void addch(struct terminal *term, uint32_t code)
+void addch(struct terminal_t *term, uint32_t code)
 {
 	int width;
 	const struct glyph_t *glyphp;
@@ -206,7 +206,7 @@ void addch(struct terminal *term, uint32_t code)
 	move_cursor(term, 0, set_cell(term, term->cursor.y, term->cursor.x, glyphp));
 }
 
-void reset_esc(struct terminal *term)
+void reset_esc(struct terminal_t *term)
 {
 	logging(DEBUG, "*esc reset*\n");
 
@@ -214,7 +214,7 @@ void reset_esc(struct terminal *term)
 	term->esc.state = STATE_RESET;
 }
 
-bool push_esc(struct terminal *term, uint8_t ch)
+bool push_esc(struct terminal_t *term, uint8_t ch)
 {
 	long offset;
 
@@ -270,13 +270,13 @@ bool push_esc(struct terminal *term, uint8_t ch)
 	return false;
 }
 
-void reset_charset(struct terminal *term)
+void reset_charset(struct terminal_t *term)
 {
 	term->charset.code = term->charset.count = term->charset.following_byte = 0;
 	term->charset.is_valid = true;
 }
 
-void reset(struct terminal *term)
+void reset(struct terminal_t *term)
 {
 	int i, j;
 
@@ -313,7 +313,7 @@ void reset(struct terminal *term)
 	reset_charset(term);
 }
 
-void redraw(struct terminal *term)
+void redraw(struct terminal_t *term)
 {
 	int i;
 
@@ -321,7 +321,7 @@ void redraw(struct terminal *term)
 		term->line_dirty[i] = true;
 }
 
-void term_die(struct terminal *term)
+void term_die(struct terminal_t *term)
 {
 	free(term->line_dirty);
 	free(term->tabstop);
@@ -330,7 +330,7 @@ void term_die(struct terminal *term)
 	free(term->sixel.pixmap);
 }
 
-bool term_init(struct terminal *term, int width, int height)
+bool term_init(struct terminal_t *term, int width, int height)
 {
 	extern const uint32_t color_list[COLORS]; /* global */
 

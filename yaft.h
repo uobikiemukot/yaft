@@ -99,7 +99,7 @@ enum glyph_width_t {
 	WIDE,
 };
 
-struct margin { uint16_t top, bottom; };
+struct margin_t { uint16_t top, bottom; };
 struct point_t { uint16_t x, y; };
 struct color_pair_t { uint8_t fg, bg; };
 
@@ -142,12 +142,12 @@ struct sixel_canvas_t {
 	uint32_t color_table[COLORS];
 };
 
-struct terminal {
+struct terminal_t {
 	int fd;                                  /* master of pseudo terminal */
 	int width, height;                       /* terminal size (pixel) */
 	int cols, lines;                         /* terminal size (cell) */
 	struct cell_t *cells;                    /* pointer to each cell: cells[y * lines + x] */
-	struct margin scroll;                    /* scroll margin */
+	struct margin_t scroll;                    /* scroll margin */
 	struct point_t cursor;                   /* cursor pos (x, y) */
 	bool *line_dirty;                        /* dirty flag */
 	bool *tabstop;                           /* tabstop flag */

@@ -160,8 +160,8 @@ int main()
 	ssize_t size;
 	fd_set fds;
 	struct timeval tv;
-	struct framebuffer fb;
-	struct terminal term;
+	struct framebuffer_t fb;
+	struct terminal_t term;
 	/* global */
 	extern volatile sig_atomic_t need_redraw;
 	extern volatile sig_atomic_t child_alive;

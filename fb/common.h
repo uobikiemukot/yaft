@@ -29,7 +29,7 @@ struct fb_info_t {
 
 #include "type.h" /* os dependent typedef/include */
 
-struct framebuffer {
+struct framebuffer_t {
 	int fd;                        /* file descriptor of framebuffer */
 	uint8_t *fp;                   /* pointer of framebuffer */
 	uint8_t *buf;                  /* copy of framebuffer */
@@ -37,7 +37,7 @@ struct framebuffer {
 	uint32_t real_palette[COLORS]; /* hardware specific color palette */
 	struct fb_info_t info;
 	cmap_t *cmap, *cmap_orig;
-	//void (*draw_func)(struct framebuffer *fb, struct terminal *term, int line);
+	//void (*draw_func)(struct framebuffer_t *fb, struct terminal_t *term, int line);
 };
 
 /* common framebuffer functions */
@@ -161,7 +161,7 @@ static inline uint32_t color2pixel(struct fb_info_t *info, uint32_t color)
 			+ (b << info->blue.offset);
 }
 
-static inline void draw_sixel(struct framebuffer *fb, int line, int col, uint8_t *pixmap)
+static inline void draw_sixel(struct framebuffer_t *fb, int line, int col, uint8_t *pixmap)
 {
 	int h, w, src_offset, dst_offset;
 	uint32_t pixel, color = 0;
@@ -179,7 +179,7 @@ static inline void draw_sixel(struct framebuffer *fb, int line, int col, uint8_t
 	}
 }
 
-static inline void draw_line(struct framebuffer *fb, struct terminal *term, int line)
+static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, int line)
 {
 	int pos, size, bdf_padding, glyph_width, margin_right;
 	int col, w, h;
@@ -368,7 +368,7 @@ void fb_print_info(struct fb_info_t *info)
 	logging(DEBUG, "\tvisual:%s\n", visual_str[info->visual]);
 }
 
-void fb_die(struct framebuffer *fb)
+void fb_die(struct framebuffer_t *fb)
 {
 	cmap_die(fb->cmap);
 	if (fb->cmap_orig) {
@@ -381,7 +381,7 @@ void fb_die(struct framebuffer *fb)
 	eclose(fb->fd);
 }
 
-bool fb_init(struct framebuffer *fb)
+bool fb_init(struct framebuffer_t *fb)
 {
 	extern const uint32_t color_list[COLORS]; /* defined in color.h */
 	extern const char *fb_path;               /* defined in conf.h */
@@ -447,7 +447,7 @@ set_fbinfo_failed:
 	return false;
 }
 
-void refresh(struct framebuffer *fb, struct terminal *term)
+void refresh(struct framebuffer_t *fb, struct terminal_t *term)
 {
 	if (term->palette_modified) {
 		term->palette_modified = false;

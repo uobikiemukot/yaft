@@ -15,7 +15,7 @@ static inline void split_rgb(uint32_t color, uint8_t *r, uint8_t *g, uint8_t *b)
 }
 */
 
-static inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc, uint8_t bitmap)
+static inline int sixel_bitmap(struct terminal_t *term, struct sixel_canvas_t *sc, uint8_t bitmap)
 {
 	int i, offset;
 	//uint8_t r, g, b;
@@ -52,7 +52,7 @@ static inline int sixel_bitmap(struct terminal *term, struct sixel_canvas_t *sc,
 	return 1;
 }
 
-static inline int sixel_repeat(struct terminal *term, struct sixel_canvas_t *sc, char *buf)
+static inline int sixel_repeat(struct terminal_t *term, struct sixel_canvas_t *sc, char *buf)
 {
 	int i, count;
 	size_t length;
@@ -235,7 +235,7 @@ static inline int sixel_nl(struct sixel_canvas_t *sc)
 	return 1;
 }
 
-void sixel_parse_data(struct terminal *term, struct sixel_canvas_t *sc, char *start_buf)
+void sixel_parse_data(struct terminal_t *term, struct sixel_canvas_t *sc, char *start_buf)
 {
 	/*
 	DECDLD sixel data
@@ -343,7 +343,7 @@ void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair, int 
 		sc->color_table[i] = color_list[i];
 }
 
-void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
+void sixel_copy2cell(struct terminal_t *term, struct sixel_canvas_t *sc)
 {
 	int y, x, h, cols, lines;
 	int src_offset, dst_offset;
@@ -377,7 +377,7 @@ void sixel_copy2cell(struct terminal *term, struct sixel_canvas_t *sc)
 	cr(term);
 }
 
-void sixel_parse_header(struct terminal *term, char *start_buf)
+void sixel_parse_header(struct terminal_t *term, char *start_buf)
 {
 	/*
 	sixel format
@@ -506,7 +506,7 @@ void decdld_parse_data(char *start_buf, int start_char, struct glyph_t *chars)
 	}
 }
 
-void decdld_parse_header(struct terminal *term, char *start_buf)
+void decdld_parse_header(struct terminal_t *term, char *start_buf)
 {
 	/*
 	DECDLD format

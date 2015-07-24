@@ -94,7 +94,7 @@ int32_t parse_color2(char *seq)
 	return color;
 }
 
-void set_palette(struct terminal *term, void *arg)
+void set_palette(struct terminal_t *term, void *arg)
 {
 	/*
 	OSC Ps ; Pt ST
@@ -156,7 +156,7 @@ void set_palette(struct terminal *term, void *arg)
 	}
 }
 
-void reset_palette(struct terminal *term, void *arg)
+void reset_palette(struct terminal_t *term, void *arg)
 {
 	/*
 	reset color c
@@ -194,7 +194,7 @@ int isdigit_or_questionmark(int c)
 		return 0;
 }
 
-void glyph_width_report(struct terminal *term, void *arg)
+void glyph_width_report(struct terminal_t *term, void *arg)
 {
 	/*
 	glyph width report

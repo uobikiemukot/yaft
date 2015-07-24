@@ -1,6 +1,6 @@
 /* See LICENSE for licence details. */
 /* function for csi sequence */
-void insert_blank(struct terminal *term, struct parm_t *parm)
+void insert_blank(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, num = sum(parm);
 
@@ -15,7 +15,7 @@ void insert_blank(struct terminal *term, struct parm_t *parm)
 	}
 }
 
-void curs_up(struct terminal *term, struct parm_t *parm)
+void curs_up(struct terminal_t *term, struct parm_t *parm)
 {
 	int num = sum(parm);
 
@@ -25,7 +25,7 @@ void curs_up(struct terminal *term, struct parm_t *parm)
 	move_cursor(term, -num, 0);
 }
 
-void curs_down(struct terminal *term, struct parm_t *parm)
+void curs_down(struct terminal_t *term, struct parm_t *parm)
 {
 	int num = sum(parm);
 
@@ -35,7 +35,7 @@ void curs_down(struct terminal *term, struct parm_t *parm)
 	move_cursor(term, num, 0);
 }
 
-void curs_forward(struct terminal *term, struct parm_t *parm)
+void curs_forward(struct terminal_t *term, struct parm_t *parm)
 {
 	int num = sum(parm);
 
@@ -45,7 +45,7 @@ void curs_forward(struct terminal *term, struct parm_t *parm)
 	move_cursor(term, 0, num);
 }
 
-void curs_back(struct terminal *term, struct parm_t *parm)
+void curs_back(struct terminal_t *term, struct parm_t *parm)
 {
 	int num = sum(parm);
 
@@ -55,7 +55,7 @@ void curs_back(struct terminal *term, struct parm_t *parm)
 	move_cursor(term, 0, -num);
 }
 
-void curs_nl(struct terminal *term, struct parm_t *parm)
+void curs_nl(struct terminal_t *term, struct parm_t *parm)
 {
 	int num = sum(parm);
 
@@ -66,7 +66,7 @@ void curs_nl(struct terminal *term, struct parm_t *parm)
 	cr(term);
 }
 
-void curs_pl(struct terminal *term, struct parm_t *parm)
+void curs_pl(struct terminal_t *term, struct parm_t *parm)
 {
 	int num = sum(parm);
 
@@ -77,7 +77,7 @@ void curs_pl(struct terminal *term, struct parm_t *parm)
 	cr(term);
 }
 
-void curs_col(struct terminal *term, struct parm_t *parm)
+void curs_col(struct terminal_t *term, struct parm_t *parm)
 {
 	int num;
 
@@ -85,7 +85,7 @@ void curs_col(struct terminal *term, struct parm_t *parm)
 	set_cursor(term, term->cursor.y, num);
 }
 
-void curs_pos(struct terminal *term, struct parm_t *parm)
+void curs_pos(struct terminal_t *term, struct parm_t *parm)
 {
 	int line, col;
 
@@ -106,7 +106,7 @@ void curs_pos(struct terminal *term, struct parm_t *parm)
 	set_cursor(term, line, col);
 }
 
-void curs_line(struct terminal *term, struct parm_t *parm)
+void curs_line(struct terminal_t *term, struct parm_t *parm)
 {
 	int num;
 
@@ -114,7 +114,7 @@ void curs_line(struct terminal *term, struct parm_t *parm)
 	set_cursor(term, num, term->cursor.x);
 }
 
-void erase_display(struct terminal *term, struct parm_t *parm)
+void erase_display(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, j, mode;
 
@@ -140,7 +140,7 @@ void erase_display(struct terminal *term, struct parm_t *parm)
 	}
 }
 
-void erase_line(struct terminal *term, struct parm_t *parm)
+void erase_line(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, mode;
 
@@ -161,7 +161,7 @@ void erase_line(struct terminal *term, struct parm_t *parm)
 	}
 }
 
-void insert_line(struct terminal *term, struct parm_t *parm)
+void insert_line(struct terminal_t *term, struct parm_t *parm)
 {
 	int num = sum(parm);
 
@@ -177,7 +177,7 @@ void insert_line(struct terminal *term, struct parm_t *parm)
 	scroll(term, term->cursor.y, term->scroll.bottom, -num);
 }
 
-void delete_line(struct terminal *term, struct parm_t *parm)
+void delete_line(struct terminal_t *term, struct parm_t *parm)
 {
 	int num = sum(parm);
 
@@ -193,7 +193,7 @@ void delete_line(struct terminal *term, struct parm_t *parm)
 	scroll(term, term->cursor.y, term->scroll.bottom, num);
 }
 
-void delete_char(struct terminal *term, struct parm_t *parm)
+void delete_char(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, num = sum(parm);
 
@@ -208,7 +208,7 @@ void delete_char(struct terminal *term, struct parm_t *parm)
 	}
 }
 
-void erase_char(struct terminal *term, struct parm_t *parm)
+void erase_char(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, num = sum(parm);
 
@@ -221,7 +221,7 @@ void erase_char(struct terminal *term, struct parm_t *parm)
 		erase_cell(term, term->cursor.y, i);
 }
 
-void set_attr(struct terminal *term, struct parm_t *parm)
+void set_attr(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, num;
 
@@ -269,7 +269,7 @@ void set_attr(struct terminal *term, struct parm_t *parm)
 	}
 }
 
-void status_report(struct terminal *term, struct parm_t *parm)
+void status_report(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, num;
 	char buf[BUFSIZE];
@@ -287,14 +287,14 @@ void status_report(struct terminal *term, struct parm_t *parm)
 	}
 }
 
-void device_attribute(struct terminal *term, struct parm_t *parm)
+void device_attribute(struct terminal_t *term, struct parm_t *parm)
 {
 	/* TODO: refer VT525 DA */
 	(void) parm;
 	ewrite(term->fd, "\033[?6c", 5); /* "I am a VT102" */
 }
 
-void set_mode(struct terminal *term, struct parm_t *parm)
+void set_mode(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, mode;
 
@@ -315,7 +315,7 @@ void set_mode(struct terminal *term, struct parm_t *parm)
 
 }
 
-void reset_mode(struct terminal *term, struct parm_t *parm)
+void reset_mode(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, mode;
 
@@ -337,7 +337,7 @@ void reset_mode(struct terminal *term, struct parm_t *parm)
 
 }
 
-void set_margin(struct terminal *term, struct parm_t *parm)
+void set_margin(struct terminal_t *term, struct parm_t *parm)
 {
 	int top, bottom;
 
@@ -365,7 +365,7 @@ void set_margin(struct terminal *term, struct parm_t *parm)
 	set_cursor(term, 0, 0); /* move cursor to home */
 }
 
-void clear_tabstop(struct terminal *term, struct parm_t *parm)
+void clear_tabstop(struct terminal_t *term, struct parm_t *parm)
 {
 	int i, j, num;
 

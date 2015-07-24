@@ -37,7 +37,7 @@ struct fbinfo_t {
 	enum fbtype_t fbtype;
 };
 
-struct framebuffer {
+struct framebuffer_t {
 	uint8_t *fp;          /* pointer of framebuffer(read only) */
 	uint8_t *wall;        /* buffer for wallpaper */
 	uint8_t *buf;         /* copy of framebuffer */
@@ -67,7 +67,7 @@ const struct fbinfo_t bpp_table[] = {
 };
 
 /* common functions */
-uint8_t *load_wallpaper(struct framebuffer *fb)
+uint8_t *load_wallpaper(struct framebuffer_t *fb)
 {
 	uint8_t *ptr;
 
@@ -106,7 +106,7 @@ void cmap_update(int fd, struct wsdisplay_cmap *cmap)
 	}
 }
 
-void cmap_init(struct framebuffer *fb)
+void cmap_init(struct framebuffer_t *fb)
 {
 	extern const uint32_t color_list[]; /* global */
 	int i;
@@ -161,7 +161,7 @@ static inline uint32_t color2pixel(struct fbinfo_t *vinfo, uint32_t color)
 		+ (b << vinfo->blue.offset);
 }
 
-void fb_init(struct framebuffer *fb, uint32_t *color_palette)
+void fb_init(struct framebuffer_t *fb, uint32_t *color_palette)
 {
 	int i, orig_mode, mode;
 	char *path, *env;
@@ -228,7 +228,7 @@ fb_init_error:
 	exit(EXIT_FAILURE);
 }
 
-void fb_die(struct framebuffer *fb)
+void fb_die(struct framebuffer_t *fb)
 {
 	cmap_die(fb->cmap);
 	if (fb->cmap_org) {
