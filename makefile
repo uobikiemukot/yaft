@@ -50,9 +50,18 @@ install:
 	mkdir -p $(MANPREFIX)/man1/
 	install -m644 ./man/yaft.1 $(MANPREFIX)/man1/yaft.1
 
+installx:
+	mkdir -p $(PREFIX)/share/terminfo
+	tic -o $(PREFIX)/share/terminfo info/yaft.src
+	mkdir -p $(PREFIX)/bin/
+	install -m755 ./yaftx $(PREFIX)/bin/yaftx
+
 uninstall:
 	rm -f $(PREFIX)/bin/yaft
 	rm -f $(PREFIX)/bin/yaft_wall
+
+uninstallx:
+	rm -f $(PREFIX)/bin/yaftx
 
 clean:
 	rm -f yaft yaftx mkfont_bdf glyph.h
