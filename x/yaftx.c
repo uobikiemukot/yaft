@@ -4,15 +4,18 @@
 #include "../util.h"
 #include "x.h"
 #include "../terminal.h"
-#include "../function.h"
-#include "../osc.h"
-#include "../dcs.h"
+#include "../ctrlseq/esc.h"
+#include "../ctrlseq/csi.h"
+#include "../ctrlseq/osc.h"
+#include "../ctrlseq/dcs.h"
 #include "../parse.h"
 
 void sig_handler(int signo)
 {
+	extern volatile sig_atomic_t child_alive;
+
 	if (signo == SIGCHLD)
-		tty.loop_flag = false;
+		child_alive = false;
 }
 
 void sig_set()
@@ -59,7 +62,7 @@ char *keymap(KeySym k, unsigned int state)
 	return NULL;
 }
 
-void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xkeypress(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
 	int size;
 	char buf[BUFSIZE], *customkey;
@@ -79,7 +82,7 @@ void xkeypress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
-void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xresize(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
 	XConfigureEvent *e = &ev->xconfigure;
 	struct winsize ws;
@@ -108,7 +111,7 @@ void xresize(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	ioctl(term->fd, TIOCSWINSZ, &ws);
 }
 
-void xredraw(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xredraw(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
 	XExposeEvent *e = &ev->xexpose;
 	int i, lines, update_from;
@@ -129,10 +132,8 @@ void xredraw(struct xwindow *xw, struct terminal *term, XEvent *ev)
 		refresh(xw, term);
 }
 
-void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xfocus(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
-	extern struct tty_state tty;
-
 	if (ev->type == FocusIn) {
 		XSetICFocus(xw->ic);
 		refresh(xw, term);
@@ -142,7 +143,7 @@ void xfocus(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
-void xbpress(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xbpress(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
 	struct paste_t *paste = &xw->paste;
 
@@ -160,7 +161,7 @@ void xbpress(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
-char *copy_cell2str(struct terminal *term,
+char *copy_cell2str(struct terminal_t *term,
 	struct point_t begin, struct point_t end)
 {
 	int i, num;
@@ -171,10 +172,10 @@ char *copy_cell2str(struct terminal *term,
 
 	num = (end.x + end.y * term->cols) - (begin.x + begin.y * term->cols);
 	if (num < 0) {
-		cellp = &term->cells[end.y][end.x];
+		cellp = &term->cells[end.y * term->cols + end.x];
 		num *= -1;
 	} else {
-		cellp = &term->cells[begin.y][begin.x];
+		cellp = &term->cells[begin.y * term->cols + begin.x];
 	}
 
 	buf = ecalloc(num + 1, 3); /* Unicode BMP: max 3 bytes per character */
@@ -197,7 +198,7 @@ char *copy_cell2str(struct terminal *term,
 	return buf;
 }
 
-void xbrelease(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xbrelease(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
 	Atom clipboard;
 	struct paste_t *paste = &xw->paste;
@@ -226,7 +227,7 @@ void xbrelease(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
-void xselnotify(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xselnotify(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
 	int format;
 	unsigned long nitems, ofs, rem;
@@ -248,7 +249,7 @@ void xselnotify(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	} while (rem > 0);
 }
 
-void xselreq(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xselreq(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
 	XSelectionRequestEvent *xsre;
 	XSelectionEvent xev;
@@ -285,7 +286,7 @@ void xselreq(struct xwindow *xw, struct terminal *term, XEvent *ev)
 }
 
 /*
-void xselclear(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xselclear(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
 	(void) xw;
 	(void) term;
@@ -298,7 +299,7 @@ void xselclear(struct xwindow *xw, struct terminal *term, XEvent *ev)
 }
 */
 
-void xmove(struct xwindow *xw, struct terminal *term, XEvent *ev)
+void xmove(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev)
 {
 	struct paste_t *paste = &xw->paste;
 
@@ -316,7 +317,7 @@ void xmove(struct xwindow *xw, struct terminal *term, XEvent *ev)
 	}
 }
 
-void (*event_func[LASTEvent])(struct xwindow *xw, struct terminal *term, XEvent *ev) = {
+void (*event_func[LASTEvent])(struct xwindow_t *xw, struct terminal_t *term, XEvent *ev) = {
 	[KeyPress]         = xkeypress,
 	[ConfigureNotify]  = xresize,
 	[Expose]           = xredraw,
@@ -354,10 +355,11 @@ int main()
 	ssize_t size;
 	fd_set fds;
 	struct timeval tv;
-	struct xwindow xw;
-	struct terminal term;
+	struct xwindow_t xw;
+	struct terminal_t term;
 	XEvent ev;
 	XConfigureEvent confev;
+	extern volatile sig_atomic_t child_alive;
 
 	/* init */
 	setlocale(LC_ALL, "");
@@ -367,6 +369,7 @@ int main()
 
 	/* fork and exec shell */
 	fork_and_exec(&term.fd);
+	child_alive = true;
 
 	/* initial terminal size defined in x.h */
 	confev.width  = TERM_WIDTH;
@@ -374,7 +377,7 @@ int main()
 	xresize(&xw, &term, (XEvent *) &confev);
 
 	/* main loop */
-	while (tty.loop_flag) {
+	while (child_alive) {
 		while(XPending(xw.display)) {
 			XNextEvent(xw.display, &ev);
 			if (XFilterEvent(&ev, None))

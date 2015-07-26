@@ -71,7 +71,7 @@ struct paste_t {
 	char *str;
 };
 
-struct xwindow {
+struct xwindow_t {
     Display *display;
     Window window;
     Pixmap pixbuf;
@@ -160,7 +160,7 @@ XIMStyle select_better_style(XIMStyle im_style, XIMStyle best_style)
 	}
 }
 
-void im_init(struct xwindow *xw)
+void im_init(struct xwindow_t *xw)
 {
 	int i;
 	long im_event_mask;
@@ -174,7 +174,7 @@ void im_init(struct xwindow *xw)
 	XPoint xpoint = {.x = 0, .y = 0};
 
 	if ((xw->im = XOpenIM(xw->display, NULL, NULL, NULL)) == NULL)
-		fatal("couldn't open input method");
+		logging(ERROR, "couldn't open input method\n");
 
 	/* check available input style */
 	app_styles = XIMPreeditNone | XIMPreeditNothing | XIMPreeditPosition
@@ -195,7 +195,7 @@ void im_init(struct xwindow *xw)
 			xw->input_style = select_better_style(style, xw->input_style);
 	}
 	if (xw->input_style == 0)
-		fatal("couldn't get valid input method style");
+		logging(ERROR, "couldn't get valid input method style\n");
 
 	XFree(im_styles);
 
@@ -213,7 +213,7 @@ void im_init(struct xwindow *xw)
 
 	if ((xw->ic = XCreateIC(xw->im, XNInputStyle, xw->input_style,
 		XNPreeditAttributes, list, XNClientWindow, xw->window, NULL)) == NULL)
-		fatal("couldn't create ic");
+		logging(ERROR, "couldn't create ic\n");
 	XFree(list);
 
 	XGetICValues(xw->ic, XNFilterEvents, &im_event_mask, NULL);
@@ -223,7 +223,7 @@ void im_init(struct xwindow *xw)
 	XSetICFocus(xw->ic);
 }
 
-void init_paste(struct xwindow *xw)
+void init_paste(struct xwindow_t *xw)
 {
 	struct paste_t *paste = &xw->paste;
 
@@ -236,19 +236,19 @@ void init_paste(struct xwindow *xw)
 	paste->str = NULL;
 }
 
-void xw_init(struct xwindow *xw)
+void xw_init(struct xwindow_t *xw)
 {
 	XTextProperty xtext = {.value = (unsigned char *) "yaftx",
 		.encoding = XA_STRING, .format = 8, .nitems = 5};
 
 	if ((xw->display = XOpenDisplay(NULL)) == NULL)
-		fatal("XOpenDisplay failed");
+		logging(ERROR, "XOpenDisplay failed\n");
 
 	if (!XSupportsLocale())
-		fatal("X does not support locale\n");
+		logging(ERROR, "X does not support locale\n");
 
 	if (XSetLocaleModifiers("") == NULL)
-		fatal("cannot set locale modifiers");
+		logging(ERROR, "cannot set locale modifiers\n");
 
 	xw->screen = DefaultScreen(xw->display);
 	xw->window = XCreateSimpleWindow(xw->display, DefaultRootWindow(xw->display),
@@ -273,7 +273,7 @@ void xw_init(struct xwindow *xw)
 	XMapWindow(xw->display, xw->window);
 }
 
-void xw_die(struct xwindow *xw)
+void xw_die(struct xwindow_t *xw)
 {
 	XFreeGC(xw->display, xw->gc);
 	XFreePixmap(xw->display, xw->pixbuf);
@@ -283,7 +283,7 @@ void xw_die(struct xwindow *xw)
 	XCloseDisplay(xw->display);
 }
 
-static inline void draw_sixel(struct xwindow *xw, int line, int col, struct cell_t *cellp)
+static inline void draw_sixel(struct xwindow_t *xw, int line, int col, struct cell_t *cellp)
 {
 	int w, h;
 	uint32_t color = 0;
@@ -301,7 +301,7 @@ static inline void draw_sixel(struct xwindow *xw, int line, int col, struct cell
 	}
 }
 
-static inline void draw_line(struct xwindow *xw, struct terminal *term, int line)
+static inline void draw_line(struct xwindow_t *xw, struct terminal_t *term, int line)
 {
 	int bdf_padding, glyph_width, margin_right;
 	int col, w, h, begin, current, pos;
@@ -320,7 +320,7 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
 		/* draw sixel pixmap */
-		cellp = &term->cells[line][col];
+		cellp = &term->cells[line * term->cols + col];
 		if (cellp->has_pixmap) {
 			draw_sixel(xw, line, col, cellp);
 			continue;
@@ -342,7 +342,7 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 			|| (cellp->width == WIDE && (col + 1) == term->cursor.x)
 			|| (cellp->width == NEXT_TO_WIDE && (col - 1) == term->cursor.x))) {
 			color_pair.fg = DEFAULT_BG;
-			color_pair.bg = (!tty.visible && BACKGROUND_DRAW) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
+			color_pair.bg = (!vt_active && BACKGROUND_DRAW) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
 		}
 
 		/* show copy area */
@@ -385,7 +385,7 @@ static inline void draw_line(struct xwindow *xw, struct terminal *term, int line
 	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
 }
 
-void set_preedit_pos(struct xwindow *xw, struct terminal *term)
+void set_preedit_pos(struct xwindow_t *xw, struct terminal_t *term)
 {
 	XVaNestedList list;
 	XPoint pos;
@@ -402,7 +402,7 @@ void set_preedit_pos(struct xwindow *xw, struct terminal *term)
 	XFree(list);
 }
 
-void refresh(struct xwindow *xw, struct terminal *term)
+void refresh(struct xwindow_t *xw, struct terminal_t *term)
 {
 	int line, update_from, update_to;
 
