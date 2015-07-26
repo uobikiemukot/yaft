@@ -127,3 +127,13 @@ $ make yaft
 -	refer SHELL environment variable
 -	remove WALLPAPER option (use YAFT="wall" environment variable)
 -	add man page
+
+## 2015-07-26
+-	version 0.2.8
+-	rewrite framebuffer code
+	-	support direct color
+-	add some new options (conf.h)
+	VT_CONTROL     : don't handle vt-switching (vt-switching only works in linux)
+	FORCE_TEXT_MODE: need this option for switching from X to yaft
+-	various bug fixes
+	-	mkfont_bdf was broken (not affect SUBSTITUTE_WIDE/REPLACEMENT_CHAR)
