@@ -10,7 +10,8 @@
 	byte order: (MSB) RR GG BB (LSB)
 */
 enum {
-	COLORS = 256, /* number of color palette */
+	COLORS       = 256, /* number of color palette */
+	BITS_PER_RGB = 8,
 };
 
 const uint32_t color_list[COLORS] = {
