@@ -9,7 +9,7 @@ XLDFLAGS ?= -lX11
 
 HDR = glyph.h yaft.h conf.h color.h parse.h terminal.h util.h \
 	ctrlseq/esc.h ctrlseq/csi.h ctrlseq/osc.h ctrlseq/dcs.h \
-	fb/common.h fb/type.h fb/linux.h fb/freebsd.h fb/netbsd.h fb/openbsd.h \
+	fb/common.h fb/linux.h fb/freebsd.h fb/netbsd.h fb/openbsd.h \
 	x/x.h
 
 DESTDIR   =
