@@ -17,9 +17,9 @@ enum {
 	BACKGROUND_DRAW  = false,  /* always draw even if vt is not active */
 	VT_CONTROL       = true,   /* handle vt switching */
 	FORCE_TEXT_MODE  = false,  /* force KD_TEXT mode (not use KD_GRAPHICS mode) */
-	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph(single width): U+FFFD (REPLACEMENT CHARACTER)) */
-	SUBSTITUTE_WIDE  = 0x3000, /* used for missing glyph(double width): U+3013 (GETA MARK) */
-	REPLACEMENT_CHAR = 0x003F, /* used for malformed UTF-8 sequence   : U+FFFD (REPLACEMENT CHARACTER)  */
+	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph(single width): U+0020 (SPACE) */
+	SUBSTITUTE_WIDE  = 0x3000, /* used for missing glyph(double width): U+3000 (IDEOGRAPHIC SPACE) */
+	REPLACEMENT_CHAR = 0x003F, /* used for malformed UTF-8 sequence   : U+003F (QUESTION MARK) */
 };
 
 /* TERM value */
