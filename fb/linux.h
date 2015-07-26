@@ -1,4 +1,14 @@
 /* See LICENSE for licence details. */
+#include <linux/fb.h>
+#include <linux/vt.h>
+#include <linux/kd.h>
+
+typedef struct fb_cmap cmap_t;
+
+enum {
+	CMAP_COLOR_LENGTH = sizeof(__u16) * BITS_PER_BYTE,
+};
+
 /* os specific ioctl */
 void alloc_cmap(cmap_t *cmap, int colors)
 {

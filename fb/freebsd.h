@@ -1,4 +1,22 @@
 /* See LICENSE for licence details. */
+/* XXX: _XOPEN_SOURCE >= 600 invalidates __BSD_VISIBLE
+	so define some types manually */
+typedef unsigned char   u_char;
+typedef unsigned short  u_short;
+typedef unsigned int    u_int;
+typedef unsigned long   u_long;
+#include <machine/param.h>
+#include <sys/consio.h>
+#include <sys/fbio.h>
+#include <sys/kbio.h>
+#include <sys/types.h>
+
+typedef struct fbcmap cmap_t;
+
+enum {
+	CMAP_COLOR_LENGTH = sizeof(u_char) * BITS_PER_BYTE,
+};
+
 /* os specific ioctl */
 void alloc_cmap(cmap_t *cmap, int colors)
 {

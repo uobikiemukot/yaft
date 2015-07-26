@@ -18,16 +18,26 @@ struct fb_info_t {
 		int length;
 		int offset;
 	} red, green, blue;
-	int width, height;             /* display resolution */
-	long screen_size;              /* screen data size (byte) */
-	int line_length;               /* line length (byte) */
+	int width, height;       /* display resolution */
+	long screen_size;        /* screen data size (byte) */
+	int line_length;         /* line length (byte) */
 	int bytes_per_pixel;
 	int bits_per_pixel;
 	enum fb_type_t type;
 	enum fb_visual_t visual;
+	int reserved;            /* os specific data */
 };
 
-#include "type.h" /* os dependent typedef/include */
+/* os dependent typedef/include */
+#if defined(__linux__)
+    #include "linux.h"
+#elif defined(__FreeBSD__)
+    #include "freebsd.h"
+#elif defined(__NetBSD__)
+    #include "netbsd.h"
+#elif defined(__OpenBSD__)
+    #include "openbsd.h"
+#endif
 
 struct framebuffer_t {
 	int fd;                        /* file descriptor of framebuffer */
@@ -37,7 +47,6 @@ struct framebuffer_t {
 	uint32_t real_palette[COLORS]; /* hardware specific color palette */
 	struct fb_info_t info;
 	cmap_t *cmap, *cmap_orig;
-	//void (*draw_func)(struct framebuffer_t *fb, struct terminal_t *term, int line);
 };
 
 /* common framebuffer functions */
@@ -87,9 +96,11 @@ cmap_t *cmap_create(int colors)
 
 bool cmap_update(int fd, cmap_t *cmap)
 {
-	if (put_cmap(fd, cmap)) {
-		logging(ERROR, "put_cmap failed\n");
-		return false;
+	if (cmap) {
+		if (put_cmap(fd, cmap)) {
+			logging(ERROR, "put_cmap failed\n");
+			return false;
+		}
 	}
 	return true;
 }
@@ -107,8 +118,6 @@ bool cmap_init(int fd, struct fb_info_t *info, cmap_t *cmap, int colors, int len
 {
 	uint16_t r, g, b, r_index, g_index, b_index;
 
-	logging(DEBUG, "colors:%d length:%d\n", colors, length);
-
 	for (int i = 0; i < colors; i++) {
 		if (info->visual == YAFT_FB_VISUAL_DIRECTCOLOR) {
 			r_index = (i >> (length - info->red.length))   & bit_mask[info->red.length];
@@ -116,9 +125,9 @@ bool cmap_init(int fd, struct fb_info_t *info, cmap_t *cmap, int colors, int len
 			b_index = (i >> (length - info->blue.length))  & bit_mask[info->blue.length];
 
 			/* XXX: maybe only upper order byte is used */
-			r = r_index << (16 - info->red.length);
-			g = g_index << (16 - info->green.length);
-			b = b_index << (16 - info->blue.length);
+			r = r_index << (CMAP_COLOR_LENGTH - info->red.length);
+			g = g_index << (CMAP_COLOR_LENGTH - info->green.length);
+			b = b_index << (CMAP_COLOR_LENGTH - info->blue.length);
 
 			*(cmap->red   + r_index) = r;
 			*(cmap->green + g_index) = g;
@@ -128,9 +137,9 @@ bool cmap_init(int fd, struct fb_info_t *info, cmap_t *cmap, int colors, int len
 			g_index = (i >> info->green.offset) & bit_mask[info->green.length];
 			b_index = (i >> info->blue.offset)  & bit_mask[info->blue.length];
 
-			r = r_index << (16 - info->red.length);
-			g = g_index << (16 - info->green.length);
-			b = b_index << (16 - info->blue.length);
+			r = r_index << (CMAP_COLOR_LENGTH - info->red.length);
+			g = g_index << (CMAP_COLOR_LENGTH - info->green.length);
+			b = b_index << (CMAP_COLOR_LENGTH - info->blue.length);
 
 			*(cmap->red   + i) = r;
 			*(cmap->green + i) = g;
@@ -148,112 +157,19 @@ static inline uint32_t color2pixel(struct fb_info_t *info, uint32_t color)
 {
 	uint32_t r, g, b;
 
-	r = bit_mask[8] & (color >> 16);
-	g = bit_mask[8] & (color >>  8);
-	b = bit_mask[8] & (color >>  0);
+	r = bit_mask[BITS_PER_RGB] & (color >> (BITS_PER_RGB * 2));
+	g = bit_mask[BITS_PER_RGB] & (color >>  BITS_PER_RGB);
+	b = bit_mask[BITS_PER_RGB] & (color >>  0);
 
-	r = r >> (BITS_PER_BYTE - info->red.length);
-	g = g >> (BITS_PER_BYTE - info->green.length);
-	b = b >> (BITS_PER_BYTE - info->blue.length);
+	r = r >> (BITS_PER_RGB - info->red.length);
+	g = g >> (BITS_PER_RGB - info->green.length);
+	b = b >> (BITS_PER_RGB - info->blue.length);
 
 	return (r << info->red.offset)
 			+ (g << info->green.offset)
 			+ (b << info->blue.offset);
 }
 
-static inline void draw_sixel(struct framebuffer_t *fb, int line, int col, uint8_t *pixmap)
-{
-	int h, w, src_offset, dst_offset;
-	uint32_t pixel, color = 0;
-
-	for (h = 0; h < CELL_HEIGHT; h++) {
-		for (w = 0; w < CELL_WIDTH; w++) {
-			src_offset = BYTES_PER_PIXEL * (h * CELL_WIDTH + w);
-			memcpy(&color, pixmap + src_offset, BYTES_PER_PIXEL);
-
-			dst_offset = (line * CELL_HEIGHT + h) * fb->info.line_length
-				+ (col * CELL_WIDTH + w) * fb->info.bytes_per_pixel;
-			pixel = color2pixel(&fb->info, color);
-			memcpy(fb->buf + dst_offset, &pixel, fb->info.bytes_per_pixel);
-		}
-	}
-}
-
-static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, int line)
-{
-	int pos, size, bdf_padding, glyph_width, margin_right;
-	int col, w, h;
-	uint32_t pixel;
-	struct color_pair_t color_pair;
-	struct cell_t *cellp;
-
-	for (col = term->cols - 1; col >= 0; col--) {
-		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
-
-		/* target cell */
-		cellp = &term->cells[line * term->cols + col];
-
-		/* draw sixel pixmap */
-		if (cellp->has_pixmap) {
-			draw_sixel(fb, line, col, cellp->pixmap);
-			continue;
-		}
-
-		/* copy current color_pair (maybe changed) */
-		color_pair = cellp->color_pair;
-
-		/* check wide character or not */
-		glyph_width = (cellp->width == HALF) ? CELL_WIDTH: CELL_WIDTH * 2;
-		bdf_padding = my_ceil(glyph_width, BITS_PER_BYTE) * BITS_PER_BYTE - glyph_width;
-		if (cellp->width == WIDE)
-			bdf_padding += CELL_WIDTH;
-
-		/* check cursor positon */
-		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
-			&& (col == term->cursor.x
-			|| (cellp->width == WIDE && (col + 1) == term->cursor.x)
-			|| (cellp->width == NEXT_TO_WIDE && (col - 1) == term->cursor.x))) {
-			color_pair.fg = DEFAULT_BG;
-			color_pair.bg = (!vt_active && BACKGROUND_DRAW) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
-		}
-
-		for (h = 0; h < CELL_HEIGHT; h++) {
-			/* if UNDERLINE attribute on, swap bg/fg */
-			if ((h == (CELL_HEIGHT - 1)) && (cellp->attribute & attr_mask[ATTR_UNDERLINE]))
-				color_pair.bg = color_pair.fg;
-
-			for (w = 0; w < CELL_WIDTH; w++) {
-				pos = (term->width - 1 - margin_right - w) * fb->info.bytes_per_pixel
-					+ (line * CELL_HEIGHT + h) * fb->info.line_length;
-
-				/* set color palette */
-				if (cellp->glyphp->bitmap[h] & (0x01 << (bdf_padding + w)))
-					pixel = fb->real_palette[color_pair.fg];
-				else if (fb->wall && color_pair.bg == DEFAULT_BG) /* wallpaper */
-					memcpy(&pixel, fb->wall + pos, fb->info.bytes_per_pixel);
-				else
-					pixel = fb->real_palette[color_pair.bg];
-
-				/* update copy buffer only */
-				memcpy(fb->buf + pos, &pixel, fb->info.bytes_per_pixel);
-			}
-		}
-	}
-
-	/* actual display update (bit blit) */
-	pos = (line * CELL_HEIGHT) * fb->info.line_length;
-	size = CELL_HEIGHT * fb->info.line_length;
-	memcpy(fb->fp + pos, fb->buf + pos, size);
-
-	/* TODO: page flip
-		if fb_fix_screeninfo.ypanstep > 0, we can use hardware panning.
-		set fb_fix_screeninfo.{yres_virtual,yoffset} and call ioctl(FBIOPAN_DISPLAY)
-		but drivers  of recent hardware (inteldrmfb, nouveaufb, radeonfb) don't support...
-		(maybe we can use this by using libdrm) */
-	/* TODO: vertical synchronizing */
-
-	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
-}
 
 bool init_truecolor(struct fb_info_t *info, cmap_t **cmap, cmap_t **cmap_orig)
 {
@@ -368,19 +284,6 @@ void fb_print_info(struct fb_info_t *info)
 	logging(DEBUG, "\tvisual:%s\n", visual_str[info->visual]);
 }
 
-void fb_die(struct framebuffer_t *fb)
-{
-	cmap_die(fb->cmap);
-	if (fb->cmap_orig) {
-		put_cmap(fb->fd, fb->cmap_orig);
-		cmap_die(fb->cmap_orig);
-	}
-	free(fb->wall);
-	free(fb->buf);
-	emunmap(fb->fp, fb->info.screen_size);
-	eclose(fb->fd);
-}
-
 bool fb_init(struct framebuffer_t *fb)
 {
 	extern const uint32_t color_list[COLORS]; /* defined in color.h */
@@ -396,6 +299,9 @@ bool fb_init(struct framebuffer_t *fb)
 	/* os dependent initialize */
 	if (!set_fbinfo(fb->fd, &fb->info))
 		goto set_fbinfo_failed;
+
+	if (VERBOSE)
+		fb_print_info(&fb->info);
 
 	/* allocate memory */
 	fb->fp   = (uint8_t *) emmap(0, fb->info.screen_size,
@@ -431,9 +337,6 @@ bool fb_init(struct framebuffer_t *fb)
 	for (int i = 0; i < COLORS; i++)
 		fb->real_palette[i] = color2pixel(&fb->info, color_list[i]);
 
-	if (VERBOSE)
-		fb_print_info(&fb->info);
-
 	return true;
 
 fb_init_failed:
@@ -445,6 +348,114 @@ allocate_failed:
 set_fbinfo_failed:
 	eclose(fb->fd);
 	return false;
+}
+
+void fb_die(struct framebuffer_t *fb)
+{
+	cmap_die(fb->cmap);
+	if (fb->cmap_orig) {
+		put_cmap(fb->fd, fb->cmap_orig);
+		cmap_die(fb->cmap_orig);
+	}
+	free(fb->wall);
+	free(fb->buf);
+	emunmap(fb->fp, fb->info.screen_size);
+	eclose(fb->fd);
+	//fb_release(fb->fd, &fb->info); /* os specific */
+}
+
+static inline void draw_sixel(struct framebuffer_t *fb, int line, int col, uint8_t *pixmap)
+{
+	int h, w, src_offset, dst_offset;
+	uint32_t pixel, color = 0;
+
+	for (h = 0; h < CELL_HEIGHT; h++) {
+		for (w = 0; w < CELL_WIDTH; w++) {
+			src_offset = BYTES_PER_PIXEL * (h * CELL_WIDTH + w);
+			memcpy(&color, pixmap + src_offset, BYTES_PER_PIXEL);
+
+			dst_offset = (line * CELL_HEIGHT + h) * fb->info.line_length
+				+ (col * CELL_WIDTH + w) * fb->info.bytes_per_pixel;
+			pixel = color2pixel(&fb->info, color);
+			memcpy(fb->buf + dst_offset, &pixel, fb->info.bytes_per_pixel);
+		}
+	}
+}
+
+static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, int line)
+{
+	int pos, size, bdf_padding, glyph_width, margin_right;
+	int col, w, h;
+	uint32_t pixel;
+	struct color_pair_t color_pair;
+	struct cell_t *cellp;
+
+	for (col = term->cols - 1; col >= 0; col--) {
+		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
+
+		/* target cell */
+		cellp = &term->cells[line * term->cols + col];
+
+		/* draw sixel pixmap */
+		if (cellp->has_pixmap) {
+			draw_sixel(fb, line, col, cellp->pixmap);
+			continue;
+		}
+
+		/* copy current color_pair (maybe changed) */
+		color_pair = cellp->color_pair;
+
+		/* check wide character or not */
+		glyph_width = (cellp->width == HALF) ? CELL_WIDTH: CELL_WIDTH * 2;
+		bdf_padding = my_ceil(glyph_width, BITS_PER_BYTE) * BITS_PER_BYTE - glyph_width;
+		if (cellp->width == WIDE)
+			bdf_padding += CELL_WIDTH;
+
+		/* check cursor positon */
+		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
+			&& (col == term->cursor.x
+			|| (cellp->width == WIDE && (col + 1) == term->cursor.x)
+			|| (cellp->width == NEXT_TO_WIDE && (col - 1) == term->cursor.x))) {
+			color_pair.fg = DEFAULT_BG;
+			color_pair.bg = (!vt_active && BACKGROUND_DRAW) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
+		}
+
+		for (h = 0; h < CELL_HEIGHT; h++) {
+			/* if UNDERLINE attribute on, swap bg/fg */
+			if ((h == (CELL_HEIGHT - 1)) && (cellp->attribute & attr_mask[ATTR_UNDERLINE]))
+				color_pair.bg = color_pair.fg;
+
+			for (w = 0; w < CELL_WIDTH; w++) {
+				pos = (term->width - 1 - margin_right - w) * fb->info.bytes_per_pixel
+					+ (line * CELL_HEIGHT + h) * fb->info.line_length;
+
+				/* set color palette */
+				if (cellp->glyphp->bitmap[h] & (0x01 << (bdf_padding + w)))
+					pixel = fb->real_palette[color_pair.fg];
+				else if (fb->wall && color_pair.bg == DEFAULT_BG) /* wallpaper */
+					memcpy(&pixel, fb->wall + pos, fb->info.bytes_per_pixel);
+				else
+					pixel = fb->real_palette[color_pair.bg];
+
+				/* update copy buffer only */
+				memcpy(fb->buf + pos, &pixel, fb->info.bytes_per_pixel);
+			}
+		}
+	}
+
+	/* actual display update (bit blit) */
+	pos = (line * CELL_HEIGHT) * fb->info.line_length;
+	size = CELL_HEIGHT * fb->info.line_length;
+	memcpy(fb->fp + pos, fb->buf + pos, size);
+
+	/* TODO: page flip
+		if fb_fix_screeninfo.ypanstep > 0, we can use hardware panning.
+		set fb_fix_screeninfo.{yres_virtual,yoffset} and call ioctl(FBIOPAN_DISPLAY)
+		but drivers  of recent hardware (inteldrmfb, nouveaufb, radeonfb) don't support...
+		(maybe we can use this by using libdrm) */
+	/* TODO: vertical synchronizing */
+
+	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
 }
 
 void refresh(struct framebuffer_t *fb, struct terminal_t *term)
