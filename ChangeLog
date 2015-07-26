@@ -101,7 +101,7 @@ $ make yaft
 		-	rotate: clockwise (cw), counter_clockwise (ccw), upside_down (ud)
 		-	background drawing: wallpaper (wall)
 		ex) $ YAFT="wall cw ccw ud" yaft
-		-	framebuffer device: 
+		-	framebuffer device:
 		ex) $ FRAMEBUFFER="/dev/fb1" yaft
 -	add OSC4/OSC104/OSC8900 (glyph width report)
 		(ref: http://uobikiemukot.github.io/yaft/glyph_width_report.html)
