@@ -197,8 +197,7 @@ int main()
 	while (child_alive) {
 		if (need_redraw) {
 			need_redraw = false;
-			if (fb.cmap)
-				cmap_update(fb.fd, fb.cmap); /* after VT switching, need to restore cmap (in 8bpp mode) */
+			cmap_update(fb.fd, fb.cmap); /* after VT switching, need to restore cmap (in 8bpp mode) */
 			redraw(&term);
 			refresh(&fb, &term);
 		}
