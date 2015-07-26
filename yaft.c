@@ -10,6 +10,7 @@
 #include "ctrlseq/osc.h"
 #include "ctrlseq/dcs.h"
 #include "parse.h"
+#include "mouse.h"
 
 void sig_handler(int signo)
 {
@@ -146,11 +147,13 @@ bool fork_and_exec(int *master, int lines, int cols)
 	return true;
 }
 
-int check_fds(fd_set *fds, struct timeval *tv, int input, int master)
+int check_fds(fd_set *fds, struct timeval *tv, int input, int master, int mouse)
 {
 	FD_ZERO(fds);
 	FD_SET(input, fds);
 	FD_SET(master, fds);
+	FD_SET(mouse, fds);
+
 	tv->tv_sec  = 0;
 	tv->tv_usec = SELECT_TIMEOUT;
 	return eselect(master + 1, fds, NULL, NULL, tv);
@@ -164,6 +167,9 @@ int main()
 	struct timeval tv;
 	struct framebuffer_t fb;
 	struct terminal_t term;
+	struct mouse_t mouse;
+	struct input_event ie;
+
 	/* global */
 	extern volatile sig_atomic_t need_redraw;
 	extern volatile sig_atomic_t child_alive;
@@ -188,6 +194,11 @@ int main()
 		goto tty_init_failed;
 	}
 
+	if (!mouse_init(&mouse)) {
+		logging(FATAL, "mouse initialize failed\n");
+		goto mouse_init_failed;
+	}
+
 	/* fork and exec shell */
 	if (!fork_and_exec(&term.fd, term.lines, term.cols)) {
 		logging(FATAL, "forkpty failed\n");
@@ -199,12 +210,13 @@ int main()
 	while (child_alive) {
 		if (need_redraw) {
 			need_redraw = false;
-			cmap_update(fb.fd, fb.cmap); /* after VT switching, need to restore cmap (in 8bpp mode) */
+			if (fb.cmap)
+				cmap_update(fb.fd, fb.cmap); /* after VT switching, need to restore cmap (in 8bpp mode) */
 			redraw(&term);
 			refresh(&fb, &term);
 		}
 
-		if (check_fds(&fds, &tv, STDIN_FILENO, term.fd) == -1)
+		if (check_fds(&fds, &tv, STDIN_FILENO, term.fd, mouse.fd) == -1)
 			continue;
 
 		if (FD_ISSET(STDIN_FILENO, &fds)) {
@@ -221,15 +233,31 @@ int main()
 				refresh(&fb, &term);
 			}
 		}
+		if (FD_ISSET(mouse.fd, &fds)) {
+			if ((size = read(mouse.fd, &ie, sizeof(struct input_event))) > 0) {
+				if (mouse_handler[ie.type]) {
+					mouse_handler[ie.type](&fb, &mouse, &ie);
+					refresh_mouse(&fb, &term, &mouse);
+				}
+
+				if (mouse.do_paste) {
+					mouse.do_paste = false;
+					mouse_paste(&term, &mouse);
+				}
+			}
+		}
 	}
 
 	/* normal exit */
+	mouse_die(&mouse);
 	tty_die(&termios_orig);
 	term_die(&term);
 	fb_die(&fb);
 	return EXIT_SUCCESS;
 
 	/* error exit */
+mouse_init_failed:
+	tty_die(&termios_orig);
 tty_init_failed:
 	term_die(&term);
 term_init_failed:

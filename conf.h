@@ -7,6 +7,7 @@ enum {
 	DEFAULT_BG           = 0,
 	ACTIVE_CURSOR_COLOR  = 2,
 	PASSIVE_CURSOR_COLOR = 1,
+	MOUSE_CURSOR_COLOR   = 6,
 };
 
 /* misc */
@@ -46,3 +47,6 @@ const char *term_name = "yaft-256color";
 #elif defined(__ANDROID__)
 	const char *shell_cmd = "/system/bin/sh";
 #endif
+
+/* mouse device */
+const char *mouse_path = "/dev/input/by-id/id_of_youre_mouse_dev";

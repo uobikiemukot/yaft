@@ -92,6 +92,19 @@ Or try glyph_builder.sh (bash script for creating yaft's glyph.h)
 
 -	supported fonts: mplus, efont, milkjf, unifont, dina, terminus, profont, tamsyn
 
+## mouse support
+
+Preparation
+
+-   check variable, mouse_path in conf.h (maybe correct path is /dev/input/by-id/*-event-mouse or something)
+-   stop gpm mouse serve (# /etc/init.d/gpm stop or # systemctl stop gpm)
+-   check permission of /dev/input/* (maybe need # gpasswd -a USER input)
+
+How to copy/paste
+
+-   copy area selection: hold mouse left button
+-   paste selected text: press mouse right button
+
 ## screenshot
 
 ![screenshot1](http://uobikiemukot.github.io/img/yaft-screenshot.png)
