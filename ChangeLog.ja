@@ -1,0 +1,216 @@
+2012-06-19 haru
+	* version 0.1.0
+	* 試験的に公開
+
+2012-06-19 haru
+	* version 0.1.1
+	* 細かなバグ修正
+	* UCS_CHARSの値が要素数+1になってなかったのを修正 (common.h)
+	* esc_func, csi_func, osc_funcも同様に配列の要素数が1足りなかったのを修正 (common.h)
+	* parse_esc()の実体参照(*argc)がargcになってたのを修正 (parse.h)
+	* dumpするときにstdoutのバッファリングを無効にするようにした (yaft.c)
+	* delete_line(), erase_line()でスクロールが発生するときにDECSTBMの設定が反映されてなかったのを修正 (function.h)
+
+2012-06-20 haru
+	* version 0.1.2
+	* 設定やフォントに不備があった場合に回避できないか頑張ってみることにした
+	* 端末のサイズ(TERM_WIDTH/TERM_HEIGHT)が不正な場合にはフルスクリーンで起動する (yaft.c, terminal.h)
+	* DEFAULT_CHARが見つからない場合にはSPACEを流用してみる (load.h)
+	* コメントを追加 (common.h)
+	* terminfoの別名を定義した (info/yaft.info)
+
+2012-06-20 haru
+	* version 0.1.3
+	* 背景画像の表示方法をfbtermと同等のものに変更した (load.h, conf.h)
+	* framebufferの書き込みアドレスがおかしかったのを修正した (framebuffer.h)
+	* writeのエラー処理を真面目にやるようにした (util.h)
+	* 色を定義する箇所が重複していたのをまとめた (color.h)
+	* 端末のサイズとしてcell_sizeよりも小さなサイズは指定できないようにした (terminal.h)
+	* 上記の修正に伴って色々変更．DEFAULT_CHARはSPACEにした (common.h)
+
+2012-06-21 haru
+	* version 0.1.4
+	* indent -kr -ut -ts4 な感じのスタイルで書くことにした
+	* gcc -std=c99 -pedantic -Wall -Os で通るように色々書き換えた
+	* eat_newline_glitch(xel)を実装した (terminal.h)
+	* auto_right_margin(bw)を廃止した (terminal.h, function.h)
+	* OSCを廃止した (parse.h, function.h)
+	* 上記の変更に伴ってterminfoを更新 (info/yaft.src)
+
+2012-06-24 haru
+	* version 0.1.5
+	* スタイルはたぶん元に戻した
+	* mplus fontをsampleとして追加
+	* フォントの形式がおかしかったのでBDFと完全に互換なものに直した (load.h, framebuffer.h)
+	* 8x16dotのフォント以外では正常に描画できていなかったのを修正した (load.h, framebuffer.h)
+	* BOLD/REVERSEの処理方法を変更した (terminal.h, framebuffer.h)
+	* 色の参照方法を変更した (function.h, framebuffer.h, conf.h)
+	* その他色々?
+
+2012-06-29 haru
+	* version 0.1.6
+	* フォントを複数指定できるようにした(load.h, terminal.h, conf.h)
+	(一部のグリフしかない場合に使用するメモリが減った)
+	* グリフの代用を指定できるようにした(load.h, terminal.h, conf.h)
+	* その他ちょっとした修正等
+
+2012-10-06 haru
+	* version 0.1.7
+	* 以下のframebuffer環境に対応した (framebuffer.h)
+		15/16/24/32bpp True Color(Direct Colorにもたぶん対応)
+		8bpp Pseudo Color
+
+2012-10-17 haru
+	* version 0.1.8
+	* いくつかのoptionを追加 (yaft.c)
+		例) $ export YAFT="wall w=640 h=384 x=32 y=32"; yaft
+			wall: display wallpaper
+			w=N: set terminal width (pixel)
+			h=N: set terminal height (pixel)
+			x=N: set x offset
+			y=N: set y offset
+
+2012-10-18 haru
+	* version 0.1.9
+	* 仮想コンソールの切り替え時にyaftの停止・再描画を行う用にした (yaft.c)
+	* 壁紙を表示するときの環境変数の設定の仕方がちょっと変わった (yaft.c)
+	* 壁紙以外のoptionを廃止した
+	* 他にもたぶん色々
+
+2012-11-09 haru
+	* version 0.2.0
+	* 独自フォントを廃止してBDFを使うようにした
+		ex)
+			$ ./mkfont alias-file your/favorite/bdf > glyph.h
+			$ make yaft
+
+2012-11-30
+-   version 0.2.1
+-   bug fix
+    -   single CSI u (not following CSI s) causes Segmentation fault (reported by saitoha ([@kefir_]))
+
+[@kefir_]: http://saitoha.github.com/
+
+2012-12-02
+-   version 0.2.2
+-   improved UTF-8 parser (valid for [UTF-8 decoder capability and stress test])
+-   bug fix
+    -   not working glyph substitution
+
+[UTF-8 decoder capability and stress test]: http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
+
+2012-12-19
+-   version 0.2.3
+-   bug fix
+    -   wrong behavior of bce (ED, EL, DL, IL, ICH, DCH, ECH) (reported by IWAMOTO Kouichi ([@ttdoda]))
+
+[@ttdoda]: http://doda.teraterm.org/whoami.xhtm
+
+2014-03-07 haru
+	* version 0.2.4
+	* conf.hにいくつかの設定を追加
+		* ROTATE = NORMAL or CLOCKWISE or COUNTER_CLOCKWISE or UPSIDE_DOWN
+		* LAZY_DRAW(データ量が多いときに描画を抑制する)を追加
+		* BACKGROUND_DRAW(VT切り替え後も描画を続ける)を追加
+	* struct terminalのoffsetを削除
+
+2014-03-24
+	* version 0.2.5
+	* BACKGROUND_DRAW, ROTATEの設定をconf.hでなく環境変数YAFTでするようにした
+	  (実行時に変更する必要がないと思われるものは相変わらずconf.hで指定)
+		* 環境変数YAFTで有効なオプション
+			wall: 背景画像を有効にする
+			background or bg: activeになっていないVTでも描画を続ける(2画面用)
+			clockwise or cw: 90度描画を回転
+			counter_clockwise or ccw: 270度描画を回転
+			upside_down or ud: 180度描画を回転
+			ex) YAFT="wall cw bg" yaft
+		* 環境変数FRAMEBUFFER
+			framebuffer deviceを指定する
+			ex) FRAMEBUFFER="/dev/fb0" yaft
+	* 幾つかのOSCを実装した
+		OSC 4: color paletteの変更
+			色の設定(rgbの指定は1-4桁)
+				OSC 4 ; c ; rgb:rr/gg/bb ST
+				OSC 4 ; c ; #rrggbb ST
+			c番目の色設定の応答
+				request
+				OSC 4 ; c ; ? ST
+				response
+				OSC 4 ; c ; rgb:rr/gg/bb ST
+		OSC 104: color paletteの初期化
+			c番目の色を初期化
+				OSC 104 ; c ST
+			全ての色を初期化
+				OSC 104 ST
+		OSC 8900: glyph width report
+			requestの際にwidth, from, toの指定を強制するようにした
+			* request *
+			OSC 8900 ; Ps ; ? : Pw : Pf : Pt ST
+				Ps: reserved
+				Pw: width (0 or 1 or 2)
+				Pf: beginning of unicode code point
+				Pt: end of unicode code point
+				ST: BEL(0x07) or ESC(0x1B) BACKSLASH(0x5C)
+			* answer *
+			OSC 8900 ; Ps ; Pt ; Pf : Pt ; Pf : Pt ; ... ST
+				Ps: responce code
+					0: ok (default)
+					1: recognized but not supported
+					2: not recognized
+				Pt: reserved (maybe East Asian Width Version)
+				<!-- Pw: width (0 or 1 or 2) depricated -->
+				Pf: beginning of unicode code point
+				Pt: end of unicode code point
+				ST: BEL(0x07) or ESC(0x1B) BACKSLASH(0x5C)
+			(ref)
+			http://uobikiemukot.github.io/yaft/glyph_width_report.html
+			https://gist.github.com/saitoha/8767268
+	* コードを色々整理した
+
+2014-05-16
+	* version 0.2.6
+	* rorateオプションを消した
+	* glyph.hの書式を変更 (フォントによってはyaftのバイナリがかなり小さく)
+		* それに伴いtools/以下のソースを書き換え
+	* glyph width report rev.3 に対応 (ref: http://uobikiemukot.github.io/yaft/glyph_width_report.html)
+		* DRCSの領域(Unicode Private Area)の応答にはまだ未対応
+	* DRCS/DRCSMMv1に試験的に対応 (無視しているパラメータが多いので注意)
+		* yaftにはSCS(Select Character Set)が実装されていないので常にDRCSMMv1が有効
+	* OSC/DCSはソースファイルを分離 (osc.h, dcs.h)
+	* 8bpp時にVT switchが起きてもcmapを復元していなかったのを修正
+	* その他にも色々コードを整理
+
+2014-05-18
+	* version 0.2.7
+	* 主にX版(yaftx)の修正
+		* ximが使えるようにした (scimのみで動作確認)
+		* 描画の処理をfb版に合わせて修正
+		* resizeの度にmalloc/freeをしていたのを止めた
+		* ioctl(TIOCSWINSZ)の位置おかしかったのを修正
+	* perror()の前にerrnoをちゃんと初期化するようにした (util.h)
+	* forkpty(), openpty()を書き直した (util.h)
+	* X版でMod1Mask(Alt)の修飾キーが効かなかったのを修正 (thanks to @H_Kobo)
+		* Alt + [Up/Down/Left/Right]等の特殊キーに対応
+	* XIMのinput styleの選択方法がバグってたのを修正
+	* eopenpty()でcompilerのwarningが出る箇所を修正 (util.h)
+
+2014-08-27
+	* version 0.2.8
+	* sixelのサポートを追加
+	* マウスによるコピー/ペイストに対応 (yaftx)
+	* NetBSD/OpenBSDのサポート
+	* 環境変数SHELLを見るように (conf.hのshell_cmdよりも優先)
+	* WALLPAPERオプションをconf.hから削除 (代わりにYAFT="wall"という環境変数を見るように)
+	* man pageを作成
+
+2015-07-26
+	* version 0.2.8
+	* フレームバッファ関連のコードを書き直した
+		* direct colorをサポート (古いradeonのグラボ等で用いられる)
+	* 幾つかのオプションを追加
+		VT_CONTROL     : vt switchingの処理を行わない (linux以外ではたぶん処理しなくても良い)
+		FORCE_TEXT_MODE: KD_GRAPHICSへ変更しない (linux consoleの描画と競合するるが，Xとyaftを切り替える場合には必要)
+	* 色々なバグ修正
+		* mkfont_bdfによるフォント生成の不具合等
+	* コードのrefine
