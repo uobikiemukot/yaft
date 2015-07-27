@@ -1,0 +1,135 @@
+# yaft (yet another framebuffer terminal)
+
+## test environment
+
+using qemu (i386, vga cirrus)
+
+-	FreeBSD 10.1
+-	OpenBSD 5.7
+-	NetBSD 6.1.5
+
+## FreeBSD
+
+### kernel rebuild
+
+edit /usr/src/sys/i386/conf/GENERIC
+
+~~~
+options VESA
+options SC_PIXEL_MODE
+~~~
+
+build
+
+~~~
+# cd /usr/src
+# make buildkernel
+# make installkernel
+~~~
+
+### module load (no kernel rebuild)
+
+~~~
+# kldload vesa
+# echo "vesa_load=\"YES\"" >> /boot/loader.conf
+~~~
+
+### vesa mode
+
+check available mode
+
+~~~
+# vidcontrol -i mode
+~~~
+
+change mode
+
+~~~
+# vidcontrol MODE_XXX
+# echo "allscreens_flags=\"MODE_XXX\"" >> /etc/rc.conf
+~~~
+
+### keyrepeat
+
+~~~
+# kbdcontrol -r fast
+~~~
+
+### write-combine
+
+~~~
+# memcontrol set -b 0xe0000000 -l 0x10000000 -o SVGA write-combine
+~~~
+
+## NetBSD
+
+### vesa mode
+
+check available mode
+
+~~~
+(boot prompt)
+> vesa list
+~~~
+
+edit /boot.cfg
+
+~~~
+menu=Boot normally:rndseed /var/db/entropy-file;vesa 1024x768x32;boot netbsd
+~~~
+
+### key repeat
+
+~~~
+# wsconsctl -w repeat.del1=200 repeat.deln=50
+~~~
+
+~~~
+# echo "setvar repeat.del1=200" >> /etc/wscons.conf
+# echo "setvar repeat.deln=50" >> /etc/wscons.conf
+~~~
+
+## OpenBSD
+
+### kernel
+
+-	patch http://mlterm.sf.net/openbsd-5.3-fixvesa.patch
+
+edit /usr/src/sys/arch/i386/conf/GENERIC
+
+~~~
+vesabios0 at mainbus?
+option VESAFB
+~~~
+
+build
+
+~~~
+# cd /usr/src/sys/arch/i386/compile/GENERIC
+# make clean && make depend && make
+# make install
+# reboot
+~~~
+
+### change vesa mode
+
+edit yaft/fb/openbsd.h
+
+~~~
+enum {
+	FB_WIDTH  = 640,
+	FB_HEIGHT = 480,
+	FB_DEPTH  = 8,
+};
+~~~
+
+### key repeat
+
+~~~
+# wsconsctl -w repeat.del1=200 repeat.deln=50
+~~~
+
+~~~
+# echo "setvar repeat.del1=200" >> /etc/wscons.conf
+# echo "setvar repeat.deln=50" >> /etc/wscons.conf
+~~~

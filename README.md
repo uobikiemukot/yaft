@@ -1,147 +1,73 @@
 # yaft (yet another framebuffer terminal)
 
-Last update: Wed Aug 27 20:19:46 JST 2014
+Last update: Mon Jul 27 10:36:02 JST 2015
 
 ## description
 
-yaft is simple framebuffer terminal emulator for minimalist (living without X).
-This software is being developed to replace Linux console for personal use.
+Yet Another Framebuffer Terminal (aka "yaft") is simple terminal emulator for minimalist.
 
-yaft supports UCS2 glyphs including wide character and 256 color.
-(Linux console can handle only 512 glyphs and doesn't support 256 color.)
-What you need for build is only make and gcc (or bmake and clang).
+Features:
 
-Main target is Linux console, but yaft supports some other framebuffer platform, FreeBSD console and NetBSD/OpenBSD wscons (experimental).
-And there are other (non framebuffer) ports, yaftx (X Window System) and yaft-android (Android).
++	various framebuffer types (8/15/16/24/32bpp)
++	compatible with vt102 and Linux console ([detail](http://uobikiemukot.github.io/yaft/escape.html))
++	UTF-8 encoding and UCS2 gylphs
++	256 colors (same as xterm)
++	wallpaper
++	DRCS (DECDLD/DRCSMMv1) (experimental)
++	sixel (experimental)
 
-This repository includes yaft, yaft-freebsd, yaft-netbsd, yaft-openbsd and yaftx.
-yaft-android is found [here](https://github.com/uobikiemukot/yaft-android).
+There are Several ports:
+
+-	yaft for framebuffer console
+	-	Linux console
+	-	FreeBSD console
+	-	NetBSD/OpenBSD wscons (experimental)
+-	yaftx for X Window System
+-	[yaft-android](https://github.com/uobikiemukot/yaft-android) for Android
 
 ## download
 
-(up-to-date)
-
-~~~
-$ git clone https://github.com/uobikiemukot/yaft
-~~~
-or
-
-(maybe something old)
-
--	[http://uobikiemukot.github.io/yaft/release/yaft-0.2.8.tar.gz](http://uobikiemukot.github.io/yaft/release/yaft-0.2.8.tar.gz)
-
-## features
-
-+	recognizes most of escape sequences of vt102 and Linux console ([detail](http://uobikiemukot.github.io/yaft/escape.html))
-+	supports various framebuffer types (8/15/16/24/32bpp)
-+	supports (only) UTF-8 encoding and UCS2 gylphs with embedded fonts
-+	supports 256 colors (same as xterm)
-+	supports wallpaper
-+	supports DRCS (DECDLD/DRCSMMv1) (experimental)
-+	supports sixel (experimental)
+-	[yaft-0.2.9.tar.gz](https://github.com/uobikiemukot/yaft/archive/v0.2.9.tar.gz)
 
 ## configuration
 
-If you want to change configuration, rewrite conf.h
+If you want to change configuration, rewrite "conf.h".
 
-### color
+## environment variables
 
-This value is an index of color_list (see color.h)
+-	FRAMEBUFFER: specify farmebuffer device
+-	SHELL: specify shell command
+-	YAFT="wall": use current background as wallpaper (need [idump](https://github.com/uobikiemukot/idump) or fbv)
 
-+	DEFAULT_FG = 7,
-+	DEFAULT_BG = 0,
-+	ACTIVE_CURSOR_COLOR  = 2,
-+	PASSIVE_CURSOR_COLOR = 1, /* effect only in X Window System and linux console */
-
-### misc
-
-+	DEBUG            = false,  /* write dump of input to stdout, debug message to stderr */
-+	TABSTOP          = 8,      /* hardware tabstop */
-+	BACKGROUND_DRAW  = false,  /* always draw even if vt is not active (maybe linux console only, useful for multi display) */
-+	SUBSTITUTE_HALF  = 0x0020, /* used for missing glyph (single width): U+0020 (SPACE)) */
-+	SUBSTITUTE_WIDE  = 0x3000, /* used for missing glyph (double width): U+3000 (IDEOGRAPHIC SPACE) */
-+	REPLACEMENT_CHAR = 0x003F, /* used for malformed UTF-8 sequence    : U+003F (QUESTION MARK)  */
-
-### terminal name and path
-
-+	static char *term_name = "TERM=yaft-256color";
-+	static char *fb_path   = "/dev/fb0";
-+	static char *shell_cmd = "/bin/bash";
+~~~
+$ idump /path/to/wallpaper.png; tput civis; YAFT="wall" FRAMEBUFFER="/dev/fb1" SHELL="/bin/csh" yaft
+~~~
 
 ## how to use your favorite fonts
 
-You can use tools/mkfont_bdf to create glyph.h
+You can use tools/mkfont_bdf to create "glyph.h".
 
 usage: tools/mkfont_bdf ALIAS_FILE BDF1 BDF2 BDF3 ... > glyph.h
 
 -	ALIAS_FILE: glyph substitution rule file (see table/alias)
 -	BDF1, BDF2, BDF3...: bdf files
 	+	yaft supports only "monospace" bdf font
-	+	yaft doesn't support bold fonts (yaft just uses bright color for bold attribute)
 	+	you can specify mulitiple bdf fonts (but these fonts MUST be the same size)
-	+	If there is more than one glyph of the same codepoint, the glyph included in the first bdf file is choosed
-
-change makefile like this
+		+	If there is more than one glyph of the same codepoint, the glyph included in the FIRST bdf file is choosed
 
 ~~~
-#./mkfont_bdf table/alias fonts/milkjf_k16.bdf fonts/milkjf_8x16r.bdf fonts/milkjf_8x16.bdf > glyph.h
-./mkfont_bdf table/your_alias your/favorite/fonts.bdf > glyph.h
+$ ./mkfont_bdf table/your_alias your/favorite/fonts.bdf > glyph.h
 ~~~
 
-or change yaft.h
+## build and install
 
 ~~~
-//#include "glyph.h"
-#include "glyph_you_created.h"
-~~~
-
-## environment variable
-
-~~~
-$ FRAMEBUFFER="/dev/fb1" yaft # use another framebuffer device
-$ idump /path/to/wallpaper.png; YAFT="wall" yaft # set wallpaper (see yaft_wall script)
-~~~
-
-## build and install (yaft)
-
-Please check makefile and LANG environment variable before make
-(yaft uses wcwidth in libc for calculating glyph width)
-
-~~~
-($ export LANG=en_US.UTF-8)
+$ export LANG=en_US.UTF-8 # yaft uses libc's wcwidth for calculating glyph width
 $ make
 # make install
-(or install manually)
-~~~
-
-## build and install (yaftx)
-
-~~~
+or
 $ make yaftx
-~~~
-
-Please install manually
-
-## terminfo/termcap
-
-terminfo/termcap is found in info/ directory
-
-## usage
-
-~~~
-$ yaft
-~~~
-
-For enabling wallpaper, you can use yaft_wall script (it requires [fbv](http://www.eclis.ch/fbv/))
-
-~~~
-$ yaft_wall /path/to/wallpaper.jpg
-~~~
-
-or you can use [idump](https://github.com/uobikiemukot/idump)
-
-~~~
-$ idump /path/to/wallpaper.jpg; YAFT="wall" yaft
+# make installx
 ~~~
 
 ## screenshot
