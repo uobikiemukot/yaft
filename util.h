@@ -308,10 +308,8 @@ long estrtol(const char *nptr, char **endptr, int base)
 /* parse_arg functions */
 void reset_parm(struct parm_t *pt)
 {
-	int i;
-
 	pt->argc = 0;
-	for (i = 0; i < MAX_ARGS; i++)
+	for (int i = 0; i < MAX_ARGS; i++)
 		pt->argv[i] = NULL;
 }
 
@@ -333,7 +331,7 @@ void parse_arg(char *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
 		(valid char) (delimiter)
 		argv[0]                  argv[1]   argv[2] ...   argv[argc - 1]
 	*/
-	size_t i, length;
+	size_t length;
 	char *cp, *vp;
 
 	if (buf == NULL)
@@ -343,7 +341,7 @@ void parse_arg(char *buf, struct parm_t *pt, int delim, int (is_valid)(int c))
 	logging(DEBUG, "parse_arg() length:%u\n", (unsigned) length);
 
 	vp = NULL;
-	for (i = 0; i < length; i++) {
+	for (size_t i = 0; i < length; i++) {
 		cp = buf + i;
 
 		if (vp == NULL && is_valid(*cp))
@@ -389,9 +387,9 @@ int hex2num(char *str)
 
 int sum(struct parm_t *parm)
 {
-	int i, sum = 0;
+	int sum = 0;
 
-	for (i = 0; i < parm->argc; i++)
+	for (int i = 0; i < parm->argc; i++)
 		sum += dec2num(parm->argv[i]);
 
 	return sum;

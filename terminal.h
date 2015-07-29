@@ -278,9 +278,7 @@ void reset_charset(struct terminal_t *term)
 
 void reset(struct terminal_t *term)
 {
-	int i, j;
-
-	term->mode = MODE_RESET;
+	term->mode  = MODE_RESET;
 	term->mode |= (MODE_CURSOR | MODE_AMRIGHT);
 	term->wrap_occured = false;
 
@@ -298,15 +296,15 @@ void reset(struct terminal_t *term)
 
 	term->attribute = ATTR_RESET;
 
-	for (i = 0; i < term->lines; i++) {
-		for (j = 0; j < term->cols; j++) {
-			erase_cell(term, i, j);
-			if ((j % TABSTOP) == 0)
-				term->tabstop[j] = true;
+	for (int line = 0; line < term->lines; line++) {
+		for (int col = 0; col < term->cols; col++) {
+			erase_cell(term, line, col);
+			if ((col % TABSTOP) == 0)
+				term->tabstop[col] = true;
 			else
-				term->tabstop[j] = false;
+				term->tabstop[col] = false;
 		}
-		term->line_dirty[i] = true;
+		term->line_dirty[line] = true;
 	}
 
 	reset_esc(term);
@@ -315,9 +313,7 @@ void reset(struct terminal_t *term)
 
 void redraw(struct terminal_t *term)
 {
-	int i;
-
-	for (i = 0; i < term->lines; i++)
+	for (int i = 0; i < term->lines; i++)
 		term->line_dirty[i] = true;
 }
 

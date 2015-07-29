@@ -266,9 +266,8 @@ void parse(struct terminal_t *term, uint8_t *buf, int size)
 		UTF-8           : 0x80 ~ 0xFF
 	*/
 	uint8_t ch;
-	int i;
 
-	for (i = 0; i < size; i++) {
+	for (int i = 0; i < size; i++) {
 		ch = buf[i];
 		if (term->esc.state == STATE_RESET) {
 			/* interrupted by illegal byte */
