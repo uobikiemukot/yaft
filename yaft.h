@@ -93,7 +93,7 @@ enum esc_state {
 	STATE_DCS    = 0x08, /* ESC P */
 };
 
-enum glyph_width_t {
+enum glyph_width {
 	NEXT_TO_WIDE = 0,
 	HALF,
 	WIDE,
@@ -107,7 +107,7 @@ struct cell_t {
 	const struct glyph_t *glyphp;   /* pointer to glyph */
 	struct color_pair_t color_pair; /* color (fg, bg) */
 	enum char_attr attribute;       /* bold, underscore, etc... */
-	enum glyph_width_t width;       /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
+	enum glyph_width width;         /* wide char flag: WIDE, NEXT_TO_WIDE, HALF */
 	bool has_pixmap;                /* has sixel pixmap data or not */
 	/*	sixel pixmap data:
 		must be statically allocated for copy_cell() */
@@ -147,7 +147,7 @@ struct terminal_t {
 	int width, height;                       /* terminal size (pixel) */
 	int cols, lines;                         /* terminal size (cell) */
 	struct cell_t *cells;                    /* pointer to each cell: cells[y * lines + x] */
-	struct margin_t scroll;                    /* scroll margin */
+	struct margin_t scroll;                  /* scroll margin */
 	struct point_t cursor;                   /* cursor pos (x, y) */
 	bool *line_dirty;                        /* dirty flag */
 	bool *tabstop;                           /* tabstop flag */
