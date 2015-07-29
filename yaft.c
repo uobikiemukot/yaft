@@ -24,22 +24,20 @@ void sig_handler(int signo)
 	if (signo == SIGCHLD) {
 		child_alive = false;
 		wait(NULL);
-	} else if (signo == SIGUSR1) {
-		if (vt_active) {           /* vt deactivate */
-			vt_active = false;
-			ioctl(STDIN_FILENO, VT_RELDISP, 1);
+	} else if (signo == SIGUSR1) { /* vt activate */
+		vt_active   = true;
+		need_redraw = true;
+		ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
+	} else if (signo == SIGUSR2) { /* vt deactivate */
+		vt_active = false;
+		ioctl(STDIN_FILENO, VT_RELDISP, 1);
 
-			if (BACKGROUND_DRAW) { /* update passive cursor */
-				need_redraw = true;
-			} else {               /* sleep until next vt switching */
-				sigfillset(&sigset);
-				sigdelset(&sigset, SIGUSR1);
-				sigsuspend(&sigset);
-			}
-		} else {                   /* vt activate */
-			vt_active   = true;
+		if (BACKGROUND_DRAW) { /* update passive cursor */
 			need_redraw = true;
-			ioctl(STDIN_FILENO, VT_RELDISP, VT_ACKACQ);
+		} else {               /* sleep until next vt switching */
+			sigfillset(&sigset);
+			sigdelset(&sigset, SIGUSR1);
+			sigsuspend(&sigset);
 		}
 	}
 }
@@ -49,10 +47,10 @@ void set_rawmode(int fd, struct termios *save_tm)
 	struct termios tm;
 
 	tm = *save_tm;
-	tm.c_iflag = tm.c_oflag = 0;
-	tm.c_cflag &= ~CSIZE;
-	tm.c_cflag |= CS8;
-	tm.c_lflag &= ~(ECHO | ISIG | ICANON);
+	tm.c_iflag     = tm.c_oflag = 0;
+	tm.c_cflag    &= ~CSIZE;
+	tm.c_cflag    |= CS8;
+	tm.c_lflag    &= ~(ECHO | ISIG | ICANON);
 	tm.c_cc[VMIN]  = 1; /* min data size (byte) */
 	tm.c_cc[VTIME] = 0; /* time out */
 	etcsetattr(fd, TCSAFLUSH, &tm);
@@ -69,11 +67,14 @@ bool tty_init(struct termios *termios_orig)
 
 	if (VT_CONTROL) {
 		esigaction(SIGUSR1, &sigact, NULL);
+		esigaction(SIGUSR2, &sigact, NULL);
 
 		struct vt_mode vtm;
 		vtm.mode   = VT_PROCESS;
 		vtm.waitv  = 0;
-		vtm.relsig = vtm.acqsig = vtm.frsig = SIGUSR1;
+		vtm.acqsig = SIGUSR1;
+		vtm.relsig = SIGUSR2;
+		vtm.frsig  = 0;
 
 		if (ioctl(STDIN_FILENO, VT_SETMODE, &vtm))
 			logging(WARN, "ioctl: VT_SETMODE failed (maybe here is not console)\n");
@@ -95,6 +96,7 @@ void tty_die(struct termios *termios_orig)
 {
  	/* no error handling */
 	struct sigaction sigact;
+	struct vt_mode vtm;
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = SIG_DFL;
@@ -102,8 +104,8 @@ void tty_die(struct termios *termios_orig)
 
 	if (VT_CONTROL) {
 		sigaction(SIGUSR1, &sigact, NULL);
+		sigaction(SIGUSR2, &sigact, NULL);
 
-		struct vt_mode vtm;
 		vtm.mode   = VT_AUTO;
 		vtm.waitv  = 0;
 		vtm.relsig = vtm.acqsig = vtm.frsig = 0;
@@ -115,7 +117,7 @@ void tty_die(struct termios *termios_orig)
 	}
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, termios_orig);
-	//fflush(stdout);
+	fflush(stdout);
 	ewrite(STDIN_FILENO, "\033[?25h", 6); /* make cursor visible */
 }
 
