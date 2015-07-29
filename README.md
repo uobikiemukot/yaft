@@ -88,6 +88,10 @@ usage: tools/mkfont_bdf ALIAS_FILE BDF1 BDF2 BDF3 ... > glyph.h
 $ ./mkfont_bdf table/your_alias your/favorite/fonts.bdf > glyph.h
 ~~~
 
+Or try glyph_builder.sh (bash script for creating yaft's glyph.h)
+
+-	supported fonts: mplus, efont, milkjf, unifont, dina, terminus, profont, tamsyn
+
 ## screenshot
 
 ![screenshot1](http://uobikiemukot.github.io/img/yaft-screenshot.png)
