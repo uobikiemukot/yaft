@@ -29,7 +29,7 @@ const char *term_name = "yaft-256color";
 #if defined(__linux__)
 	const char *fb_path = "/dev/fb0";
 #elif defined(__FreeBSD__)
-	const char *fb_path = "/dev/tty";
+	const char *fb_path = "/dev/ttyv0";
 #elif defined(__NetBSD__)
 	const char *fb_path = "/dev/ttyE0";
 #elif defined(__OpenBSD__)
