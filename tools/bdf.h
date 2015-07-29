@@ -141,6 +141,9 @@ int read_bitmap(struct glyph_list_t **glist_head, struct glyph_t *default_glyph,
 
 		shift_glyph(bdf_header, bdf_char);
 
+		if (bdf_char->encoding < 0 || bdf_char->encoding >= UCS2_CHARS)
+			return BDF_CHAR;
+
 		code   = convert_table[bdf_char->encoding];
 		width  = bdf_char->dwidth;
 		height = bdf_header->ascent + bdf_header->descent;
