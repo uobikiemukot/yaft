@@ -11,13 +11,15 @@ bool map_glyph(struct glyph_t *font[],
 	struct glyph_t *glyph;
 	struct glyph_list_t *listp;
 
-	if (default_glyph == NULL) {
+	if (default_glyph->width == 0 || default_glyph->height == 0) {
 		logging(ERROR, "default glyph(U+%.4X) not found\n", DEFAULT_CHAR);
 		return false;
 	}
 
 	cell_width  = default_glyph->width;
 	cell_height = default_glyph->height;
+	logging(DEBUG, "default glyph width:%d height:%d\n",
+		default_glyph->width, default_glyph->height);
 
 	for (listp = glist_head; listp != NULL; listp = listp->next) {
 		if (listp->code >= UCS2_CHARS)
@@ -185,12 +187,12 @@ int main(int argc, char *argv[])
 		logging(WARN, "font alias does not work\n");
 
 	if (!check_font(font, &empty_half, &empty_wide)) {
-		logging(FATAL, "map_glyph() failed\n");
+		logging(FATAL, "check_font() failed\n");
 		goto err_occured;
 	}
 
 	if (!dump_font(font)) {
-		logging(FATAL, "map_glyph() failed\n");
+		logging(FATAL, "dump_font() failed\n");
 		goto err_occured;
 	}
 
