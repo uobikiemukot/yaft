@@ -7,8 +7,6 @@
 
 #define XK_NO_MOD UINT_MAX
 
-static const char *im_font = "-*-*-medium-r-*-*-16-*-*-*-*-*-*-*";
-
 enum { /* default terminal size */
     TERM_WIDTH  = 640,
     TERM_HEIGHT = 384,
@@ -63,14 +61,6 @@ const struct keydef key[] = {
     kcbt=\E[Z,kmous=\E[M,kspd=^Z,
 */
 
-struct paste_t {
-	Atom target;
-	struct point_t begin, end, current;
-	int prev;
-	bool copy_cursor_visible;
-	char *str;
-};
-
 struct xwindow_t {
     Display *display;
     Window window;
@@ -78,163 +68,7 @@ struct xwindow_t {
     GC gc;
 	int width, height;
     int screen;
-	XIM im;
-	XIC ic;
-	XIMStyle input_style;
-	struct paste_t paste;
 };
-
-void print_style(XIMStyle style)
-{
-    if (style & XIMPreeditCallbacks)
-        fprintf(stderr, "XIMPreeditCallbacks\n");
-    else if (style & XIMPreeditPosition)
-        fprintf(stderr, "XIMPreeditPosition\n");
-    else if (style & XIMPreeditArea)
-        fprintf(stderr, "XIMPreeditArea\n");
-    else if (style & XIMPreeditNothing)
-        fprintf(stderr, "XIMPreeditNothing\n");
-    else
-        fprintf(stderr, "XIMPreeditNone\n");
-
-    if (style & XIMStatusCallbacks)
-        fprintf(stderr, "XIMStatusCallbacks\n");
-    else if (style & XIMStatusArea)
-        fprintf(stderr, "XIMStatusArea\n");
-    else if (style & XIMStatusNothing)
-        fprintf(stderr, "XIMStatusNothing\n");
-    else
-        fprintf(stderr, "XIMStatusNone\n");
-	
-	fprintf(stderr, "\n");
-}
-
-XIMStyle select_better_style(XIMStyle im_style, XIMStyle best_style)
-{
-	XIMStyle i, b;
-	XIMStyle preedit, status;
-
-	preedit = XIMPreeditArea | XIMPreeditCallbacks |
-		XIMPreeditPosition | XIMPreeditNothing | XIMPreeditNone;
-	status = XIMStatusArea | XIMStatusCallbacks |
-		XIMStatusNothing | XIMStatusNone;
-
-	/* if one style == 0, select another */
-	if (im_style == 0)
-		return best_style;
-
-	if (best_style == 0)
-		return im_style;
-
-	/* im_style and best_style are the same */
-	if ((im_style & (preedit | status)) == (best_style & (preedit | status)))
-		return im_style;
-
-	/* ok, now we select better style */
-	i = im_style & preedit;
-	b = best_style & preedit;
-
-	if (i != b) { /* different preedit style */
-		if ((i | b) & XIMPreeditCallbacks)
-			return (i == XIMPreeditCallbacks) ? im_style: best_style;
-		else if ((i | b) & XIMPreeditPosition)
-			return (i == XIMPreeditPosition) ? im_style: best_style;
-		else if ((i | b) & XIMPreeditArea)
-			return (i == XIMPreeditArea) ? im_style: best_style;
-		else if ((i | b) & XIMPreeditNothing)
-			return (i == XIMPreeditNothing) ? im_style: best_style;
-		else
-			return 0;
-	} else { /* if preedit flags are the same, compare status flags */
-		i = im_style & status;
-		b = best_style & status;
-
-		if ((i | b) & XIMStatusCallbacks)
-			return (i == XIMStatusCallbacks) ? im_style: best_style;
-		else if ((i | b) & XIMStatusArea)
-			return (i == XIMStatusArea) ? im_style: best_style;
-		else if ((i | b) & XIMStatusNothing)
-			return (i == XIMStatusNothing) ? im_style: best_style;
-		else
-			return 0;
-	}
-}
-
-void im_init(struct xwindow_t *xw)
-{
-	int i;
-	long im_event_mask;
-	int num_missing_charsets = 0;
-	char **missing_charsets;
-	char *default_string;
-	XFontSet fontset;
-	XVaNestedList list;
-	XIMStyles *im_styles;
-	XIMStyle app_styles, style;
-	XPoint xpoint = {.x = 0, .y = 0};
-
-	if ((xw->im = XOpenIM(xw->display, NULL, NULL, NULL)) == NULL)
-		logging(ERROR, "couldn't open input method\n");
-
-	/* check available input style */
-	app_styles = XIMPreeditNone | XIMPreeditNothing | XIMPreeditPosition
-		| XIMStatusNone | XIMStatusNothing;
-
-	XGetIMValues(xw->im, XNQueryInputStyle, &im_styles, NULL);
-	xw->input_style = 0;
-
-	if (DEBUG)
-		fprintf(stderr, "im supported styles:\n");
-
-	for (i = 0; i < im_styles->count_styles; i++) {
-		style = im_styles->supported_styles[i];
-		if (DEBUG)
-			print_style(style);
-
-		if ((style & app_styles) == style)
-			xw->input_style = select_better_style(style, xw->input_style);
-	}
-	if (xw->input_style == 0)
-		logging(ERROR, "couldn't get valid input method style\n");
-
-	XFree(im_styles);
-
-	if (DEBUG) {
-		fprintf(stderr, "input style:\n");
-		print_style(xw->input_style);
-	}
-
-	fontset = XCreateFontSet(xw->display, im_font,
-		&missing_charsets, &num_missing_charsets, &default_string);
-	list = XVaCreateNestedList(0, XNSpotLocation, &xpoint,
-		XNForeground, color_list[DEFAULT_FG],
-		XNBackground, color_list[DEFAULT_BG],
-		XNFontSet, fontset, NULL);
-
-	if ((xw->ic = XCreateIC(xw->im, XNInputStyle, xw->input_style,
-		XNPreeditAttributes, list, XNClientWindow, xw->window, NULL)) == NULL)
-		logging(ERROR, "couldn't create ic\n");
-	XFree(list);
-
-	XGetICValues(xw->ic, XNFilterEvents, &im_event_mask, NULL);
-	XSelectInput(xw->display, xw->window, im_event_mask
-		| FocusChangeMask | ExposureMask | KeyPressMask | StructureNotifyMask
-		| PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
-	XSetICFocus(xw->ic);
-}
-
-void init_paste(struct xwindow_t *xw)
-{
-	struct paste_t *paste = &xw->paste;
-
-	paste->begin.x   = paste->begin.y   = 0;
-	paste->end.x     = paste->end.y     = 0;
-	paste->current.x = paste->current.y = 0;
-	paste->prev = -1;
-
-	paste->copy_cursor_visible = false;
-	paste->str = NULL;
-}
 
 void xw_init(struct xwindow_t *xw)
 {
@@ -263,12 +97,8 @@ void xw_init(struct xwindow_t *xw)
 	xw->pixbuf = XCreatePixmap(xw->display, xw->window,
 		xw->width, xw->height, XDefaultDepth(xw->display, xw->screen));
 
-	xw->paste.target = XInternAtom(xw->display, "UTF8_STRING", 0);
-	if(xw->paste.target == None)
-		xw->paste.target = XA_STRING;
-
-	init_paste(xw);
-	im_init(xw);
+	XSelectInput(xw->display, xw->window,
+		ExposureMask | KeyPressMask | StructureNotifyMask);
 
 	XMapWindow(xw->display, xw->window);
 }
@@ -277,8 +107,6 @@ void xw_die(struct xwindow_t *xw)
 {
 	XFreeGC(xw->display, xw->gc);
 	XFreePixmap(xw->display, xw->pixbuf);
-	XDestroyIC(xw->ic);
-	XCloseIM(xw->im);
 	XDestroyWindow(xw->display, xw->window);
 	XCloseDisplay(xw->display);
 }
@@ -304,13 +132,10 @@ static inline void draw_sixel(struct xwindow_t *xw, int line, int col, struct ce
 static inline void draw_line(struct xwindow_t *xw, struct terminal_t *term, int line)
 {
 	int bdf_padding, glyph_width, margin_right;
-	int col, w, h, begin, current, pos;
-	uint8_t color_tmp;
+	int col, w, h;
 	struct color_pair_t color_pair;
 	struct cell_t *cellp;
 	const struct glyph_t *glyphp;
-
-	struct paste_t *paste = &xw->paste;
 
 	/* at first, fill all pixels of line in backgournd color */
 	XSetForeground(xw->display, xw->gc, color_list[DEFAULT_BG]);
@@ -345,19 +170,6 @@ static inline void draw_line(struct xwindow_t *xw, struct terminal_t *term, int 
 			color_pair.bg = (!vt_active && BACKGROUND_DRAW) ? PASSIVE_CURSOR_COLOR: ACTIVE_CURSOR_COLOR;
 		}
 
-		/* show copy area */
-		if (paste->copy_cursor_visible) {
-			pos     = col + line * term->cols;
-			begin   = paste->begin.x + paste->begin.y * term->cols;
-			current = paste->current.x + paste->current.y * term->cols;
-
-			if (pos == begin || pos == current) {
-				color_tmp     = color_pair.fg;
-				color_pair.fg = color_pair.bg;
-				color_pair.bg = color_tmp;
-			}
-		}
-
 		for (h = 0; h < CELL_HEIGHT; h++) {
 			/* if UNDERLINE attribute on, swap bg/fg */
 			if ((h == (CELL_HEIGHT - 1)) && (cellp->attribute & attr_mask[ATTR_UNDERLINE]))
@@ -378,28 +190,8 @@ static inline void draw_line(struct xwindow_t *xw, struct terminal_t *term, int 
 			}
 		}
 	}
-	/* actual display update: move to refresh()
-	XCopyArea(xw->display, xw->pixbuf, xw->window, xw->gc, 0, line * CELL_HEIGHT,
-		term->width, CELL_HEIGHT, 0, line * CELL_HEIGHT); */
 
 	term->line_dirty[line] = ((term->mode & MODE_CURSOR) && term->cursor.y == line) ? true: false;
-}
-
-void set_preedit_pos(struct xwindow_t *xw, struct terminal_t *term)
-{
-	XVaNestedList list;
-	XPoint pos;
-
-	/* FIXME: hard coding! this offset for xim, not suitable for scim */
-	/* TODO: implement xim {Preedit,Status}Callbacks */
-	pos.x = term->cursor.x * CELL_WIDTH;
-	pos.y = (term->cursor.y + 1) * CELL_HEIGHT - 2;
-
-	list = XVaCreateNestedList(0, XNSpotLocation, &pos, NULL);
-
-	XSetICValues(xw->ic, XNPreeditAttributes, list, NULL);
-
-	XFree(list);
 }
 
 void refresh(struct xwindow_t *xw, struct terminal_t *term)
@@ -425,7 +217,4 @@ void refresh(struct xwindow_t *xw, struct terminal_t *term)
 	if (update_from != -1)
 		XCopyArea(xw->display, xw->pixbuf, xw->window, xw->gc, 0, update_from * CELL_HEIGHT,
 			term->width, (update_to - update_from + 1) * CELL_HEIGHT, 0, update_from * CELL_HEIGHT);
-
-	if (xw->input_style & XIMPreeditPosition)
-		set_preedit_pos(xw, term);
 }
