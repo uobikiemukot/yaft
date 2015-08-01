@@ -310,6 +310,8 @@ void set_mode(struct terminal_t *term, struct parm_t *parm)
 			term->mode |= MODE_AMRIGHT;
 		} else if (mode == 25) {
 			term->mode |= MODE_CURSOR;
+		} else if (mode == 8901) {
+			term->mode |= MODE_VWBS;
 		}
 	}
 
@@ -332,6 +334,8 @@ void reset_mode(struct terminal_t *term, struct parm_t *parm)
 			term->wrap_occured = false;
 		} else if (mode == 25) {
 			term->mode &= ~MODE_CURSOR;
+		} else if (mode == 8901) {
+			term->mode &= ~MODE_VWBS;
 		}
 	}
 

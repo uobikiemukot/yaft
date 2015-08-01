@@ -2,7 +2,14 @@
 /* function for control character */
 void bs(struct terminal_t *term)
 {
-	move_cursor(term, 0, -1);
+	int prev_cell = term->cursor.y * term->cols + term->cursor.x - 1;
+
+	if (term->mode & MODE_VWBS
+		&& 0 <= prev_cell && prev_cell < term->lines * term->cols
+		&& term->cells[prev_cell].width == NEXT_TO_WIDE)
+		move_cursor(term, 0, -2);
+	else
+		move_cursor(term, 0, -1);
 }
 
 void tab(struct terminal_t *term)

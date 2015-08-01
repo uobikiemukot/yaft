@@ -66,6 +66,12 @@ int set_cell(struct terminal_t *term, int y, int x, const struct glyph_t *glyphp
 		cellp->width = NEXT_TO_WIDE;
 		return WIDE;
 	}
+
+	if (cell.width == HALF /* isolated NEXT_TO_WIDE cell */
+		&& x + 1 < term->cols
+		&& term->cells[y * term->cols + (x + 1)].width == NEXT_TO_WIDE) {
+		erase_cell(term, y, x + 1);
+	}
 	return HALF;
 }
 

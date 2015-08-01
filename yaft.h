@@ -50,7 +50,6 @@ enum misc {
 	DRCS_CHARS         = DRCS_CHARSETS * GLYPHS_PER_CHARSET,
 	DEFAULT_CHAR       = SPACE,            /* used for erase char */
 	BRIGHT_INC         = 8,                /* value used for brightening color */
-	OSC_GWREPT         = 8900,             /* OSC Ps: mode number of yaft GWREPT */
 };
 
 enum char_attr {
@@ -78,11 +77,16 @@ const uint32_t bit_mask[] = {
 	0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF,
 };
 
+enum osc {
+	OSC_GWREPT  = 8900, /* OSC Ps: mode number of yaft GWREPT */
+};
+
 enum term_mode {
 	MODE_RESET   = 0x00,
 	MODE_ORIGIN  = 0x01, /* origin mode: DECOM */
 	MODE_CURSOR  = 0x02, /* cursor visible: DECTCEM */
 	MODE_AMRIGHT = 0x04, /* auto wrap: DECAWM */
+	MODE_VWBS    = 0x08, /* variable-width backspace */
 };
 
 enum esc_state {
