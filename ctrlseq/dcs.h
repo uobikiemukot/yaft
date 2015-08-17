@@ -361,7 +361,7 @@ void sixel_copy2cell(struct terminal_t *term, struct sixel_canvas_t *sc)
 	for (y = 0; y < lines; y++) {
 		for (x = 0; x < cols; x++) {
 			erase_cell(term, term->cursor.y, term->cursor.x + x);
-			cellp = &term->cells[term->cursor.y * term->cols + (term->cursor.x + x)];
+			cellp = &term->cells[term->cursor.y][term->cursor.x + x];
 			cellp->has_pixmap = true;
 			for (h = 0; h < CELL_HEIGHT; h++) {
 				src_offset = (y * CELL_HEIGHT + h) * sc->line_length + (CELL_WIDTH * x) * BYTES_PER_PIXEL;
