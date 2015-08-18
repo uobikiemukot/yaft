@@ -78,7 +78,7 @@ const uint32_t bit_mask[] = {
 };
 
 enum osc {
-	OSC_GWREPT  = 8900, /* OSC Ps: mode number of yaft GWREPT */
+	OSC_GWREPT = 8900, /* OSC Ps: mode number of yaft GWREPT */
 };
 
 enum term_mode {
@@ -90,11 +90,11 @@ enum term_mode {
 };
 
 enum esc_state {
-	STATE_RESET  = 0x00,
-	STATE_ESC    = 0x01, /* 0x1B, \033, ESC */
-	STATE_CSI    = 0x02, /* ESC [ */
-	STATE_OSC    = 0x04, /* ESC ] */
-	STATE_DCS    = 0x08, /* ESC P */
+	STATE_RESET = 0x00,
+	STATE_ESC   = 0x01, /* 0x1B, \033, ESC */
+	STATE_CSI   = 0x02, /* ESC [ */
+	STATE_OSC   = 0x04, /* ESC ] */
+	STATE_DCS   = 0x08, /* ESC P */
 };
 
 enum glyph_width {
@@ -150,7 +150,7 @@ struct terminal_t {
 	int fd;                                  /* master of pseudo terminal */
 	int width, height;                       /* terminal size (pixel) */
 	int cols, lines;                         /* terminal size (cell) */
-	struct cell_t *cells;                    /* pointer to each cell: cells[y * lines + x] */
+	struct cell_t **cells;                   /* pointer to each cell: cells[y * lines + x] */
 	struct margin_t scroll;                  /* scroll margin */
 	struct point_t cursor;                   /* cursor pos (x, y) */
 	bool *line_dirty;                        /* dirty flag */
@@ -174,7 +174,7 @@ struct parm_t { /* for parse_arg() */
 	char *argv[MAX_ARGS];
 };
 
-volatile sig_atomic_t vt_active     = true;  /* SIGUSR1: vt is active or not */
-volatile sig_atomic_t need_redraw   = false; /* SIGUSR1: vt activated */
-volatile sig_atomic_t child_alive   = false; /* SIGCHLD: child process (shell) is alive or not */
+volatile sig_atomic_t vt_active   = true;  /* SIGUSR1: vt is active or not */
+volatile sig_atomic_t need_redraw = false; /* SIGUSR1: vt activated */
+volatile sig_atomic_t child_alive = false; /* SIGCHLD: child process (shell) is alive or not */
 struct termios termios_orig;

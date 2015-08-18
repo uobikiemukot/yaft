@@ -75,6 +75,15 @@ int set_cell(struct terminal_t *term, int y, int x, const struct glyph_t *glyphp
 	return HALF;
 }
 
+void swap_lines(struct terminal_t *term, int i, int j)
+{
+	struct cell_t *tmp;
+
+	tmp            = term->cells[i];
+	term->cells[i] = term->cells[j];
+	term->cells[j] = tmp;
+}
+
 void scroll(struct terminal_t *term, int from, int to, int offset)
 {
 	int size, abs_offset;
@@ -116,7 +125,7 @@ void move_cursor(struct terminal_t *term, int y_offset, int x_offset)
 	x = term->cursor.x + x_offset;
 	y = term->cursor.y + y_offset;
 
-	top = term->scroll.top;
+	top    = term->scroll.top;
 	bottom = term->scroll.bottom;
 
 	if (x < 0) {
@@ -147,7 +156,7 @@ void set_cursor(struct terminal_t *term, int y, int x)
 	int top, bottom;
 
 	if (term->mode & MODE_ORIGIN) {
-		top = term->scroll.top;
+		top    = term->scroll.top;
 		bottom = term->scroll.bottom;
 		y += term->scroll.top;
 	} else {
@@ -216,7 +225,7 @@ void reset_esc(struct terminal_t *term)
 {
 	logging(DEBUG, "*esc reset*\n");
 
-	term->esc.bp = term->esc.buf;
+	term->esc.bp    = term->esc.buf;
 	term->esc.state = STATE_RESET;
 }
 
@@ -227,9 +236,9 @@ bool push_esc(struct terminal_t *term, uint8_t ch)
 	if ((term->esc.bp - term->esc.buf) >= term->esc.size) { /* buffer limit */
 		logging(DEBUG, "escape sequence length >= %d, term.esc.buf reallocated\n", term->esc.size);
 		offset = term->esc.bp - term->esc.buf;
-		term->esc.buf  = erealloc(term->esc.buf, term->esc.size * 2);
+		term->esc.buf = erealloc(term->esc.buf, term->esc.size * 2);
+		term->esc.bp  = term->esc.buf + offset;
 		term->esc.size *= 2;
-		term->esc.bp   = term->esc.buf + offset;
 	}
 
 	/* ref: http://www.vt100.net/docs/vt102-ug/appendixd.html */
@@ -288,13 +297,13 @@ void reset(struct terminal_t *term)
 	term->mode |= (MODE_CURSOR | MODE_AMRIGHT);
 	term->wrap_occured = false;
 
-	term->scroll.top = 0;
+	term->scroll.top    = 0;
 	term->scroll.bottom = term->lines - 1;
 
 	term->cursor.x = term->cursor.y = 0;
 
-	term->state.mode = term->mode;
-	term->state.cursor = term->cursor;
+	term->state.mode      = term->mode;
+	term->state.cursor    = term->cursor;
 	term->state.attribute = ATTR_RESET;
 
 	term->color_pair.fg = DEFAULT_FG;
@@ -349,7 +358,9 @@ bool term_init(struct terminal_t *term, int width, int height)
 	/* allocate memory */
 	term->line_dirty   = (bool *) ecalloc(term->lines, sizeof(bool));
 	term->tabstop      = (bool *) ecalloc(term->cols, sizeof(bool));
-	term->cells        = (struct cell_t *) ecalloc(term->lines * term->cols, sizeof(struct cell_t));
+	term->cells        = (struct cell_t **) ecalloc(term->lines, sizeof(struct cell_t *));
+	for (int i = 0; i < term->lines; i++)
+		term->cells[i] = (struct cell_t *) ecalloc(term->cols, sizeof(struct cell_t));
 	term->esc.buf      = (char *) ecalloc(1, term->esc.size);
 	term->sixel.pixmap = (uint8_t *) ecalloc(width * height, BYTES_PER_PIXEL);
 
