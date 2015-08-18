@@ -69,7 +69,7 @@ int set_cell(struct terminal_t *term, int y, int x, const struct glyph_t *glyphp
 
 	if (cell.width == HALF /* isolated NEXT_TO_WIDE cell */
 		&& x + 1 < term->cols
-		&& term->cells[y * term->cols + (x + 1)].width == NEXT_TO_WIDE) {
+		&& term->cells[y][x + 1].width == NEXT_TO_WIDE) {
 		erase_cell(term, y, x + 1);
 	}
 	return HALF;
@@ -337,8 +337,11 @@ void term_die(struct terminal_t *term)
 	free(term->line_dirty);
 	free(term->tabstop);
 	free(term->esc.buf);
-	free(term->cells);
 	free(term->sixel.pixmap);
+
+	for (int i = 0; i < term->lines; i++)
+		free(term->cells[i]);
+	free(term->cells);
 }
 
 bool term_init(struct terminal_t *term, int width, int height)
@@ -358,11 +361,12 @@ bool term_init(struct terminal_t *term, int width, int height)
 	/* allocate memory */
 	term->line_dirty   = (bool *) ecalloc(term->lines, sizeof(bool));
 	term->tabstop      = (bool *) ecalloc(term->cols, sizeof(bool));
+	term->esc.buf      = (char *) ecalloc(1, term->esc.size);
+	term->sixel.pixmap = (uint8_t *) ecalloc(width * height, BYTES_PER_PIXEL);
+
 	term->cells        = (struct cell_t **) ecalloc(term->lines, sizeof(struct cell_t *));
 	for (int i = 0; i < term->lines; i++)
 		term->cells[i] = (struct cell_t *) ecalloc(term->cols, sizeof(struct cell_t));
-	term->esc.buf      = (char *) ecalloc(1, term->esc.size);
-	term->sixel.pixmap = (uint8_t *) ecalloc(width * height, BYTES_PER_PIXEL);
 
 	if (!term->line_dirty || !term->tabstop || !term->cells
 		|| !term->esc.buf || !term->sixel.pixmap) {
