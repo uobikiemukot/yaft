@@ -166,7 +166,7 @@ static inline void draw_line(struct xwindow_t *xw, struct terminal_t *term, int 
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
 		/* draw sixel pixmap */
-		cellp = &term->cells[line * term->cols + col];
+		cellp = &term->cells[line][col];
 		if (cellp->has_pixmap) {
 			draw_sixel(xw, line, col, cellp);
 			continue;
