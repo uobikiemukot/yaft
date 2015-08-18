@@ -75,7 +75,7 @@ int set_cell(struct terminal_t *term, int y, int x, const struct glyph_t *glyphp
 	return HALF;
 }
 
-void swap_lines(struct terminal_t *term, int i, int j)
+static inline void swap_lines(struct terminal_t *term, int i, int j)
 {
 	struct cell_t *tmp;
 
