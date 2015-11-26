@@ -5,7 +5,7 @@
 
 	xterm 256color
 	http://www.calmar.ws/vim/256-xterm-24bit-rgb-color-chart.html
-	http://pln.jonas.me/xterm-colors
+	http://jonasjacek.github.io/colors/
 
 	byte order: (MSB) RR GG BB (LSB)
 */
