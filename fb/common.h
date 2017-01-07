@@ -430,10 +430,15 @@ static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, 
 					+ (line * CELL_HEIGHT + h) * fb->info.line_length;
 
 				/* set color palette */
-				if (cellp->glyphp->bitmap[h] & (0x01 << (bdf_padding + w)))
-					pixel = fb->real_palette[color_pair.fg];
-				else if (fb->wall && color_pair.bg == DEFAULT_BG) /* wallpaper */
+				if (cellp->glyphp->bitmap[h] & (0x01 << (bdf_padding + w))) {
+					if (color_pair.fg & RGB_FLAG)
+						pixel = color2pixel(&fb->info, color_pair.fg & 0xffffff);
+					else
+						pixel = fb->real_palette[color_pair.fg];
+				} else if (fb->wall && color_pair.bg == DEFAULT_BG) /* wallpaper */
 					memcpy(&pixel, fb->wall + pos, fb->info.bytes_per_pixel);
+				else if (color_pair.bg & RGB_FLAG)
+					pixel = color2pixel(&fb->info, color_pair.bg & 0xffffff);
 				else
 					pixel = fb->real_palette[color_pair.bg];
 

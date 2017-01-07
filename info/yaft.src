@@ -1,5 +1,5 @@
 yaft-256color|yet another framebuffer terminal,
-	am, bce, msgr, xenl,
+	am, bce, msgr, xenl, ccc,
 
 	cols#80, lines#24, it#8, colors#256, pairs#32767,
 
@@ -60,3 +60,5 @@ yaft-256color|yet another framebuffer terminal,
 	kmous=\E[M, knp=\E[6~, kpp=\E[5~, kspd=^Z,
 
 	u6=\E[%i%d;%dR, u7=\E[6n,
+
+	initc=\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,

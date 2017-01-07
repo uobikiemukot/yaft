@@ -249,6 +249,12 @@ void set_attr(struct terminal_t *term, struct parm_t *parm)
 			if ((i + 2) < parm->argc && dec2num(parm->argv[i + 1]) == 5) {
 				term->color_pair.fg = dec2num(parm->argv[i + 2]);
 				i += 2;
+			} else if ((i + 4) < parm->argc && dec2num(parm->argv[i + 1]) == 2) {
+				term->color_pair.fg = RGB_FLAG;
+				term->color_pair.fg |= dec2num(parm->argv[i + 2]) << 16;
+				term->color_pair.fg |= dec2num(parm->argv[i + 3]) << 8;
+				term->color_pair.fg |= dec2num(parm->argv[i + 4]);
+				i += 4;
 			}
 		} else if (num == 39) {                /* reset foreground */
 			term->color_pair.fg = DEFAULT_FG;
@@ -258,6 +264,12 @@ void set_attr(struct terminal_t *term, struct parm_t *parm)
 			if ((i + 2) < parm->argc && dec2num(parm->argv[i + 1]) == 5) {
 				term->color_pair.bg = dec2num(parm->argv[i + 2]);
 				i += 2;
+			} else if ((i + 4) < parm->argc && dec2num(parm->argv[i + 1]) == 2) {
+				term->color_pair.bg = RGB_FLAG;
+				term->color_pair.bg |= dec2num(parm->argv[i + 2]) << 16;
+				term->color_pair.bg |= dec2num(parm->argv[i + 3]) << 8;
+				term->color_pair.bg |= dec2num(parm->argv[i + 4]);
+				i += 4;
 			}
 		} else if (num == 49) {                /* reset background */
 			term->color_pair.bg = DEFAULT_BG;
