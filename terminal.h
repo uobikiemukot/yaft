@@ -37,7 +37,7 @@ void copy_cell(struct terminal_t *term, int dst_y, int dst_x, int src_y, int src
 int set_cell(struct terminal_t *term, int y, int x, const struct glyph_t *glyphp)
 {
 	struct cell_t cell, *cellp;
-	uint8_t color_tmp;
+	uint32_t color_tmp;
 
 	cell.glyphp = glyphp;
 

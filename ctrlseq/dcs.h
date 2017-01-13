@@ -335,7 +335,8 @@ void reset_sixel(struct sixel_canvas_t *sc, struct color_pair_t color_pair, int 
 	sc->color_table[7] = color_list[7]; sc->color_table[15] = color_list[15];
 	*/
 	/* change palette 0, because its often the same color as terminal background */
-	sc->color_table[0] = color_list[color_pair.fg];
+	if (color_pair.fg < 0x100)
+		sc->color_table[0] = color_list[color_pair.fg];
 
 	/* 16 - 255: use xterm 256 color palette */
 	/* copy 256 color map */
