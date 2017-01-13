@@ -3,7 +3,7 @@ void erase_cell(struct terminal_t *term, int y, int x)
 {
 	struct cell_t *cellp;
 
-	cellp             = &term->cells[y * term->cols + x];
+	cellp             = &term->cells[y][x];
 	cellp->glyphp     = term->glyph[DEFAULT_CHAR];
 	cellp->color_pair = term->color_pair; /* bce */
 	cellp->attribute  = ATTR_RESET;
@@ -17,8 +17,8 @@ void copy_cell(struct terminal_t *term, int dst_y, int dst_x, int src_y, int src
 {
 	struct cell_t *dst, *src;
 
-	dst = &term->cells[dst_y * term->cols + dst_x];
-	src = &term->cells[src_y * term->cols + src_x];
+	dst = &term->cells[dst_y][dst_x];
+	src = &term->cells[src_y][src_x];
 
 	if (src->width == NEXT_TO_WIDE) {
 		return;
@@ -56,12 +56,12 @@ int set_cell(struct terminal_t *term, int y, int x, const struct glyph_t *glyphp
 	cell.width      = glyphp->width;
 	cell.has_pixmap = false;
 
-	cellp    = &term->cells[y * term->cols + x];
+	cellp    = &term->cells[y][x];
 	*cellp   = cell;
 	term->line_dirty[y] = true;
 
 	if (cell.width == WIDE && x + 1 < term->cols) {
-		cellp        = &term->cells[y * term->cols + (x + 1)];
+		cellp        = &term->cells[y][x + 1];
 		*cellp       = cell;
 		cellp->width = NEXT_TO_WIDE;
 		return WIDE;
@@ -86,8 +86,7 @@ static inline void swap_lines(struct terminal_t *term, int i, int j)
 
 void scroll(struct terminal_t *term, int from, int to, int offset)
 {
-	int size, abs_offset;
-	struct cell_t *dst, *src;
+	int abs_offset, scroll_lines;
 
 	if (offset == 0 || from >= to)
 		return;
@@ -98,19 +97,18 @@ void scroll(struct terminal_t *term, int from, int to, int offset)
 		term->line_dirty[y] = true;
 
 	abs_offset = abs(offset);
-	size = sizeof(struct cell_t) * ((to - from + 1) - abs_offset) * term->cols;
-
-	dst = term->cells + from * term->cols;
-	src = term->cells + (from + abs_offset) * term->cols;
+	scroll_lines = (to - from + 1) - abs_offset;
 
 	if (offset > 0) { /* scroll down */
-		memmove(dst, src, size);
+		for (int y = from; y < from + scroll_lines; y++)
+			swap_lines(term, y, y + offset);
 		for (int y = (to - offset + 1); y <= to; y++)
 			for (int x = 0; x < term->cols; x++)
 				erase_cell(term, y, x);
 	}
 	else {            /* scroll up */
-		memmove(src, dst, size);
+		for (int y = to; y >= from + abs_offset; y--)
+			swap_lines(term, y, y - abs_offset);
 		for (int y = from; y < from + abs_offset; y++)
 			for (int x = 0; x < term->cols; x++)
 				erase_cell(term, y, x);

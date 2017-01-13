@@ -394,7 +394,7 @@ static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, 
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
 
 		/* target cell */
-		cellp = &term->cells[line * term->cols + col];
+		cellp = &term->cells[line][col];
 
 		/* draw sixel pixmap */
 		if (cellp->has_pixmap) {
