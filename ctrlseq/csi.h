@@ -221,8 +221,95 @@ void erase_char(struct terminal_t *term, struct parm_t *parm)
 		erase_cell(term, term->cursor.y, i);
 }
 
+uint8_t rgb2index(uint8_t r, uint8_t g, uint8_t b)
+{
+	/* SGR: Set Graphic Rendition (special case)
+	 * 	special color selection (from 256color index or as a 24bit color value)
+	 *
+	 *	ESC [ 38 ; 5 ; Ps m
+	 *	ESC [ 48 ; 5 ; Ps m
+	 *		select foreground/background color from 256 color index
+	 *
+	 *	ESC [ 38 ; 2 ; r ; g ; b m
+	 *	ESC [ 48 ; 2 ; r ; g ; b m
+	 *		select foreground/background color as a 24bit color value
+	 *
+	 * 	according to ITU T.416 (https://www.itu.int/rec/T-REC-T.416/en)
+	 * 	this format is valid (but most of terminals don't support)
+	 *	ESC [ 38 : 5 : Ps m
+	 *	ESC [ 48 : 5 : Ps m
+	 *
+	 *	ESC [ 48 : 2 : r : g : b m
+	 *	ESC [ 38 : 2 : r : g : b m
+	 */
+	int padding;
+	uint8_t index;
+
+	/* XXX: this calculation fails if color palette modified by OSC 4 */
+
+	if (r == g && g == b) {
+		/* search from grayscale */
+		/* grayscale start from 0x08
+			and each step inc 0x0A */
+		padding = (r - 0x08) / 0x0A;
+
+		if (padding <= 0)
+			index = 232;
+		else if (padding >= 24)
+			index = 231;
+		else
+			index = 232 + padding;
+
+	} else {
+		/* search from 6x6x6 color cube */
+		/* each rgb take 6 values: {0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF}
+			and after 0x5F each step inc 0x28 */
+		const uint8_t values[] = {0x0, 0x5F, 0x87, 0xAF, 0xD7, 0xFF};
+		const uint8_t rgb[] = {r, g, b};
+		uint8_t closest_index[3];
+		int small, big;
+
+		for (int c = 0; c < 3; c++) {
+			for (int i = 0; i < 5; i++) {
+				if (values[i] <= rgb[c] && rgb[c] <= values[i + 1]) {
+					small = abs(rgb[c] - values[i]);
+					big   = abs(rgb[c] - values[i + 1]);
+					if (small < big)
+						closest_index[c] = i;
+					else
+						closest_index[c] = i + 1;
+				}
+			}
+		}
+		index = 16 + closest_index[0] * 36 + closest_index[1] * 6 + closest_index[2];
+	}
+
+	return index;
+}
+
 void set_attr(struct terminal_t *term, struct parm_t *parm)
 {
+	/* SGR: Set Graphic Rendition
+	 * 	ESC [ Pm m
+	 * 	Pm:
+	 *		0: reset all attribute
+	 *
+	 *		1: brighten foreground color (only work for color index 0-7)
+	 *		4: underline
+	 *		5: brighten background color (only work for color index 0-7)
+	 *		7: reverse (swap foreground/background color)
+	 *
+	 *		21: reset brighten foreground color
+	 *		24: reset underline
+	 *		25: reset brighten background color
+	 *		27: reset reverse
+	 *
+	 *		30-37: select foreground color (color index 0-7)
+	 *		38: special foreground color selection: implemented in select_color_value()
+	 *
+	 *		40-47: select background color (color index 0-7)
+	 *		48: special foreground color selection: implemented in select_color_value()
+	 */
 	int i, num;
 
 	if (parm->argc <= 0) {
@@ -234,6 +321,7 @@ void set_attr(struct terminal_t *term, struct parm_t *parm)
 
 	for (i = 0; i < parm->argc; i++) {
 		num = dec2num(parm->argv[i]);
+		//logging(DEBUG, "argc:%d num:%d\n", parm->argc, num);
 
 		if (num == 0) {                        /* reset all attribute and color */
 			term->attribute = ATTR_RESET;
@@ -245,18 +333,30 @@ void set_attr(struct terminal_t *term, struct parm_t *parm)
 			term->attribute &= ~attr_mask[num - 20];
 		} else if (30 <= num && num <= 37) {   /* set foreground */
 			term->color_pair.fg = (num - 30);
-		} else if (num == 38) {                /* set 256 color to foreground */
+		} else if (num == 38) {                /* special foreground color selection */
+			/* select foreground color from 256 color index */
 			if ((i + 2) < parm->argc && dec2num(parm->argv[i + 1]) == 5) {
 				term->color_pair.fg = dec2num(parm->argv[i + 2]);
+				i += 2;
+			/* select foreground color from specified rgb color */
+			} else if ((i + 4) < parm->argc && dec2num(parm->argv[i + 1]) == 2) {
+				term->color_pair.fg = rgb2index(dec2num(parm->argv[i + 2]),
+					dec2num(parm->argv[i + 3]), dec2num(parm->argv[i + 4]));
 				i += 2;
 			}
 		} else if (num == 39) {                /* reset foreground */
 			term->color_pair.fg = DEFAULT_FG;
 		} else if (40 <= num && num <= 47) {   /* set background */
 			term->color_pair.bg = (num - 40);
-		} else if (num == 48) {                /* set 256 color to background */
+		} else if (num == 48) {                /* special background  color selection */
+			/* select background color from 256 color index */
 			if ((i + 2) < parm->argc && dec2num(parm->argv[i + 1]) == 5) {
 				term->color_pair.bg = dec2num(parm->argv[i + 2]);
+				i += 2;
+			/* select background color from specified rgb color */
+			} else if ((i + 4) < parm->argc && dec2num(parm->argv[i + 1]) == 2) {
+				term->color_pair.bg = rgb2index(dec2num(parm->argv[i + 2]),
+					dec2num(parm->argv[i + 3]), dec2num(parm->argv[i + 4]));
 				i += 2;
 			}
 		} else if (num == 49) {                /* reset background */
