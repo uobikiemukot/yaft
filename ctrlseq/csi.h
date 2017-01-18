@@ -246,24 +246,31 @@ uint8_t rgb2index(uint8_t r, uint8_t g, uint8_t b)
 	uint8_t index;
 
 	/* XXX: this calculation fails if color palette modified by OSC 4 */
+	/* 256 color palette is defined in color.h */
 
 	if (r == g && g == b) {
-		/* search from grayscale */
-		/* grayscale start from 0x08
-			and each step inc 0x0A */
+		/*
+			search from grayscale
+				index: 232 - 255
+				value: 0x080808 - 0xEEEEEE
+				inc  : 0x0A
+		*/
 		padding = (r - 0x08) / 0x0A;
 
-		if (padding <= 0)
-			index = 232;
-		else if (padding >= 24)
+		if (padding >= 24)
+			/* index 231 (0xFFFFFF) is the last color of 6x6x6 cube */
 			index = 231;
+		else if (padding <= 0)
+			index = 232;
 		else
 			index = 232 + padding;
 
 	} else {
-		/* search from 6x6x6 color cube */
-		/* each rgb take 6 values: {0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF}
-			and after 0x5F each step inc 0x28 */
+		/*
+			search from 6x6x6 color cube
+				index: 16 - 231
+				each rgb takes 6 values: {0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF}
+		*/
 		const uint8_t values[] = {0x0, 0x5F, 0x87, 0xAF, 0xD7, 0xFF};
 		const uint8_t rgb[] = {r, g, b};
 		uint8_t closest_index[3];
@@ -342,7 +349,7 @@ void set_attr(struct terminal_t *term, struct parm_t *parm)
 			} else if ((i + 4) < parm->argc && dec2num(parm->argv[i + 1]) == 2) {
 				term->color_pair.fg = rgb2index(dec2num(parm->argv[i + 2]),
 					dec2num(parm->argv[i + 3]), dec2num(parm->argv[i + 4]));
-				i += 2;
+				i += 4;
 			}
 		} else if (num == 39) {                /* reset foreground */
 			term->color_pair.fg = DEFAULT_FG;
@@ -357,7 +364,7 @@ void set_attr(struct terminal_t *term, struct parm_t *parm)
 			} else if ((i + 4) < parm->argc && dec2num(parm->argv[i + 1]) == 2) {
 				term->color_pair.bg = rgb2index(dec2num(parm->argv[i + 2]),
 					dec2num(parm->argv[i + 3]), dec2num(parm->argv[i + 4]));
-				i += 2;
+				i += 4;
 			}
 		} else if (num == 49) {                /* reset background */
 			term->color_pair.bg = DEFAULT_BG;
