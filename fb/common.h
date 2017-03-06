@@ -421,18 +421,33 @@ static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, 
 		}
 
 		for (h = 0; h < CELL_HEIGHT; h++) {
+
 			/* if UNDERLINE attribute on, swap bg/fg */
 			if ((h == (CELL_HEIGHT - 1)) && (cellp->attribute & attr_mask[ATTR_UNDERLINE]))
 				color_pair.bg = color_pair.fg;
 
 			for (w = 0; w < CELL_WIDTH; w++) {
+#define clamp(x, min, max) ((x) < (min) ? (min) : (x) > (max) ? (max) : (x))
+				/* We draw the background color only if:
+				 * - There is no wallpaper
+				 * - The background color is different
+				 * - The pixel is touching a set pixel
+				 */
+				int drawbg = !fb->wall
+					  || color_pair.bg != DEFAULT_BG
+					  || cellp->glyphp->bitmap[clamp(h+1, 0, CELL_HEIGHT)] & (0x01 << (bdf_padding + w))
+					  || cellp->glyphp->bitmap[clamp(h-1, 0, CELL_HEIGHT)] & (0x01 << (bdf_padding + w))
+					  || cellp->glyphp->bitmap[h] & (0x01 << (bdf_padding + clamp(w+1, 0, CELL_WIDTH)))
+					  || cellp->glyphp->bitmap[h] & (0x01 << (bdf_padding + clamp(w-1, 0, CELL_WIDTH)));
+#undef clamp
+
 				pos = (term->width - 1 - margin_right - w) * fb->info.bytes_per_pixel
 					+ (line * CELL_HEIGHT + h) * fb->info.line_length;
 
 				/* set color palette */
 				if (cellp->glyphp->bitmap[h] & (0x01 << (bdf_padding + w)))
 					pixel = fb->real_palette[color_pair.fg];
-				else if (fb->wall && color_pair.bg == DEFAULT_BG) /* wallpaper */
+				else if (!drawbg) /* wallpaper */
 					memcpy(&pixel, fb->wall + pos, fb->info.bytes_per_pixel);
 				else
 					pixel = fb->real_palette[color_pair.bg];
