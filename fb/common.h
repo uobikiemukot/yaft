@@ -13,6 +13,13 @@ enum fb_visual_t {
 	YAFT_FB_VISUAL_UNKNOWN,
 };
 
+enum fb_rotate_t {
+	ROTATE_NORMAL = 0,
+	ROTATE_CLOCKWISE,
+	ROTATE_COUNTER_CLOCKWISE,
+	ROTATE_UPSIDE_DOWN,
+};
+
 struct fb_info_t {
 	struct bitfield_t {
 		int length;
@@ -46,6 +53,7 @@ struct framebuffer_t {
 	uint8_t *wall;                 /* buffer for wallpaper */
 	uint32_t real_palette[COLORS]; /* hardware specific color palette */
 	struct fb_info_t info;
+	enum fb_rotate_t rotate;
 	cmap_t *cmap, *cmap_orig;
 };
 
@@ -310,6 +318,18 @@ bool fb_init(struct framebuffer_t *fb)
 	fb->wall = ((env = getenv("YAFT")) && strstr(env, "wall")) ?
 				load_wallpaper(fb->fp, fb->info.screen_size): NULL;
 
+	env = getenv("YAFT");
+	if (env) {
+		if (strstr(env, "clockwise"))
+			fb->rotate = ROTATE_CLOCKWISE;
+		else if (strstr(env, "counter_clockwise"))
+			fb->rotate = ROTATE_COUNTER_CLOCKWISE;
+		else if (strstr(env, "upside_down"))
+			fb->rotate = ROTATE_UPSIDE_DOWN;
+		else
+			fb->rotate = ROTATE_NORMAL;
+	}
+
 	/* error check */
 	if (fb->fp == MAP_FAILED || !fb->buf)
 		goto allocate_failed;
@@ -382,6 +402,30 @@ static inline void draw_sixel(struct framebuffer_t *fb, int line, int col, uint8
 	}
 }
 
+int get_rotated_pos(struct framebuffer_t *fb, struct terminal_t *term, int x, int y)
+{
+	int x2, y2;
+
+	if (fb->rotate == ROTATE_CLOCKWISE) {
+		x2 = y;
+		y2 = (term->width - 1) - x;
+	}
+	else if (fb->rotate == ROTATE_UPSIDE_DOWN) {
+		x2 = (term->width - 1) - x;
+		y2 = (term->height - 1) - y;
+	}
+	else if (fb->rotate == ROTATE_COUNTER_CLOCKWISE) {
+		x2 = (term->height - 1) - y;
+		y2 = x;
+	}
+	else { /* rotate: NORMAL */
+		x2 = x;
+		y2 = y;
+	}
+
+	return (x2 * fb->info.bytes_per_pixel) + (y2 * fb->info.line_length);
+}
+
 static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, int line)
 {
 	int pos, size, bdf_padding, glyph_width, margin_right;
@@ -389,6 +433,9 @@ static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, 
 	uint32_t pixel;
 	struct color_pair_t color_pair;
 	struct cell_t *cellp;
+
+	size = (fb->rotate == ROTATE_CLOCKWISE || fb->rotate == ROTATE_COUNTER_CLOCKWISE) ?
+		CELL_HEIGHT * fb->info.bytes_per_pixel: CELL_HEIGHT * fb->info.line_length;
 
 	for (col = term->cols - 1; col >= 0; col--) {
 		margin_right = (term->cols - 1 - col) * CELL_WIDTH;
@@ -426,8 +473,8 @@ static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, 
 				color_pair.bg = color_pair.fg;
 
 			for (w = 0; w < CELL_WIDTH; w++) {
-				pos = (term->width - 1 - margin_right - w) * fb->info.bytes_per_pixel
-					+ (line * CELL_HEIGHT + h) * fb->info.line_length;
+				pos = get_rotated_pos(fb, term, term->width - 1 - margin_right - w,
+					line * CELL_HEIGHT + h);
 
 				/* set color palette */
 				if (cellp->glyphp->bitmap[h] & (0x01 << (bdf_padding + w)))
@@ -441,12 +488,25 @@ static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, 
 				memcpy(fb->buf + pos, &pixel, fb->info.bytes_per_pixel);
 			}
 		}
+
+		/* actual display update */
+		if (fb->rotate == ROTATE_CLOCKWISE || fb->rotate == ROTATE_COUNTER_CLOCKWISE) {
+			for (w = 0; w < CELL_WIDTH; w++) {
+				pos = (fb->rotate == ROTATE_CLOCKWISE) ?
+					get_rotated_pos(fb, term, term->width - 1 - margin_right - w, line * CELL_HEIGHT):
+					get_rotated_pos(fb, term, term->width - 1 - margin_right - w, (line + 1) * CELL_HEIGHT - 1);
+				memcpy(fb->fp + pos, fb->buf + pos, size);
+			}
+		}
 	}
 
 	/* actual display update (bit blit) */
-	pos = (line * CELL_HEIGHT) * fb->info.line_length;
-	size = CELL_HEIGHT * fb->info.line_length;
-	memcpy(fb->fp + pos, fb->buf + pos, size);
+	if (fb->rotate == ROTATE_NORMAL || fb->rotate == ROTATE_UPSIDE_DOWN) {
+		pos = (fb->rotate == ROTATE_NORMAL) ?
+			get_rotated_pos(fb, term, 0, line * CELL_HEIGHT):
+			get_rotated_pos(fb, term, term->width - 1, (line + 1) * CELL_HEIGHT - 1);
+		memcpy(fb->fp + pos, fb->buf + pos, size);
+	}
 
 	/* TODO: page flip
 		if fb_fix_screeninfo.ypanstep > 0, we can use hardware panning.
