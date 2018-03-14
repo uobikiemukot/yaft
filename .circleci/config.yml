@@ -1,0 +1,10 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: centosbuild/centos7:latest
+    steps:
+      - checkout
+      - run:
+          name: build
+          command: make
