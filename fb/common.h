@@ -404,27 +404,26 @@ static inline void draw_sixel(struct framebuffer_t *fb, int line, int col, uint8
 
 int get_rotated_pos(struct framebuffer_t *fb, struct terminal_t *term, int x, int y)
 {
-	int i, shift, glyph_width;
-	int p, q;
+	int x2, y2;
 
 	if (fb->rotate == ROTATE_CLOCKWISE) {
-		p = y;
-		q = (term->width - 1) - x;
+		x2 = y;
+		y2 = (term->width - 1) - x;
 	}
 	else if (fb->rotate == ROTATE_UPSIDE_DOWN) {
-		p = (term->width - 1) - x;
-		q = (term->height - 1) - y;
+		x2 = (term->width - 1) - x;
+		y2 = (term->height - 1) - y;
 	}
 	else if (fb->rotate == ROTATE_COUNTER_CLOCKWISE) {
-		p = (term->height - 1) - y;
-		q = x;
+		x2 = (term->height - 1) - y;
+		y2 = x;
 	}
 	else { /* rotate: NORMAL */
-		p = x;
-		q = y;
+		x2 = x;
+		y2 = y;
 	}
 
-	return (p * fb->info.bytes_per_pixel) + (q * fb->info.line_length);
+	return (x2 * fb->info.bytes_per_pixel) + (y2 * fb->info.line_length);
 }
 
 static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, int line)
