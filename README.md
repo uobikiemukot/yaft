@@ -1,6 +1,9 @@
 # yaft (yet another framebuffer terminal)
 
-Last update: Mon Jul 27 10:36:02 JST 2015
+- master: [![CircleCI](https://circleci.com/gh/uobikiemukot/yaft.svg?style=svg)](https://circleci.com/gh/uobikiemukot/yaft)
+- develop: [![CircleCI](https://circleci.com/gh/uobikiemukot/yaft/tree/develop.svg?style=svg)](https://circleci.com/gh/uobikiemukot/yaft/tree/develop)
+
+Last update: Wed Mar 14 18:44:27 JST 2018
 
 ## description
 
