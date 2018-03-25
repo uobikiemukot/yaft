@@ -6,5 +6,8 @@ jobs:
     steps:
       - checkout
       - run:
-          name: build
+          name: build yaft
           command: make
+      - run:
+          name: build yaftx
+          command: make yaftx
