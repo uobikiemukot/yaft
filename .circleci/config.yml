@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: centosbuild/centos7:latest
+      - image: uobikiemukot/archlinux-circleci:latest
     steps:
       - checkout
       - run:
