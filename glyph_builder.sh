@@ -28,11 +28,12 @@ UNIFONT_NAME=unifont-${UNIFONT_VERSION}
 UNIFONT_FILE=${UNIFONT_NAME}.bdf.gz
 UNIFONT_URL=http://unifoundry.com/pub/${UNIFONT_NAME}/font-builds/${UNIFONT_FILE}
 
-# dina font
+# dina font (fetch from ProgrammingFonts repository)
 DINA_VERSION=
-DINA_NAME=Dina
-DINA_FILE=${DINA_NAME}.zip
-DINA_URL=http://www.donationcoder.com/Software/Jibz/${DINA_NAME}/downloads/${DINA_FILE}
+DINA_NAME=
+DINA_FILE=
+DINA_DIR=ProgrammingFonts/Dina/BDF
+DINA_URL=https://github.com/ProgrammingFonts/ProgrammingFonts.git
 
 # terminus font
 TERMINUS_VERSION=4.39
@@ -235,18 +236,14 @@ unifont()
 dina()
 {
 	echo -ne "creating glyph.h from dina font...\n"
-	wget -q -nc ${DINA_URL}
-
-	if test ! -d BDF; then
-		bsdtar xf ${DINA_FILE}
-	fi
+	git clone ${DINA_URL}
 
 	ln -sf $YAFT_DIR/mkfont_bdf .
 	ln -sf $YAFT_DIR/table .
 
 	case "$1" in
 	r*)
-		FILES=`find BDF -type f -name "*${1}.bdf" | tr "\n" " "`;;
+		FILES=`find ${DINA_DIR} -type f -name "*${1}.bdf" | tr "\n" " "`;;
 	*)
 		echo -ne "avalable font variations: r400-(6|8|9|10), r700-(8|9|10)\n"
 		exit -1;;
