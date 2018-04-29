@@ -41,11 +41,10 @@ If you want to change configuration, rewrite "conf.h".
 ## environment variables
 
 -	FRAMEBUFFER=/dev/fb0: specify farmebuffer device
--	SHELL=/bin/bash: specify shell command
 -	YAFT="wall": use current background as wallpaper (need [idump](https://github.com/uobikiemukot/idump) or fbv)
 
 ~~~
-$ idump /path/to/wallpaper.png; tput civis; YAFT="wall" FRAMEBUFFER="/dev/fb1" SHELL="/bin/csh" yaft
+$ idump /path/to/wallpaper.png; tput civis; YAFT="wall" FRAMEBUFFER="/dev/fb1" yaft
 ~~~
 
 ## how to use your favorite fonts
