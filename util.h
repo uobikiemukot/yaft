@@ -268,7 +268,7 @@ int esetenv(const char *name, const char *value, int overwrite)
 	return ret;
 }
 
-int eexecvp(const char *file, const char *argv[])
+int eexecvp(const char *file, char *const argv[])
 {
 	int ret;
 	errno = 0;
