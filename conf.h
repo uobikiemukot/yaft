@@ -38,7 +38,7 @@ const char *term_name = "yaft-256color";
 	const char *fb_path = "/dev/graphics/fb0";
 #endif
 
-/* shell: refer SHELL environment variable at first */
+/* shell */
 #if defined(__linux__) || defined(__MACH__)
 	const char *shell_cmd = "/bin/bash";
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
