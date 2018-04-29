@@ -138,10 +138,8 @@ void (*event_func[LASTEvent])(struct xwindow_t *xw, struct terminal_t *term, XEv
 	[Expose]           = xredraw,
 };
 
-bool fork_and_exec(int *master, int lines, int cols)
+bool fork_and_exec(int *master, const char *cmd, char *const argv[], int lines, int cols)
 {
-	extern const char *shell_cmd; /* defined in conf.h */
-	char *shell_env;
 	pid_t pid;
 	struct winsize ws = {.ws_row = lines, .ws_col = cols,
 		/* XXX: this variables are UNUSED (man tty_ioctl),
@@ -153,18 +151,17 @@ bool fork_and_exec(int *master, int lines, int cols)
 		return false;
 	else if (pid == 0) { /* child */
 		esetenv("TERM", term_name, 1);
-		if ((shell_env = getenv("SHELL")) != NULL)
-			eexecl(shell_env);
-		else
-			eexecl(shell_cmd);
+		eexecvp(cmd, argv);
 		/* never reach here */
 		exit(EXIT_FAILURE);
 	}
 	return true;
 }
 
-int main()
+int main(int argc, char *const argv[])
 {
+	extern const char *shell_cmd; /* defined in conf.h */
+	const char *cmd;
 	uint8_t buf[BUFSIZE];
 	ssize_t size;
 	fd_set fds;
@@ -193,7 +190,8 @@ int main()
 	}
 
 	/* fork and exec shell */
-	if (!fork_and_exec(&term.fd, term.lines, term.cols)) {
+	cmd = (argc < 2) ? shell_cmd: argv[1];
+	if (!fork_and_exec(&term.fd, cmd, argv + 1, term.lines, term.cols)) {
 		logging(FATAL, "forkpty failed\n");
 		goto fork_failed;
 	}
