@@ -15,7 +15,7 @@ Features:
 
 +	various framebuffer types (8/15/16/24/32bpp)
 +	compatible with vt102 and Linux console ([detail](http://uobikiemukot.github.io/yaft/escape.html))
-+	UTF-8 encoding and UCS2 gylphs
++	UTF-8 encoding and UCS2 glyphs
 +	256 colors (same as xterm)
 +	wallpaper
 +	DRCS (DECDLD/DRCSMMv1) (experimental)
