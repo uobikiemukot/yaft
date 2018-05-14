@@ -525,8 +525,8 @@ void decdld_parse_header(struct terminal_t *term, char *start_buf)
 		      (TODO: implement sixel/text mode)
 		Pcmh: max cellheight (force CELL_HEIGHT defined in glyph.h)
 		Pcss: character set size (force: 96)
-				0: 94 gylphs charset
-				1: 96 gylphs charset
+				0: 94 glyphs charset
+				1: 96 glyphs charset
 		f   : '{' (0x7B)
 		Dscs: define character set
 				Intermediate char: SPACE (0x20) to '/' (0x2F)
