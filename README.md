@@ -63,9 +63,13 @@ usage: tools/mkfont_bdf ALIAS_FILE BDF1 BDF2 BDF3 ... > glyph.h
 $ ./mkfont_bdf table/your_alias your/favorite/fonts.bdf > glyph.h
 ~~~
 
+Or try glyph_builder.sh (bash script for creating yaft's glyph.h)
+
+-	supported fonts: mplus, efont, milkjf, unifont, dina, terminus, profont, tamsyn
+
 ## build and install
 
-*BSD users should check README.bsd
+BSD users should check README.bsd
 
 ~~~
 $ export LANG=en_US.UTF-8 # yaft uses libc's wcwidth for calculating glyph width
@@ -75,26 +79,6 @@ or
 $ make yaftx
 # make installx
 ~~~
-
-## how to use your favorite fonts
-
-You can use tools/mkfont_bdf to create "glyph.h".
-
-usage: tools/mkfont_bdf ALIAS_FILE BDF1 BDF2 BDF3 ... > glyph.h
-
--	ALIAS_FILE: glyph substitution rule file (see table/alias)
--	BDF1, BDF2, BDF3...: bdf files
-	+	yaft supports only "monospace" bdf font
-	+	you can specify mulitiple bdf fonts (but these fonts MUST be the same size)
-		+	If there is more than one glyph of the same codepoint, the glyph included in the FIRST bdf file is choosed
-
-~~~
-$ ./mkfont_bdf table/your_alias your/favorite/fonts.bdf > glyph.h
-~~~
-
-Or try glyph_builder.sh (bash script for creating yaft's glyph.h)
-
--	supported fonts: mplus, efont, milkjf, unifont, dina, terminus, profont, tamsyn
 
 ## screenshot
 
