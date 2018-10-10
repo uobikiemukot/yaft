@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 
 	if (!map_glyph(font, glist_head, &default_glyph)) {
 		logging(FATAL, "map_glyph() failed\n");
-		goto err_occured;
+		goto err_occurred;
 	}
 
 	if (!load_alias(font, argv[1]))
@@ -188,18 +188,18 @@ int main(int argc, char *argv[])
 
 	if (!check_font(font, &empty_half, &empty_wide)) {
 		logging(FATAL, "check_font() failed\n");
-		goto err_occured;
+		goto err_occurred;
 	}
 
 	if (!dump_font(font)) {
 		logging(FATAL, "dump_font() failed\n");
-		goto err_occured;
+		goto err_occurred;
 	}
 
 	cleanup(glist_head, &empty_half, &empty_wide);
 	return EXIT_SUCCESS;
 
-err_occured:
+err_occurred:
 	cleanup(glist_head, &empty_half, &empty_wide);
 	return EXIT_FAILURE;
 }
