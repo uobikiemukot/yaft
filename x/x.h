@@ -195,7 +195,7 @@ static inline void draw_line(struct xwindow_t *xw, struct terminal_t *term, int 
 	struct cell_t *cellp;
 	const struct glyph_t *glyphp;
 
-	/* at first, fill all pixels of line in backgournd color */
+	/* at first, fill all pixels of line in background color */
 	XSetForeground(xw->display, xw->gc, xw->color_palette[DEFAULT_BG]);
 	XFillRectangle(xw->display, xw->pixbuf, xw->gc, 0, line * CELL_HEIGHT, term->width, CELL_HEIGHT);
 
@@ -219,7 +219,7 @@ static inline void draw_line(struct xwindow_t *xw, struct terminal_t *term, int 
 		if (cellp->width == WIDE)
 			bdf_padding += CELL_WIDTH;
 
-		/* check cursor positon */
+		/* check cursor position */
 		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
 			&& (col == term->cursor.x
 			|| (cellp->width == WIDE && (col + 1) == term->cursor.x)

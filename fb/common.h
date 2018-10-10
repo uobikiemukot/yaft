@@ -411,7 +411,7 @@ static inline void draw_line(struct framebuffer_t *fb, struct terminal_t *term, 
 		if (cellp->width == WIDE)
 			bdf_padding += CELL_WIDTH;
 
-		/* check cursor positon */
+		/* check cursor position */
 		if ((term->mode & MODE_CURSOR && line == term->cursor.y)
 			&& (col == term->cursor.x
 			|| (cellp->width == WIDE && (col + 1) == term->cursor.x)

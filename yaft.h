@@ -156,7 +156,7 @@ struct terminal_t {
 	bool *line_dirty;                        /* dirty flag */
 	bool *tabstop;                           /* tabstop flag */
 	enum term_mode mode;                     /* for set/reset mode */
-	bool wrap_occured;                       /* whether auto wrap occured or not */
+	bool wrap_occured;                       /* whether auto wrap occurred or not */
 	struct state_t state;                    /* for restore */
 	struct color_pair_t color_pair;          /* color (fg, bg) */
 	enum char_attr attribute;                /* bold, underscore, etc... */
