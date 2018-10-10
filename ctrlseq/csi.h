@@ -438,7 +438,7 @@ void reset_mode(struct terminal_t *term, struct parm_t *parm)
 			set_cursor(term, 0, 0);
 		} else if (mode == 7) {
 			term->mode &= ~MODE_AMRIGHT;
-			term->wrap_occured = false;
+			term->wrap_occurred = false;
 		} else if (mode == 25) {
 			term->mode &= ~MODE_CURSOR;
 		} else if (mode == 8901) {
