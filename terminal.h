@@ -130,7 +130,7 @@ void move_cursor(struct terminal_t *term, int y_offset, int x_offset)
 		x = 0;
 	} else if (x >= term->cols) {
 		if (term->mode & MODE_AMRIGHT)
-			term->wrap_occured = true;
+			term->wrap_occurred = true;
 		x = term->cols - 1;
 	}
 	term->cursor.x = x;
@@ -167,7 +167,7 @@ void set_cursor(struct terminal_t *term, int y, int x)
 
 	term->cursor.x = x;
 	term->cursor.y = y;
-	term->wrap_occured = false;
+	term->wrap_occurred = false;
 }
 
 const struct glyph_t *drcs_glyph(struct terminal_t *term, uint32_t code)
@@ -209,12 +209,12 @@ void addch(struct terminal_t *term, uint32_t code)
 	else
 		glyphp = term->glyph[code];
 
-	if ((term->wrap_occured && term->cursor.x == term->cols - 1) /* folding */
+	if ((term->wrap_occurred && term->cursor.x == term->cols - 1) /* folding */
 		|| (glyphp->width == WIDE && term->cursor.x == term->cols - 1)) {
 		set_cursor(term, term->cursor.y, 0);
 		move_cursor(term, 1, 0);
 	}
-	term->wrap_occured = false;
+	term->wrap_occurred = false;
 
 	move_cursor(term, 0, set_cell(term, term->cursor.y, term->cursor.x, glyphp));
 }
@@ -293,7 +293,7 @@ void reset(struct terminal_t *term)
 {
 	term->mode  = MODE_RESET;
 	term->mode |= (MODE_CURSOR | MODE_AMRIGHT);
-	term->wrap_occured = false;
+	term->wrap_occurred = false;
 
 	term->scroll.top    = 0;
 	term->scroll.bottom = term->lines - 1;
