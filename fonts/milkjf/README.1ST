@@ -1,0 +1,39 @@
+《X Window BDF/PCF形式 16ドットフォントmilkjf》
+
+                                              製作 : 日本農園様
+−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+
+  X68000/X68030 シリーズ用に，日本農園様が製作された，milkjfフォ
+ント(全角非漢字部と半角)を，許可を得て X WindowのBDF形式に変換し，
+配布する事が可能になりました(Public Domainです)．なお，オリジナル
+の milkjfにない部分(特に漢字部)と， ギリシャ文字，ロシア文字は東
+雲フォントを埋め込んでいます．
+  フォントの一覧は以下の通りです．bold体はmkboldで作成したあと，
+若干フォントエディタで修正を加えたものです．
+
+
+  milkjf_8x16.bdf(.pcf)
+  -milkjf-fixed-medium-r-normal--16-150-75-75-C-80-iso8859-1
+
+  milkjf_8x16r.bdf(.pcf)
+  -milkjf-fixed-medium-r-normal--16-150-75-75-C-80-jisx0201.1976-0
+
+  milkjf_k16.bdf(.pcf)
+  -milkjf-fixed-medium-r-normal--16-150-75-75-C-160-jisx0208.1990-0
+
+  milkjf_8x16B.bdf(.pcf)
+  -milkjf-fixed-bold-r-normal--16-150-75-75-C-80-iso8859-1
+
+  milkjf_8x16rb.bdf(.pcf)
+  -milkjf-fixed-bold-r-normal--16-150-75-75-C-80-jisx0201.1976-0
+
+  milkjf_k16b.bdf(.pcf)
+  -milkjf-fixed-bold-r-normal--16-150-75-75-C-160-jisx0208.1990-0
+
+
+−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+X Window固有の問題等に関しては，以下にて．
+http://phe.phyas.aichi-edu.ac.jp/~cyamauch/xfonts.html
+
+cyamauch@hst.phyas.aichi-edu.ac.jp  山内千里  Oct.1,2001
+−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−

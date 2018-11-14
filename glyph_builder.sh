@@ -23,10 +23,10 @@ EFONT_URL=http://openlab.ring.gr.jp/efont/dist/unicode-bdf/${EFONT_FILE}
 # already included in yaft
 
 # unifont
-UNIFONT_VERSION=8.0.01
+UNIFONT_VERSION=11.0.02
 UNIFONT_NAME=unifont-${UNIFONT_VERSION}
 UNIFONT_FILE=${UNIFONT_NAME}.bdf.gz
-UNIFONT_URL=http://unifoundry.com/pub/${UNIFONT_NAME}/font-builds/${UNIFONT_FILE}
+UNIFONT_URL=http://unifoundry.com/pub/unifont/${UNIFONT_NAME}/font-builds/${UNIFONT_FILE}
 
 # dina font (fetch from ProgrammingFonts repository)
 DINA_VERSION=
