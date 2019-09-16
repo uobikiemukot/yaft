@@ -3,7 +3,7 @@ yaft-256color|yet another framebuffer terminal,
 
 	cols#80, lines#24, it#8, colors#256, pairs#32767,
 
-	clear=\E[H\E[J,
+	clear=\E\\\E[H\E[J,
 
 	nel=\EE, cr=^M, 
 
@@ -34,7 +34,7 @@ yaft-256color|yet another framebuffer terminal,
 
 	sc=\E7, rc=\E8,
 
-	is2=\Ec, rs2=\Ec,
+	is2=\Ec, rs2=\E\\\Ec,
 
 	op=\E[39;49m,
 
