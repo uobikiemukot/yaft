@@ -7,6 +7,8 @@ yaft-256color|yet another framebuffer terminal,
 
 	nel=\EE, cr=^M, 
 
+	smcup=\r,rmcup=\r,
+
 	cuf=\E[%p1%dC, cuf1=\E[C,
 	cub=\E[%p1%dD, cub1=^H,
 	cuu=\E[%p1%dA, cuu1=\E[A,
