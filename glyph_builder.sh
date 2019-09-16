@@ -7,6 +7,9 @@ WORK_DIR=/tmp/glyph_builder
 ALIAS_FILE=alias
 
 # infomation of each fonts
+# neep
+# already included in yaft
+
 # mplus
 MPLUS_VERSION=2.2.4
 MPLUS_NAME=mplus_bitmap_fonts-${MPLUS_VERSION}
@@ -62,9 +65,10 @@ WQY_URL=http://jaist.dl.sourceforge.net/project/wqy/wqy-bitmapfont/${WQY_VERSION
 # misc functions
 usage()
 {
-	echo -e "usage: ./glyph_builder.sh FONTS VARIATIONS"
-	echo -e "\tavalable fonts: mplus, efont, milkjf, unifont, dina, terminus, profont, tamsyn"
-	echo -e "depends on: wget, pcf2bdf"
+	echo -e "usage: ./glyph_builder.sh FONT VARIATIONS"
+	echo -e "\tincluded fonts: neep, milkjf, ter-u16n "
+	echo -e "\tdownloadable fonts: mplus, efont, milkjf, unifont, dina, terminus, profont, tamsyn"
+	echo -e "\t\t(Downloading depends on: wget, pcf2bdf)"
 }
 
 generate()
@@ -172,7 +176,7 @@ mplus()
 	f10*|f12*)
 		FILES=`find fonts_e -type f -name "*${1}*.bdf" | tr "\n" " "`;;
 	*)
-		echo -ne "avalable font variations: [fj](10|12)[rb]\n"
+		echo -ne "available font variations: [fj](10|12)[rb]\n"
 		exit -1;;
 	esac
 
@@ -196,7 +200,7 @@ efont()
 	1[0246]*|24*)
 		FILES=`find . -type f -name "*${1}.bdf" | tr "\n" " "`;;
 	*)
-		echo -ne "avalable font variations: (10|12|14|16|24)(_b)?\n"
+		echo -ne "available font variations: (10|12|14|16|24)(_b)?\n"
 		exit -1;;
 	esac
 
@@ -245,7 +249,7 @@ dina()
 	r*)
 		FILES=`find ${DINA_DIR} -type f -name "*${1}.bdf" | tr "\n" " "`;;
 	*)
-		echo -ne "avalable font variations: r400-(6|8|9|10), r700-(8|9|10)\n"
+		echo -ne "available font variations: r400-(6|8|9|10), r700-(8|9|10)\n"
 		exit -1;;
 	esac
 
@@ -269,11 +273,24 @@ terminus()
 	u*)
 		FILES=`find . -type f -name "*${1}.bdf" | tr "\n" " "`;;
 	*)
-		echo -ne "avalable font variations: u(14|16)v, u(12|14|16|18|20|22|24|28|32)[nb]\n"
+		echo -ne "available font variations: u(14|16)v, u(12|14|16|18|20|22|24|28|32)[nb]\n"
 		exit -1;;
 	esac
 
 	generate ${FILES}
+}
+
+neep()
+{
+	ALIAS_FILE=ISO10646
+	echo -ne "creating glyph.h from neep 10x20 font...\n"
+	generate ${YAFT_DIR}/fonts/neep/10x20.bdf
+}
+
+ter-u16n()
+{
+	echo -ne "creating glyph.h from terminus u16n font...\n"
+	generate ${YAFT_DIR}/fonts/terminus/ter-u16n.bdf
 }
 
 profont()
@@ -300,7 +317,7 @@ profont()
 	1*|2*)
 		FILES=`find . -type f -name "*${1}.bdf" | tr "\n" " "`;;
 	*)
-		echo -ne "avalable font variations: (10|11|12|15|17|22|29)\n"
+		echo -ne "available font variations: (10|11|12|15|17|22|29)\n"
 		exit -1;;
 	esac
 
@@ -331,7 +348,7 @@ tamsyn()
 	*[rb])
 		FILES=`find . -type f -name "*${1}.bdf" | tr "\n" " "`;;
 	*)
-		echo -ne "avalable font variations: (5x9|6x12|7x13|7x14|8x15|8x16|10x20)[rb]\n"
+		echo -ne "available font variations: (5x9|6x12|7x13|7x14|8x15|8x16|10x20)[rb]\n"
 		exit -1;;
 	esac
 
@@ -355,7 +372,7 @@ wqy()
 	*pt|*px)
 		FILES=`find . -type f -name "*${1}.bdf" | tr "\n" " "`;;
 	*)
-		echo -ne "avalable font variations: (9|10|11|12)pt, 13px\n"
+		echo -ne "available font variations: (9|10|11|12)pt, 13px\n"
 		exit -1;;
 	esac
 
@@ -368,6 +385,8 @@ mkdir -p $WORK_DIR
 cd $WORK_DIR
 
 case "$1" in 
+"neep")
+	neep;;
 "mplus")
 	shift
 	mplus $1;;
@@ -381,6 +400,8 @@ case "$1" in
 "dina")
 	shift
 	dina $1;;
+"ter-u16n")
+	ter-u16n $1;;
 "terminus")
 	shift
 	terminus $1;;
