@@ -283,6 +283,9 @@ terminus()
 neep()
 {
 	ALIAS_FILE=ISO10646
+	ln -sf ${YAFT_DIR}/mkfont_bdf .
+	ln -sf ${YAFT_DIR}/table .
+
 	echo -ne "creating glyph.h from neep 10x20 font...\n"
 	generate ${YAFT_DIR}/fonts/neep/10x20.bdf
 }
@@ -386,7 +389,7 @@ cd $WORK_DIR
 
 case "$1" in 
 "neep")
-	neep;;
+	neep ;;
 "mplus")
 	shift
 	mplus $1;;
