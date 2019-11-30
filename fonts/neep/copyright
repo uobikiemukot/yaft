@@ -1,0 +1,70 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: http://nikolas.us.to/jmkfonts/
+Upstream-Contact: Jim Knoble <jmknoble@pobox.com>
+Upstream-Name: Jim's Fonts for X
+Comment: Source originally from <http://www.jmknoble.net/fonts/>, which
+ unfortunately is now off-line.  Nik Nyby mirrored the original upstream
+ web site and made it available at the URL above.
+
+Files: *
+Copyright: 1998 Jim Knoble <jmknoble@pobox.com>
+  2018 Ben Wong
+License: GPL-2+
+Comment: Several additional patches and other contributions, including the
+ ISO-10646-1 10x20 Neep font, were provided by Derek Upham.  Derek Upham
+ has placed his modifications in the public domain.
+ .
+ Ben Wong contributed eight hand-drawn 10x20 runic letterforms.
+ .
+ The 6x13 letterforms corresponding to the 10x20 letterforms drawn by Ben
+ Wong are taken from GNU unifont, released under the following license:
+ All glyphs are released under the GNU General Public License (GPL)
+ version 2 or (at your option) a later version, with the GNU font
+ embedding exception.  (Since the font embedding exception doesn't apply
+ to the rest of this package, it has been elided as allowed by the font
+ embedding exception.)
+ .
+ The glyphs for the ISO-10646-1 10x20 Neep font were taken from the
+ misc-fixed font maintained by Marcus Kuhn.  Those glyphs have the
+ following copyright notice:
+ .
+ Public domain font.  Share and enjoy.
+ .
+ Since these changes are all compatible with the base package license of
+ GPL v2 or later, it's easiest to think of the entire contents of the
+ package as covered by that license.
+
+Files: debian/*
+Copyright: 1999, 2001 Joseph Carter <knghtbrd@debian.org>
+  2004-2008, 2010, 2013, 2017 Russ Allbery <rra@debian.org>
+License: GPL-2+
+Comment: Changes by Joseph Carter did not have explicit copyright or
+ license statements.  Presumbly those changes may be redistributed under
+ the same terms as the fonts in this package.
+ .
+ All changes and Debian packaging files by Russ Allbery are hereby placed
+ in the public domain.  If this is not possible in your jurisdiction,
+ please consider this a license to treat these files in all respects as if
+ they were in the public domain.
+
+License: GPL-2+
+ I have chosen to release them under the terms of the GNU General Public
+ License (GPL) version 2.0, or, at your option, any later version.  This
+ means that you may freely modify and distribute these fonts, as long as
+ you distribute the source code for the fonts as well.
+ .
+ Some few parts of these fonts are derived from the 6x13 fixed font
+ accompanying the XFree86-3.3.2 distribution of the X Window System.  That
+ font bears the notice "Public domain font; share and enjoy".
+ .
+ The vast majority of this set of fonts is original work.  Besides the
+ derivations noted above, any resemblance to other fonts, copyrighted or
+ not, may be accounted for by standard letter shapes and the relatively
+ coarse resolution (75dpi) for which the fonts were created.
+ .
+ No warranty of any kind, either express or implied, including that of
+ merchantibility or fitness for a particular purpose.  If anything breaks,
+ you get to keep both pieces.  Your mileage may vary.  Eat your
+ vegetables.
+Comment: You can find the GPL version 2 in /usr/share/common-licenses/GPL-2
+ on Debian systems.
