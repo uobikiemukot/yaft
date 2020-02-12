@@ -1,0 +1,50 @@
+.TH "YAFT" "1" "2014年7月" "yaft 0.2.7" "yaft利用者便覧"
+.SH NAME
+.PP
+yaft \- もう一つの (Yet Another) フレームバッファ端末
+.SH 書式
+.PP
+.B yaft
+.RB [ \-h ]
+.SH 説明
+.PP
+.B yaft
+は（Xなしで済ます）最小主義者の為の簡素なフレームバッファ端末です。
+.SH オプション
+.TP
+.B \-h
+手引きを表示する。
+.RS
+.RE
+.SH 設定
+.PP
+conf.hファイルを書き換えてからmakeコマンドを実行してください。
+.SH お好みのフォント
+.PP
+tools/mkfont_bdfを用いてフォントファイルを生成できます。
+詳しくはmakefile及びtable/aliasファイルをご覧ください。
+.SH 環境変数
+.TP
+.B FRAMEBUFFER
+フレームバッファデバイスを指定します。
+.RS
+.RE
+.TP
+.B YAFT
+当変数に"wall"という文字列が含まれていた場合，yaftの壁紙機能が有効になります。
+詳しくはyaft_wallスクリプトをご覧ください。
+.RS
+.RE
+.SH 作成者
+.PP
+haru <uobikiemukot at gmail dot com>
+.SH 使用許諾
+.PP
+MIT LISENCE
+.SH 不具合の報告
+不具合の投稿はこちら <\fBhttps://github.com/uobikiemukot/yaft/issues\fR> まで。
+.SH 関連項目
+.PP
+.BR console_codes (4),
+.BR console_ioctl (4),
+.BR terminfo (5)

@@ -49,6 +49,8 @@ install:
 	install -m755 ./yaft_wall $(PREFIX)/bin/yaft_wall
 	mkdir -p $(MANPREFIX)/man1/
 	install -m644 ./man/yaft.1 $(MANPREFIX)/man1/yaft.1
+	mkdir -p $(MANPREFIX)/ja/man1
+	install -m644 ./man/yaft-ja.1 $(MANPREFIX)/ja/man1/yaft.1
 
 installx:
 	mkdir -p $(PREFIX)/share/terminfo
