@@ -34,7 +34,7 @@ void sig_handler(int signo)
 
 		if (BACKGROUND_DRAW) { /* update passive cursor */
 			need_redraw = true;
-		} else {               /* sleep until next vt switching */
+		} else {	       /* sleep until next vt switching */
 			sigfillset(&sigset);
 			sigdelset(&sigset, SIGUSR1);
 			sigsuspend(&sigset);
@@ -62,7 +62,7 @@ bool tty_init(struct termios *termios_orig)
 
 	memset(&sigact, 0, sizeof(struct sigaction));
 	sigact.sa_handler = sig_handler;
-	sigact.sa_flags   = SA_RESTART;
+	sigact.sa_flags	  = SA_RESTART;
 	esigaction(SIGCHLD, &sigact, NULL);
 
 	if (VT_CONTROL) {
@@ -94,7 +94,7 @@ bool tty_init(struct termios *termios_orig)
 
 void tty_die(struct termios *termios_orig)
 {
- 	/* no error handling */
+	/* no error handling */
 	struct sigaction sigact;
 	struct vt_mode vtm;
 
@@ -170,6 +170,11 @@ int main(int argc, char *const argv[])
 	if (setlocale(LC_ALL, "") == NULL) /* for wcwidth() */
 		logging(WARN, "setlocale falied\n");
 
+	if (!tty_init(&termios_orig)) {
+		logging(FATAL, "tty initialize failed\n");
+		goto tty_init_failed;
+	}
+
 	if (!fb_init(&fb)) {
 		logging(FATAL, "framebuffer initialize failed\n");
 		goto fb_init_failed;
@@ -178,11 +183,6 @@ int main(int argc, char *const argv[])
 	if (!term_init(&term, fb.info.width, fb.info.height)) {
 		logging(FATAL, "terminal initialize failed\n");
 		goto term_init_failed;
-	}
-
-	if (!tty_init(&termios_orig)) {
-		logging(FATAL, "tty initialize failed\n");
-		goto tty_init_failed;
 	}
 
 	/* fork and exec shell */
