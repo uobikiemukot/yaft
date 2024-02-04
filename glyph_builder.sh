@@ -7,6 +7,7 @@ WORK_DIR=/tmp/glyph_builder
 ALIAS_FILE=alias
 
 # infomation of each fonts
+
 # neep
 # already included in yaft
 
@@ -157,7 +158,7 @@ mplus()
 	wget -q -nc ${MPLUS_URL}
 
 	if test ! -d ${MPLUS_NAME}; then
-		bsdtar xf ${MPLUS_FILE}
+		tar xf ${MPLUS_FILE}
 	fi
 
 	cd ${MPLUS_NAME}
@@ -190,7 +191,7 @@ efont()
 	wget -q -nc ${EFONT_URL}
 
 	if test ! -d ${EFONT_NAME}; then
-		bsdtar xf ${EFONT_FILE}
+		tar xf ${EFONT_FILE}
 	fi
 
 	cd ${EFONT_NAME}
@@ -263,7 +264,7 @@ terminus()
 	wget -q -nc ${TERMINUS_URL}
 
 	if test ! -d ${TERMINUS_NAME}; then
-		bsdtar xf ${TERMINUS_FILE}
+		tar xf ${TERMINUS_FILE}
 	fi
 
 	cd ${TERMINUS_NAME}
@@ -303,7 +304,7 @@ profont()
 	wget -q -nc ${PROFONT_URL} -O ${PROFONT_FILE}
 
 	if test ! -d ${PROFONT_NAME}; then
-		bsdtar xf ${PROFONT_FILE}
+		unzip ${PROFONT_FILE}
 	fi
 
 	cd ${PROFONT_NAME}
@@ -334,7 +335,7 @@ tamsyn()
 	wget -q -nc ${TAMSYN_URL}
 
 	if test ! -d ${TAMSYN_NAME}; then
-		bsdtar xf ${TAMSYN_FILE}
+		tar xf ${TAMSYN_FILE}
 	fi
 
 	cd ${TAMSYN_NAME}
@@ -361,11 +362,11 @@ tamsyn()
 
 wqy()
 {
-	echo -ne "creating glyph.h from tamsyn font...\n"
+	echo -ne "creating glyph.h from wqy font...\n"
 	wget -q -nc ${WQY_URL}
 
 	if test ! -d ${WQY_NAME}; then
-		bsdtar xf ${WQY_FILE}
+		tar xf ${WQY_FILE}
 	fi
 
 	cd wqy-bitmapsong
