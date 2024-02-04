@@ -73,6 +73,7 @@ usage()
 
 generate()
 {
+	make -C ${YAFT_DIR} mkfont_bdf
 	echo "./mkfont_bdf ./table/${ALIAS_FILE} ${@}  > ${YAFT_DIR}/glyph.h"
 	./mkfont_bdf ./table/${ALIAS_FILE} ${@} > ${YAFT_DIR}/glyph.h
 }
