@@ -6,6 +6,11 @@ YAFT_DIR=`pwd`
 WORK_DIR=/tmp/glyph_builder
 ALIAS_FILE=alias
 
+if [ -e ${WORK_DIR} ]; then
+	rm -r ${WORK_DIR}
+fi
+mkdir ${WORK_DIR}
+
 # infomation of each fonts
 
 # neep
@@ -304,7 +309,7 @@ profont()
 	wget -q -nc ${PROFONT_URL} -O ${PROFONT_FILE}
 
 	if test ! -d ${PROFONT_NAME}; then
-		unzip ${PROFONT_FILE}
+		unzip ${PROFONT_FILE} || bsdtar xf ${PROFONT_FILE}
 	fi
 
 	cd ${PROFONT_NAME}
@@ -313,7 +318,7 @@ profont()
 
 	if test ! -f created; then
 		for i in *.pcf; do
-			pcf2bdf -o `basename $i .pcf`.bdf $i 
+			pcf2bdf -o `basename $i .pcf`.bdf $i || exit 1
 		done
 		touch created
 	fi
