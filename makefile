@@ -14,6 +14,8 @@ HDR = glyph.h yaft.h conf.h color.h parse.h terminal.h util.h \
 
 prefix ?= $(DESTDIR)/usr/local
 mandir ?= $(prefix)/share/man
+#terminfo ?= $(prefix)/share/terminfo		# Not used in Debian, instead
+terminfo ?= /etc/terminfo			# store terminfo in /etc.
 
 all: yaft
 
@@ -43,20 +45,22 @@ yaftx: x/yaftx.c $(HDR)
 	# If you want to change configuration, please modify conf.h before make (see conf.h for more detail)
 	$(CC) -o $@ $< $(XCFLAGS) $(XLDFLAGS)
 
-install:
-	mkdir -p $(prefix)/share/terminfo
-	tic -o $(prefix)/share/terminfo info/yaft.src
+install: installshare
 	mkdir -p $(prefix)/bin/
 	install -m755 ./yaft $(prefix)/bin/yaft
 	install -m755 ./yaft_wall $(prefix)/bin/yaft_wall
-	mkdir -p $(mandir)/man1/
-	install -m644 ./man/yaft.1 $(mandir)/man1/yaft.1
 
-installx:
-	mkdir -p $(prefix)/share/terminfo
-	tic -o $(prefix)/share/terminfo info/yaft.src
+installx: installshare
 	mkdir -p $(prefix)/bin/
 	install -m755 ./yaftx $(prefix)/bin/yaftx
+	mkdir -p $(terminfo)
+	tic -o $(terminfo) info/yaft.src
+
+installshare:
+	mkdir -p $(mandir)/man1/
+	install -m644 ./man/yaft.1 $(mandir)/man1/yaft.1
+	mkdir -p $(terminfo)
+	tic -o $(terminfo) info/yaft.src
 
 uninstall:
 	rm -f $(prefix)/bin/yaft
