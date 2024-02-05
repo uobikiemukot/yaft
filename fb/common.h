@@ -484,6 +484,6 @@ void refresh(struct framebuffer_t *fb, struct terminal_t *term)
 	/* Linux needs this every time the VT switches. */
 	vinfo.activate = FB_ACTIVATE_NOW | FB_ACTIVATE_FORCE;
 	if (ioctl(fb->fd, FBIOPUT_VSCREENINFO, &vinfo)) {
-		logging(WARN, "couldn't activate framebuffer\n");
+		logging(WARN, "ioctl: FBIOPUT_VSCREENINFO failed: could not activate framebuffer\n");
 	}
 }
