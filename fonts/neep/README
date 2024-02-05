@@ -1,0 +1,6 @@
+Neep font is originally by JM Knoble, under a GPL2+ license.
+
+How to create the bdf file:
+
+    sudo apt install fonts-jmk
+    zcat /usr/share/fonts/X11/misc/neep-iso10646-1-10x20.pcf.gz | pcf2bdf > 10x20.bdf

@@ -168,7 +168,12 @@ int main(int argc, char *const argv[])
 
 	/* init */
 	if (setlocale(LC_ALL, "") == NULL) /* for wcwidth() */
-		logging(WARN, "setlocale falied\n");
+		logging(WARN, "setlocale failed\n");
+	
+	if (!tty_init(&termios_orig)) {
+		logging(FATAL, "tty initialize failed\n");
+		goto tty_init_failed;
+	}
 
 	if (!fb_init(&fb)) {
 		logging(FATAL, "framebuffer initialize failed\n");
@@ -178,11 +183,6 @@ int main(int argc, char *const argv[])
 	if (!term_init(&term, fb.info.width, fb.info.height)) {
 		logging(FATAL, "terminal initialize failed\n");
 		goto term_init_failed;
-	}
-
-	if (!tty_init(&termios_orig)) {
-		logging(FATAL, "tty initialize failed\n");
-		goto tty_init_failed;
 	}
 
 	/* fork and exec shell */

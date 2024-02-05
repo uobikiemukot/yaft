@@ -474,4 +474,16 @@ void refresh(struct framebuffer_t *fb, struct terminal_t *term)
 			draw_line(fb, term, line);
 		}
 	}
+
+	struct fb_var_screeninfo vinfo;
+
+	if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &vinfo)) {
+		logging(ERROR, "ioctl: FBIOGET_VSCREENINFO failed\n");
+	}
+
+	/* Linux needs this every time the VT switches. */
+	vinfo.activate = FB_ACTIVATE_NOW | FB_ACTIVATE_FORCE;
+	if (ioctl(fb->fd, FBIOPUT_VSCREENINFO, &vinfo)) {
+		logging(WARN, "ioctl: FBIOPUT_VSCREENINFO failed: could not activate framebuffer\n");
+	}
 }
