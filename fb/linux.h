@@ -100,10 +100,5 @@ bool set_fbinfo(int fd, struct fb_info_t *info)
 			logging(WARN, "couldn't reset offset (x:%d y:%d)\n", vinfo.xoffset, vinfo.yoffset);
 	}
 
-	/* Activate the framebuffer */
-	vinfo.activate = FB_ACTIVATE_NOW | FB_ACTIVATE_FORCE;
-	if (ioctl(fd, FBIOPUT_VSCREENINFO, &vinfo))
-		logging(WARN, "couldn't activate framebuffer\n");
-
 	return true;
 }
